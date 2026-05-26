@@ -11,7 +11,8 @@
     "scripts": {
         "build": "nest build && npm run generate",
         "generate": "npm run generate:tailwind && npm run generate:sw",
-        "generate:sw": "esbuild --outfile=views/assets/src-sw.js --bundle views/assets/src-sw.ts && npx workbox injectManifest",
+        "generate:sw": "node scripts/generate-sw.cjs",
+        "generate:sw:mapped": "node scripts/build-sw.cjs && npx workbox injectManifest",
         "generate:sw:watch": "npx workbox injectManifest --watch",
         "generate:tailwind": "npx @tailwindcss/cli -i ./views/assets/main.css -o ./public/bundle.css --minify",
         "generate:tailwind:watch": "npx @tailwindcss/cli -i ./views/assets/main.css -o ./public/bundle.css --minify --watch",
