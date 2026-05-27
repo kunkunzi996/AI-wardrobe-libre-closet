@@ -22,6 +22,7 @@ import { GarmentCategory } from './garment-category.enum';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
 import { GarmentService } from './garment.service';
+import { WardrobeRecommendationService } from './recommendation/wardrobe-recommendation.service';
 import type { SearchGarmentDto } from './dto/search-garment.dto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { MultipartFile } from '@fastify/multipart';
@@ -34,6 +35,8 @@ export class WardrobeController {
   constructor(
     @Inject()
     private readonly garmentService: GarmentService,
+    @Inject()
+    private readonly recommendationService: WardrobeRecommendationService,
   ) {}
 
   private userId(req: any): number | undefined {
@@ -87,6 +90,33 @@ export class WardrobeController {
     };
   }
 
+  @Get('recommend')
+  @Render('wardrobe/recommend')
+  async recommendForm(
+    @Req() req: FastifyRequest,
+    @Query('q') q: string | undefined,
+    @I18n() i18n: I18nContext,
+  ) {
+    const result = q
+      ? await this.recommendationService.recommend(this.userId(req), q)
+      : null;
+    return this.recommendViewModel(result, q ?? '', i18n);
+  }
+
+  @Post('recommend')
+  @Render('wardrobe/recommend')
+  async recommend(
+    @Req() req: FastifyRequest,
+    @Body() body: { q?: string },
+    @I18n() i18n: I18nContext,
+  ) {
+    const q = body.q?.trim() ?? '';
+    const result = q
+      ? await this.recommendationService.recommend(this.userId(req), q)
+      : null;
+    return this.recommendViewModel(result, q, i18n);
+  }
+
   @Post()
   async create(
     @Body()
@@ -135,6 +165,28 @@ export class WardrobeController {
       this.userId(req),
     );
     return reply.redirect(`/wardrobe/${garment.id}`, 302);
+  }
+
+  private recommendViewModel(
+    result: Awaited<ReturnType<WardrobeRecommendationService['recommend']>> | null,
+    q: string,
+    i18n: I18nContext,
+  ) {
+    return {
+      q,
+      result: result
+        ? {
+            ...result,
+            groups: result.groups.map((group) => ({
+              ...group,
+              categoryLabel: this.garmentService.resolveCategoryLabel(
+                group.category,
+                i18n,
+              ),
+            })),
+          }
+        : null,
+    };
   }
 
   @Get(':id')

@@ -3,7 +3,10 @@
 <main class="p-4 pt-20 pb-40">
   <div class="flex items-center justify-between mb-6 px-2">
     <h1 class="text-2xl font-bold">{{t 'lang.WARDROBE'}}</h1>
-    <a href="/wardrobe/new" class="btn btn-primary btn-sm">+ {{t 'lang.NEW_GARMENT'}}</a>
+    <div class="flex gap-2">
+      <a href="/wardrobe/recommend" class="btn btn-outline btn-sm">{{t 'lang.WARDROBE_RECOMMEND'}}</a>
+      <a href="/wardrobe/new" class="btn btn-primary btn-sm">+ {{t 'lang.NEW_GARMENT'}}</a>
+    </div>
   </div>
 
   <p class="text-sm text-base-content/60 mb-4 px-2">{{garments.length}} {{t 'lang.RESULTS'}}</p>

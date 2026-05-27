@@ -12,6 +12,7 @@ import { CalendarService } from './calendar.service';
 import { CalendarController } from './calendar.controller';
 import { WardrobeController } from './wardrobe.controller';
 import { OutfitController } from './outfit.controller';
+import { WardrobeRecommendationService } from './recommendation/wardrobe-recommendation.service';
 
 @Module({
   imports: [
@@ -20,7 +21,17 @@ import { OutfitController } from './outfit.controller';
     MikroOrmModule.forFeature([Garment, Outfit, OutfitCalendar, User]),
   ],
   controllers: [WardrobeController, OutfitController, CalendarController],
-  providers: [GarmentService, OutfitService, CalendarService],
-  exports: [GarmentService, OutfitService, CalendarService],
+  providers: [
+    GarmentService,
+    OutfitService,
+    CalendarService,
+    WardrobeRecommendationService,
+  ],
+  exports: [
+    GarmentService,
+    OutfitService,
+    CalendarService,
+    WardrobeRecommendationService,
+  ],
 })
 export class WardrobeModule {}

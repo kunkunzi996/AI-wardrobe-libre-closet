@@ -158,5 +158,15 @@
   "NO_GARMENTS_FOR_BUILDER": "先添加一些衣物，再开始生成搭配。",
   "ADD_TO_CALENDAR": "加入今日穿搭",
   "CALENDAR_ADD_OUTFIT_PROMPT": "加入今日穿搭？",
-  "CALENDAR_OUTFIT_ADDED": "已加入今日穿搭！"
+  "CALENDAR_OUTFIT_ADDED": "已加入今日穿搭！",
+  "BACK": "返回",
+  "WARDROBE_RECOMMEND": "AI筛选",
+  "WARDROBE_RECOMMEND_TITLE": "按想法筛选衣橱",
+  "WARDROBE_RECOMMEND_PLACEHOLDER": "今天想穿什么？例如：黑色系通勤，不想穿裙子",
+  "WARDROBE_RECOMMEND_ACTION": "找衣服",
+  "WARDROBE_RECOMMEND_INTENT": "识别到的需求：",
+  "WARDROBE_RECOMMEND_SCORE": "匹配分",
+  "WARDROBE_RECOMMEND_NO_MATCH": "暂时没有匹配的可穿衣物。",
+  "WARDROBE_RECOMMEND_EXCLUDED": "已排除衣物",
+  "WARDROBE_RECOMMEND_EMPTY_HINT": "输入一句今天的穿搭想法，系统会先按颜色、风格、场景、季节和衣物状态帮你筛选。"
 }
