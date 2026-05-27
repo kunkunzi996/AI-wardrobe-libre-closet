@@ -231,6 +231,8 @@
   "RECOMMEND_FROM_GARMENT_PLACEHOLDER": "What mood do you want? Example: commute, date, comfortable",
   "RECOMMEND_FROM_GARMENT_ACTION": "Regenerate",
   "SAVE_OUTFIT_PLAN": "Save this outfit",
+  "AI_RECOMMENDATION_TITLE": "AI Recommendation",
+  "RULE_FALLBACK": "Rule Fallback",
   "validation": {
     "IS_EMAIL": "Please provide a valid email address",
     "MIN_PASSWORD_LENGTH": "Password must be at least 8 characters long",

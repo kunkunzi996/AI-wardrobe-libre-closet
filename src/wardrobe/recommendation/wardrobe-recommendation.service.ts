@@ -3,6 +3,7 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { Injectable } from '@nestjs/common';
 import { Garment } from '../../dal/entity/garment.entity';
 import { GarmentStatus } from '../garment-status.enum';
+import { OutfitAiResult, OutfitAiService } from '../../ai/outfit-ai.service';
 import {
   parseWardrobeQuery,
   WardrobeQueryIntent,
@@ -27,6 +28,7 @@ export interface ExcludedGarment {
 export interface WardrobeRecommendationResult {
   query: string;
   intent: WardrobeQueryIntent;
+  ai?: OutfitAiResult;
   groups: GarmentRecommendationGroup[];
   excluded: ExcludedGarment[];
 }
@@ -36,6 +38,7 @@ export class WardrobeRecommendationService {
   constructor(
     @InjectRepository(Garment)
     private readonly garmentRepository: EntityRepository<Garment>,
+    private readonly outfitAiService?: OutfitAiService,
   ) {}
 
   async recommend(
@@ -67,6 +70,21 @@ export class WardrobeRecommendationService {
     return {
       query,
       intent,
+      ai: this.outfitAiService
+        ? await this.outfitAiService.recommend({
+            requestText: query,
+            availableGarments: garments.map((garment) => ({
+              id: garment.id,
+              name: garment.name,
+              category: garment.category,
+              color: garment.color,
+              seasons: garment.seasons,
+              styleTags: garment.styleTags,
+              sceneTags: garment.sceneTags,
+              status: garment.status,
+            })),
+          })
+        : undefined,
       groups: this.groupByCategory(scored),
       excluded,
     };

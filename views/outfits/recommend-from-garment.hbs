@@ -22,6 +22,29 @@
     <button type="submit" class="btn btn-primary">{{t 'lang.RECOMMEND_FROM_GARMENT_ACTION'}}</button>
   </form>
 
+  {{#if ai}}
+  <section class="rounded-lg bg-base-200 p-4 mb-4">
+    <div class="flex items-center justify-between gap-3 mb-2">
+      <h2 class="text-sm font-semibold">{{t 'lang.AI_RECOMMENDATION_TITLE'}}</h2>
+      <span class="badge badge-sm {{#ifEquals ai.source "ai"}}badge-primary{{else}}badge-warning{{/ifEquals}}">
+        {{#ifEquals ai.source "ai"}}AI{{else}}{{t 'lang.RULE_FALLBACK'}}{{/ifEquals}}
+      </span>
+    </div>
+    {{#if ai.message}}<p class="text-sm text-base-content/60 mb-2">{{ai.message}}</p>{{/if}}
+    <div class="space-y-2">
+      {{#each ai.recommendations}}
+      <div class="rounded bg-base-100 p-3">
+        <p class="font-medium text-sm">{{this.title}}</p>
+        <p class="text-xs text-base-content/60 mt-1">{{this.reason}}</p>
+        {{#if this.cautions.length}}
+        <p class="text-xs text-warning mt-1">{{this.cautions}}</p>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     {{#each plans}}
     <section class="card bg-base-100 shadow-sm">

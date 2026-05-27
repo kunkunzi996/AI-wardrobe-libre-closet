@@ -183,5 +183,7 @@
   "RECOMMEND_FROM_GARMENT_TITLE": "围绕单品生成搭配",
   "RECOMMEND_FROM_GARMENT_PLACEHOLDER": "想要什么感觉？例如：通勤、约会、舒服一点",
   "RECOMMEND_FROM_GARMENT_ACTION": "重新生成",
-  "SAVE_OUTFIT_PLAN": "保存这套搭配"
+  "SAVE_OUTFIT_PLAN": "保存这套搭配",
+  "AI_RECOMMENDATION_TITLE": "AI推荐说明",
+  "RULE_FALLBACK": "规则兜底"
 }

@@ -4,6 +4,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Garment } from '../../dal/entity/garment.entity';
 import { OutfitSlot } from '../../dal/entity/outfit.entity';
 import { GarmentStatus } from '../garment-status.enum';
+import { OutfitAiResult, OutfitAiService } from '../../ai/outfit-ai.service';
 
 export interface GenerateOutfitInput {
   coreGarmentId: number;
@@ -18,6 +19,11 @@ export interface GeneratedOutfitPlan {
   slots: OutfitSlot[];
 }
 
+export interface GeneratedOutfitResult {
+  plans: GeneratedOutfitPlan[];
+  ai?: OutfitAiResult;
+}
+
 const PLAN_TITLES = [
   '方案A：稳妥通勤',
   '方案B：年轻活泼',
@@ -29,9 +35,15 @@ export class OutfitGeneratorService {
   constructor(
     @InjectRepository(Garment)
     private readonly garmentRepository: EntityRepository<Garment>,
+    private readonly outfitAiService?: OutfitAiService,
   ) {}
 
   async generate(input: GenerateOutfitInput): Promise<GeneratedOutfitPlan[]> {
+    const result = await this.generateWithAi(input);
+    return result.plans;
+  }
+
+  async generateWithAi(input: GenerateOutfitInput): Promise<GeneratedOutfitResult> {
     const garments = await this.garmentRepository.find(
       input.userId != null
         ? { owner: { id: input.userId } }
@@ -44,7 +56,7 @@ export class OutfitGeneratorService {
     const core = wearable.find((garment) => garment.id === input.coreGarmentId);
     if (!core) throw new NotFoundException('Core garment not found');
 
-    return PLAN_TITLES.map((title, index) => {
+    const plans = PLAN_TITLES.map((title, index) => {
       const selected = this.pickGarments(core, wearable, input.requestText, index);
       return {
         title,
@@ -56,6 +68,24 @@ export class OutfitGeneratorService {
         })),
       };
     });
+
+    const ai = this.outfitAiService
+      ? await this.outfitAiService.recommend({
+          requestText: input.requestText || core.name || '围绕这件衣服搭配',
+          availableGarments: garments.map((garment) => ({
+            id: garment.id,
+            name: garment.name,
+            category: garment.category,
+            color: garment.color,
+            seasons: garment.seasons,
+            styleTags: garment.styleTags,
+            sceneTags: garment.sceneTags,
+            status: garment.status,
+          })),
+        })
+      : undefined;
+
+    return { plans, ai };
   }
 
   private pickGarments(

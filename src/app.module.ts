@@ -126,6 +126,8 @@ import { AiModule } from './ai/ai.module';
         FILE_STORAGE_TYPE: Joi.string()
           .valid('local', 'object')
           .default('local'),
+        OPENAI_API_KEY: Joi.string().optional(),
+        AI_TEXT_MODEL: Joi.string().default('gpt-4.1-mini'),
         OBJECT_STORAGE_BUCKET_NAME: Joi.string().when('FILE_STORAGE_TYPE', {
           is: 'object',
           then: Joi.string().required(),

@@ -82,7 +82,7 @@ export class OutfitController {
     @Query('q') q?: string,
   ) {
     const coreGarmentId = Number(garmentId);
-    const plans = await this.outfitGeneratorService.generate({
+    const result = await this.outfitGeneratorService.generateWithAi({
       coreGarmentId,
       requestText: q,
       userId: this.userId(req),
@@ -90,7 +90,8 @@ export class OutfitController {
     return {
       garmentId: coreGarmentId,
       q: q ?? '',
-      plans,
+      plans: result.plans,
+      ai: result.ai,
     };
   }
 
