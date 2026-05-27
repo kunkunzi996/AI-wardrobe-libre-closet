@@ -20,6 +20,7 @@ import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import { Payload } from '../auth/dto/payload.dto';
 import { GarmentCategory } from './garment-category.enum';
 import { GarmentColor } from './garment-color.enum';
+import { GarmentStatus } from './garment-status.enum';
 import { GarmentService } from './garment.service';
 import type { SearchGarmentDto } from './dto/search-garment.dto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -60,6 +61,7 @@ export class WardrobeController {
       colors: Object.values(GarmentColor),
       availableSizes: filters.sizes,
       search: query,
+      statuses: Object.values(GarmentStatus),
     };
   }
 
@@ -80,6 +82,7 @@ export class WardrobeController {
     return {
       categories,
       colors: Object.values(GarmentColor),
+      statuses: Object.values(GarmentStatus),
       garment: null,
     };
   }
@@ -93,6 +96,17 @@ export class WardrobeController {
       brand?: string;
       color?: GarmentColor;
       size?: string;
+      subcategory?: string;
+      seasons?: string;
+      styleTags?: string;
+      sceneTags?: string;
+      material?: string;
+      thickness?: string;
+      fit?: string;
+      status?: GarmentStatus;
+      price?: string;
+      purchaseDate?: string;
+      purchaseChannel?: string;
       notes?: string;
     },
     @Req() req: FastifyRequest,
@@ -105,6 +119,17 @@ export class WardrobeController {
         brand: body.brand,
         color: body.color,
         size: body.size,
+        subcategory: body.subcategory,
+        seasons: body.seasons,
+        styleTags: body.styleTags,
+        sceneTags: body.sceneTags,
+        material: body.material,
+        thickness: body.thickness,
+        fit: body.fit,
+        status: body.status,
+        price: body.price,
+        purchaseDate: body.purchaseDate,
+        purchaseChannel: body.purchaseChannel,
         notes: body.notes,
       },
       this.userId(req),
@@ -152,6 +177,7 @@ export class WardrobeController {
       garment,
       categories,
       colors: Object.values(GarmentColor),
+      statuses: Object.values(GarmentStatus),
     };
   }
 
@@ -165,6 +191,17 @@ export class WardrobeController {
       brand?: string;
       color?: GarmentColor;
       size?: string;
+      subcategory?: string;
+      seasons?: string;
+      styleTags?: string;
+      sceneTags?: string;
+      material?: string;
+      thickness?: string;
+      fit?: string;
+      status?: GarmentStatus;
+      price?: string;
+      purchaseDate?: string;
+      purchaseChannel?: string;
       notes?: string;
     },
     @Req() req: FastifyRequest,
@@ -178,6 +215,17 @@ export class WardrobeController {
         brand: body.brand,
         color: body.color,
         size: body.size,
+        subcategory: body.subcategory,
+        seasons: body.seasons,
+        styleTags: body.styleTags,
+        sceneTags: body.sceneTags,
+        material: body.material,
+        thickness: body.thickness,
+        fit: body.fit,
+        status: body.status,
+        price: body.price,
+        purchaseDate: body.purchaseDate,
+        purchaseChannel: body.purchaseChannel,
         notes: body.notes,
       },
       this.userId(req),

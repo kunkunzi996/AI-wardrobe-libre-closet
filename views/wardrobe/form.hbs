@@ -48,6 +48,17 @@
     </div>
 
     <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.SUBCATEGORY'}}</span></label>
+      <input
+        type="text"
+        name="subcategory"
+        class="input input-bordered"
+        value="{{#if garment}}{{garment.subcategory}}{{/if}}"
+        placeholder="{{t 'lang.SUBCATEGORY_PLACEHOLDER'}}"
+      />
+    </div>
+
+    <div class="form-control">
       <label class="label"><span class="label-text">{{t 'lang.BRAND'}}</span></label>
       <input
         type="text"
@@ -76,6 +87,116 @@
         class="input input-bordered"
         value="{{#if garment}}{{garment.size}}{{/if}}"
         placeholder="M, 32, One Size…"
+      />
+    </div>
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.STATUS'}}</span></label>
+      <select name="status" class="select select-bordered">
+        {{#each statuses}}
+        <option value="{{this}}" {{#ifEquals this ../garment.status}}selected{{/ifEquals}}>{{this}}</option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.SEASONS'}}</span></label>
+        <input
+          type="text"
+          name="seasons"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.seasons}}{{/if}}"
+          placeholder="{{t 'lang.TAG_INPUT_HINT'}}"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.STYLE_TAGS'}}</span></label>
+        <input
+          type="text"
+          name="styleTags"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.styleTags}}{{/if}}"
+          placeholder="{{t 'lang.TAG_INPUT_HINT'}}"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.SCENE_TAGS'}}</span></label>
+        <input
+          type="text"
+          name="sceneTags"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.sceneTags}}{{/if}}"
+          placeholder="{{t 'lang.TAG_INPUT_HINT'}}"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.MATERIAL'}}</span></label>
+        <input
+          type="text"
+          name="material"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.material}}{{/if}}"
+          placeholder="{{t 'lang.MATERIAL_PLACEHOLDER'}}"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.THICKNESS'}}</span></label>
+        <input
+          type="text"
+          name="thickness"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.thickness}}{{/if}}"
+          placeholder="{{t 'lang.THICKNESS_PLACEHOLDER'}}"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.FIT'}}</span></label>
+        <input
+          type="text"
+          name="fit"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.fit}}{{/if}}"
+          placeholder="{{t 'lang.FIT_PLACEHOLDER'}}"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.PRICE'}}</span></label>
+        <input
+          type="number"
+          step="0.01"
+          name="price"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.price}}{{/if}}"
+          placeholder="399"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">{{t 'lang.PURCHASE_DATE'}}</span></label>
+        <input
+          type="date"
+          name="purchaseDate"
+          class="input input-bordered"
+          value="{{#if garment}}{{garment.purchaseDate}}{{/if}}"
+        />
+      </div>
+    </div>
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.PURCHASE_CHANNEL'}}</span></label>
+      <input
+        type="text"
+        name="purchaseChannel"
+        class="input input-bordered"
+        value="{{#if garment}}{{garment.purchaseChannel}}{{/if}}"
+        placeholder="{{t 'lang.PURCHASE_CHANNEL_PLACEHOLDER'}}"
       />
     </div>
 

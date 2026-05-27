@@ -62,30 +62,27 @@ export class GarmentService {
       ...(dto.subcategory ? { subcategory: dto.subcategory } : {}),
       ...(dto.status ? { status: dto.status } : {}),
       ...(normalizedSize ? { size: normalizedSize } : {}),
-      ...(dto.keyword
-        ? {
-            $or: [
-              { name: { $like: `%${dto.keyword}%` } },
-              { notes: { $like: `%${dto.keyword}%` } },
-              { brand: { $like: `%${dto.keyword}%` } },
-              { subcategory: { $like: `%${dto.keyword}%` } },
-              { material: { $like: `%${dto.keyword}%` } },
-              { purchaseChannel: { $like: `%${dto.keyword}%` } },
-            ],
-          }
-        : {}),
     };
+    const options = {
+      populate: ['photo'] as const,
+      orderBy: { id: 'DESC' as const },
+    };
+    const filterInMemory = (garments: Garment[]) =>
+      garments.filter((garment) => this.matchesMetadataFilters(garment, dto));
+
     if (userId != null) {
-      return this.garmentRepository.find(
+      const garments = await this.garmentRepository.find(
         { owner: { id: userId }, ...searchConditions },
-        { populate: ['photo'], orderBy: { id: 'DESC' } },
+        options,
       );
+      return filterInMemory(garments);
     }
     // AUTH_ENABLED=false: only return garments that belong to no user
-    return this.garmentRepository.find(
+    const garments = await this.garmentRepository.find(
       { owner: null, ...searchConditions },
-      { populate: ['photo'], orderBy: { id: 'DESC' } },
+      options,
     );
+    return filterInMemory(garments);
   }
 
   async findOne(id: number, userId?: number): Promise<Garment> {
@@ -328,5 +325,43 @@ export class GarmentService {
     if (input instanceof Date) return input;
     const value = new Date(input);
     return Number.isNaN(value.getTime()) ? undefined : value;
+  }
+
+  private matchesMetadataFilters(
+    garment: Garment,
+    dto: SearchGarmentDto,
+  ): boolean {
+    if (dto.season && !this.hasTag(garment.seasons, dto.season)) return false;
+    if (dto.style && !this.hasTag(garment.styleTags, dto.style)) return false;
+    if (dto.scene && !this.hasTag(garment.sceneTags, dto.scene)) return false;
+    if (dto.keyword && !this.matchesKeyword(garment, dto.keyword)) return false;
+    return true;
+  }
+
+  private hasTag(tags: string[] | undefined, expected: string): boolean {
+    const needle = expected.trim().toLowerCase();
+    return Boolean(
+      needle && tags?.some((tag) => tag.trim().toLowerCase().includes(needle)),
+    );
+  }
+
+  private matchesKeyword(garment: Garment, keyword: string): boolean {
+    const needle = keyword.trim().toLowerCase();
+    if (!needle) return true;
+    const values = [
+      garment.name,
+      garment.notes,
+      garment.brand,
+      garment.category,
+      garment.subcategory,
+      garment.material,
+      garment.thickness,
+      garment.fit,
+      garment.purchaseChannel,
+      ...(garment.seasons ?? []),
+      ...(garment.styleTags ?? []),
+      ...(garment.sceneTags ?? []),
+    ];
+    return values.some((value) => value?.toLowerCase().includes(needle));
   }
 }

@@ -142,6 +142,16 @@
         <span class="text-base-content/60 text-sm">{{t 'lang.CATEGORY'}}</span>
         <span class="capitalize font-medium">{{categoryLabel}}</span>
       </div>
+      {{#if garment.subcategory}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.SUBCATEGORY'}}</span>
+        <span class="font-medium">{{garment.subcategory}}</span>
+      </div>
+      {{/if}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.STATUS'}}</span>
+        <span class="font-medium">{{garment.status}}</span>
+      </div>
       {{#if garment.brand}}
       <div class="flex justify-between">
         <span class="text-base-content/60 text-sm">{{t 'lang.BRAND'}}</span>
@@ -156,6 +166,67 @@
       <div class="flex justify-between">
         <span class="text-base-content/60 text-sm">{{t 'lang.COLOR'}}</span>
         <span class="capitalize font-medium">{{garment.color}}</span>
+      </div>
+      {{/if}} {{#if garment.seasons}}
+      <div class="flex flex-col gap-1">
+        <span class="text-base-content/60 text-sm">{{t 'lang.SEASONS'}}</span>
+        <div class="flex flex-wrap gap-1">
+          {{#each garment.seasons}}<span class="badge badge-outline badge-sm">{{this}}</span>{{/each}}
+        </div>
+      </div>
+      {{/if}} {{#if garment.styleTags}}
+      <div class="flex flex-col gap-1">
+        <span class="text-base-content/60 text-sm">{{t 'lang.STYLE_TAGS'}}</span>
+        <div class="flex flex-wrap gap-1">
+          {{#each garment.styleTags}}<span class="badge badge-outline badge-sm">{{this}}</span>{{/each}}
+        </div>
+      </div>
+      {{/if}} {{#if garment.sceneTags}}
+      <div class="flex flex-col gap-1">
+        <span class="text-base-content/60 text-sm">{{t 'lang.SCENE_TAGS'}}</span>
+        <div class="flex flex-wrap gap-1">
+          {{#each garment.sceneTags}}<span class="badge badge-outline badge-sm">{{this}}</span>{{/each}}
+        </div>
+      </div>
+      {{/if}} {{#if garment.material}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.MATERIAL'}}</span>
+        <span class="font-medium">{{garment.material}}</span>
+      </div>
+      {{/if}} {{#if garment.thickness}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.THICKNESS'}}</span>
+        <span class="font-medium">{{garment.thickness}}</span>
+      </div>
+      {{/if}} {{#if garment.fit}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.FIT'}}</span>
+        <span class="font-medium">{{garment.fit}}</span>
+      </div>
+      {{/if}} {{#if garment.price}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.PRICE'}}</span>
+        <span class="font-medium">{{garment.price}}</span>
+      </div>
+      {{/if}} {{#if garment.purchaseChannel}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.PURCHASE_CHANNEL'}}</span>
+        <span class="font-medium">{{garment.purchaseChannel}}</span>
+      </div>
+      {{/if}} {{#if garment.purchaseDate}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.PURCHASE_DATE'}}</span>
+        <span class="font-medium">{{garment.purchaseDate}}</span>
+      </div>
+      {{/if}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.WEAR_COUNT'}}</span>
+        <span class="font-medium">{{garment.wearCount}}</span>
+      </div>
+      {{#if garment.lastWornDate}}
+      <div class="flex justify-between">
+        <span class="text-base-content/60 text-sm">{{t 'lang.LAST_WORN_DATE'}}</span>
+        <span class="font-medium">{{garment.lastWornDate}}</span>
       </div>
       {{/if}} {{#if garment.notes}}
       <div class="flex flex-col gap-1">

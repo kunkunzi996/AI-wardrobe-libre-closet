@@ -13,6 +13,7 @@ describe('GarmentService', () => {
       create: jest.fn((data: Partial<Garment>) =>
         Object.assign(new Garment(), data),
       ),
+      find: jest.fn(async () => []),
       findOne: jest.fn(async () => existingGarment ?? null),
       getEntityManager: jest.fn(() => entityManager),
     };
@@ -92,5 +93,41 @@ describe('GarmentService', () => {
     expect(garment.status).toBe(GarmentStatus.Laundry);
     expect(garment.wearCount).toBe(3);
     expect(entityManager.flush).toHaveBeenCalled();
+  });
+
+  it('filters garments by status, season, style, scene, and keyword metadata', async () => {
+    const { service, garmentRepository } = makeService();
+    garmentRepository.find.mockResolvedValue([
+      Object.assign(new Garment(), {
+        id: 1,
+        category: 'outerwear',
+        name: 'black blazer',
+        status: GarmentStatus.Wearable,
+        seasons: ['spring', 'autumn'],
+        styleTags: ['commute'],
+        sceneTags: ['office'],
+        material: 'wool',
+      }),
+      Object.assign(new Garment(), {
+        id: 2,
+        category: 'outerwear',
+        name: 'home hoodie',
+        status: GarmentStatus.Laundry,
+        seasons: ['winter'],
+        styleTags: ['casual'],
+        sceneTags: ['home'],
+        material: 'cotton',
+      }),
+    ]);
+
+    const garments = await service.findAll(undefined, {
+      status: GarmentStatus.Wearable,
+      season: 'autumn',
+      style: 'commute',
+      scene: 'office',
+      keyword: 'wool',
+    });
+
+    expect(garments.map((garment) => garment.id)).toEqual([1]);
   });
 });

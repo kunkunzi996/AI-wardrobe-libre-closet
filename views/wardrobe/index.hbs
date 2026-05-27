@@ -26,6 +26,9 @@
       <div class="card-body p-3">
         <h2 class="card-title text-sm">{{this.name}}</h2>
         <p class="text-xs text-base-content/60 capitalize">{{this.category}}</p>
+        {{#if this.status}}
+        <p class="text-xs text-base-content/50">{{this.status}}</p>
+        {{/if}}
       </div>
     </a>
     {{/each}}
@@ -79,6 +82,10 @@
     <input type="hidden" name="category" id="active-category" value="{{search.category}}">
     <input type="hidden" name="color" id="active-color" value="{{search.color}}">
     <input type="hidden" name="size" id="active-size" value="{{search.size}}">
+    <input type="hidden" name="status" id="active-status" value="{{search.status}}">
+    <input type="hidden" name="season" id="active-season" value="{{search.season}}">
+    <input type="hidden" name="style" id="active-style" value="{{search.style}}">
+    <input type="hidden" name="scene" id="active-scene" value="{{search.scene}}">
     <input
       type="text"
       name="keyword"
@@ -139,6 +146,35 @@
     </div>
     {{/if}}
 
+    {{!-- Wardrobe metadata --}}
+    <div class="mb-5">
+      <h4 class="font-medium text-sm text-base-content/60 uppercase tracking-wide mb-2">{{t 'lang.STATUS'}}</h4>
+      <div class="flex flex-wrap gap-2">
+        {{#each statuses}}
+        <label class="cursor-pointer">
+          <input type="radio" name="modal-status" value="{{this}}" class="hidden peer"
+            {{#ifEquals this ../search.status}}checked{{/ifEquals}}>
+          <span class="badge badge-outline peer-checked:badge-info select-none">{{this}}</span>
+        </label>
+        {{/each}}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <label class="form-control">
+        <span class="label-text text-xs text-base-content/60 mb-1">{{t 'lang.SEASON'}}</span>
+        <input type="text" name="modal-season" value="{{search.season}}" class="input input-bordered input-sm" placeholder="{{t 'lang.SEASON_PLACEHOLDER'}}">
+      </label>
+      <label class="form-control">
+        <span class="label-text text-xs text-base-content/60 mb-1">{{t 'lang.STYLE'}}</span>
+        <input type="text" name="modal-style" value="{{search.style}}" class="input input-bordered input-sm" placeholder="{{t 'lang.STYLE_PLACEHOLDER'}}">
+      </label>
+      <label class="form-control">
+        <span class="label-text text-xs text-base-content/60 mb-1">{{t 'lang.SCENE'}}</span>
+        <input type="text" name="modal-scene" value="{{search.scene}}" class="input input-bordered input-sm" placeholder="{{t 'lang.SCENE_PLACEHOLDER'}}">
+      </label>
+    </div>
+
     <div class="modal-action">
       <button type="button"
         class="btn btn-ghost btn-sm"
@@ -152,9 +188,16 @@
           for el in <input[name='modal-size']/>
             set el.checked to false
           end
+          for el in <input[name='modal-status']/>
+            set el.checked to false
+          end
           set #active-category.value to ''
           set #active-color.value to ''
           set #active-size.value to ''
+          set #active-status.value to ''
+          set #active-season.value to ''
+          set #active-style.value to ''
+          set #active-scene.value to ''
           call #filter-modal.close()
           call #search-form.submit()">
         {{t 'lang.CLEAR_FILTERS'}}
@@ -171,9 +214,22 @@
           set size to ''
           get the first <input[name='modal-size']:checked/>
           if it then set size to it.value end
+          set status to ''
+          get the first <input[name='modal-status']:checked/>
+          if it then set status to it.value end
+          get the first <input[name='modal-season']/>
+          set season to its value
+          get the first <input[name='modal-style']/>
+          set style to its value
+          get the first <input[name='modal-scene']/>
+          set scene to its value
           set #active-category.value to category
           set #active-color.value to color
           set #active-size.value to size
+          set #active-status.value to status
+          set #active-season.value to season
+          set #active-style.value to style
+          set #active-scene.value to scene
           call #filter-modal.close()
           call #search-form.submit()">
         {{t 'lang.APPLY_FILTERS'}}
