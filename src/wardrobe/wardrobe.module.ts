@@ -16,6 +16,8 @@ import { WardrobeController } from './wardrobe.controller';
 import { OutfitController } from './outfit.controller';
 import { WardrobeRecommendationService } from './recommendation/wardrobe-recommendation.service';
 import { OutfitGeneratorService } from './recommendation/outfit-generator.service';
+import { WardrobeAnalyticsService } from './analytics/wardrobe-analytics.service';
+import { AnalyticsController } from './analytics.controller';
 
 @Module({
   imports: [
@@ -24,13 +26,19 @@ import { OutfitGeneratorService } from './recommendation/outfit-generator.servic
     FileModule,
     MikroOrmModule.forFeature([Garment, Outfit, OutfitCalendar, User, File]),
   ],
-  controllers: [WardrobeController, OutfitController, CalendarController],
+  controllers: [
+    WardrobeController,
+    OutfitController,
+    CalendarController,
+    AnalyticsController,
+  ],
   providers: [
     GarmentService,
     OutfitService,
     CalendarService,
     WardrobeRecommendationService,
     OutfitGeneratorService,
+    WardrobeAnalyticsService,
   ],
   exports: [
     GarmentService,
@@ -38,6 +46,7 @@ import { OutfitGeneratorService } from './recommendation/outfit-generator.servic
     CalendarService,
     WardrobeRecommendationService,
     OutfitGeneratorService,
+    WardrobeAnalyticsService,
   ],
 })
 export class WardrobeModule {}

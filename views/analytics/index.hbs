@@ -1,0 +1,98 @@
+{{>navbar}}
+
+<main class="p-4 pt-20 pb-24 max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-6 px-1">
+    <h1 class="text-2xl font-bold">{{t 'lang.ANALYTICS_TITLE'}}</h1>
+    <a href="/wardrobe" class="btn btn-ghost btn-sm">{{t 'lang.WARDROBE'}}</a>
+  </div>
+
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div class="rounded-lg bg-base-200 p-4">
+      <p class="text-xs text-base-content/50">{{t 'lang.ANALYTICS_TOTAL'}}</p>
+      <p class="text-3xl font-bold">{{analytics.summary.total}}</p>
+    </div>
+    <div class="rounded-lg bg-base-200 p-4">
+      <p class="text-xs text-base-content/50">{{t 'lang.ANALYTICS_WEARABLE'}}</p>
+      <p class="text-3xl font-bold">{{analytics.summary.wearable}}</p>
+    </div>
+    <div class="rounded-lg bg-base-200 p-4">
+      <p class="text-xs text-base-content/50">{{t 'lang.ANALYTICS_LAUNDRY'}}</p>
+      <p class="text-3xl font-bold">{{analytics.summary.laundry}}</p>
+    </div>
+    <div class="rounded-lg bg-base-200 p-4">
+      <p class="text-xs text-base-content/50">{{t 'lang.ANALYTICS_LONG_UNWORN'}}</p>
+      <p class="text-3xl font-bold">{{analytics.summary.longUnworn}}</p>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <section class="rounded-lg bg-base-100 p-4 shadow-sm">
+      <h2 class="font-semibold mb-3">{{t 'lang.ANALYTICS_MOST_WORN'}}</h2>
+      {{#if analytics.mostWorn.length}}
+      <div class="space-y-2">
+        {{#each analytics.mostWorn}}
+        <a href="/wardrobe/{{this.id}}" class="flex items-center justify-between rounded bg-base-200 px-3 py-2">
+          <span class="text-sm">{{this.name}}</span>
+          <span class="badge badge-primary badge-sm">{{this.wearCount}}</span>
+        </a>
+        {{/each}}
+      </div>
+      {{else}}
+      <p class="text-sm text-base-content/50">{{t 'lang.ANALYTICS_EMPTY'}}</p>
+      {{/if}}
+    </section>
+
+    <section class="rounded-lg bg-base-100 p-4 shadow-sm">
+      <h2 class="font-semibold mb-3">{{t 'lang.ANALYTICS_LOW_USAGE'}}</h2>
+      {{#if analytics.lowUsage.length}}
+      <div class="space-y-2">
+        {{#each analytics.lowUsage}}
+        <a href="/wardrobe/{{this.id}}" class="flex items-center justify-between rounded bg-base-200 px-3 py-2">
+          <span class="text-sm">{{this.name}}</span>
+          <span class="badge badge-outline badge-sm">{{this.wearCount}}</span>
+        </a>
+        {{/each}}
+      </div>
+      {{else}}
+      <p class="text-sm text-base-content/50">{{t 'lang.ANALYTICS_EMPTY'}}</p>
+      {{/if}}
+    </section>
+
+    <section class="rounded-lg bg-base-100 p-4 shadow-sm">
+      <h2 class="font-semibold mb-3">{{t 'lang.ANALYTICS_COLOR_DISTRIBUTION'}}</h2>
+      {{#if analytics.colorDistribution.length}}
+      <div class="flex flex-wrap gap-2">
+        {{#each analytics.colorDistribution}}
+        <span class="badge badge-outline">{{this.label}} · {{this.count}}</span>
+        {{/each}}
+      </div>
+      {{else}}
+      <p class="text-sm text-base-content/50">{{t 'lang.ANALYTICS_EMPTY'}}</p>
+      {{/if}}
+    </section>
+
+    <section class="rounded-lg bg-base-100 p-4 shadow-sm">
+      <h2 class="font-semibold mb-3">{{t 'lang.ANALYTICS_STYLE_DISTRIBUTION'}}</h2>
+      {{#if analytics.styleDistribution.length}}
+      <div class="flex flex-wrap gap-2">
+        {{#each analytics.styleDistribution}}
+        <span class="badge badge-outline">{{this.label}} · {{this.count}}</span>
+        {{/each}}
+      </div>
+      {{else}}
+      <p class="text-sm text-base-content/50">{{t 'lang.ANALYTICS_EMPTY'}}</p>
+      {{/if}}
+    </section>
+  </div>
+
+  <section class="rounded-lg bg-base-200 p-4 mt-4">
+    <h2 class="font-semibold mb-3">{{t 'lang.ANALYTICS_ADVICE'}}</h2>
+    <div class="space-y-2">
+      {{#each analytics.advice}}
+      <p class="text-sm text-base-content/70">{{this}}</p>
+      {{/each}}
+    </div>
+  </section>
+</main>
+
+{{>dock}}
