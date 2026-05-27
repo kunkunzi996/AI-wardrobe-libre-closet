@@ -13,8 +13,10 @@ import { Outfit } from './outfit.entity';
 import { ShareableId } from './shareableId.entity';
 import { User } from './user.entity';
 import { GarmentColor } from '../../wardrobe/garment-color.enum';
+import { GarmentStatus } from '../../wardrobe/garment-status.enum';
 
 export { GarmentColor };
+export { GarmentStatus };
 
 @Entity()
 export class Garment extends ShareableId {
@@ -38,6 +40,45 @@ export class Garment extends ShareableId {
 
   @Property({ nullable: true })
   public notes?: string;
+
+  @Property({ nullable: true })
+  public subcategory?: string;
+
+  @Property({ type: 'json', nullable: true })
+  public seasons?: string[];
+
+  @Property({ type: 'json', nullable: true })
+  public styleTags?: string[];
+
+  @Property({ type: 'json', nullable: true })
+  public sceneTags?: string[];
+
+  @Property({ nullable: true })
+  public material?: string;
+
+  @Property({ nullable: true })
+  public thickness?: string;
+
+  @Property({ nullable: true })
+  public fit?: string;
+
+  @Property({ default: GarmentStatus.Wearable })
+  public status: GarmentStatus = GarmentStatus.Wearable;
+
+  @Property({ nullable: true })
+  public price?: number;
+
+  @Property({ nullable: true })
+  public purchaseDate?: Date;
+
+  @Property({ nullable: true })
+  public purchaseChannel?: string;
+
+  @Property({ default: 0 })
+  public wearCount = 0;
+
+  @Property({ nullable: true })
+  public lastWornDate?: Date;
 
   @OneToOne({
     entity: () => File,

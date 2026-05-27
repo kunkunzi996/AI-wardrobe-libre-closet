@@ -16,6 +16,7 @@ import { CreateGarmentDto } from './dto/create-garment.dto';
 import { UpdateGarmentDto } from './dto/update-garment.dto';
 import { SearchGarmentDto } from './dto/search-garment.dto';
 import { GarmentCategory } from './garment-category.enum';
+import { GarmentStatus } from './garment-status.enum';
 
 const CANONICAL_SIZES = [
   'XX-Small',
@@ -58,6 +59,8 @@ export class GarmentService {
     const searchConditions: FilterQuery<Garment> = {
       ...(dto.category ? { category: dto.category } : {}),
       ...(dto.color ? { color: dto.color } : {}),
+      ...(dto.subcategory ? { subcategory: dto.subcategory } : {}),
+      ...(dto.status ? { status: dto.status } : {}),
       ...(normalizedSize ? { size: normalizedSize } : {}),
       ...(dto.keyword
         ? {
@@ -65,6 +68,9 @@ export class GarmentService {
               { name: { $like: `%${dto.keyword}%` } },
               { notes: { $like: `%${dto.keyword}%` } },
               { brand: { $like: `%${dto.keyword}%` } },
+              { subcategory: { $like: `%${dto.keyword}%` } },
+              { material: { $like: `%${dto.keyword}%` } },
+              { purchaseChannel: { $like: `%${dto.keyword}%` } },
             ],
           }
         : {}),
@@ -118,9 +124,22 @@ export class GarmentService {
     const garment = this.garmentRepository.create({
       name: dto.name,
       category: dto.category,
+      subcategory: dto.subcategory,
       brand: dto.brand,
       color: dto.color,
       size: this.normalizeSize(dto.size),
+      seasons: this.normalizeTags(dto.seasons),
+      styleTags: this.normalizeTags(dto.styleTags),
+      sceneTags: this.normalizeTags(dto.sceneTags),
+      material: dto.material,
+      thickness: dto.thickness,
+      fit: dto.fit,
+      status: dto.status ?? GarmentStatus.Wearable,
+      price: this.normalizeNumber(dto.price),
+      purchaseDate: this.normalizeDate(dto.purchaseDate),
+      purchaseChannel: dto.purchaseChannel,
+      wearCount: this.normalizeNumber(dto.wearCount) ?? 0,
+      lastWornDate: this.normalizeDate(dto.lastWornDate),
       notes: dto.notes,
       photo: photo ?? undefined,
     });
@@ -204,9 +223,27 @@ export class GarmentService {
 
     garment.name = dto.name ?? garment.name;
     garment.category = dto.category ?? garment.category;
+    if ('subcategory' in dto) garment.subcategory = dto.subcategory;
     if ('brand' in dto) garment.brand = dto.brand;
     if ('color' in dto) garment.color = dto.color;
     if ('size' in dto) garment.size = this.normalizeSize(dto.size);
+    if ('seasons' in dto) garment.seasons = this.normalizeTags(dto.seasons);
+    if ('styleTags' in dto)
+      garment.styleTags = this.normalizeTags(dto.styleTags);
+    if ('sceneTags' in dto)
+      garment.sceneTags = this.normalizeTags(dto.sceneTags);
+    if ('material' in dto) garment.material = dto.material;
+    if ('thickness' in dto) garment.thickness = dto.thickness;
+    if ('fit' in dto) garment.fit = dto.fit;
+    if ('status' in dto) garment.status = dto.status ?? GarmentStatus.Wearable;
+    if ('price' in dto) garment.price = this.normalizeNumber(dto.price);
+    if ('purchaseDate' in dto)
+      garment.purchaseDate = this.normalizeDate(dto.purchaseDate);
+    if ('purchaseChannel' in dto) garment.purchaseChannel = dto.purchaseChannel;
+    if ('wearCount' in dto)
+      garment.wearCount = this.normalizeNumber(dto.wearCount) ?? 0;
+    if ('lastWornDate' in dto)
+      garment.lastWornDate = this.normalizeDate(dto.lastWornDate);
     if ('notes' in dto) garment.notes = dto.notes;
 
     await this.garmentRepository.getEntityManager().flush();
@@ -271,5 +308,25 @@ export class GarmentService {
     if (['xs', 'xsmall'].includes(s)) return 'X-Small';
     if (['xxs', '2xs', '2xsmall', 'xxsmall'].includes(s)) return 'XX-Small';
     return input.trim();
+  }
+
+  private normalizeTags(input?: string | string[]): string[] | undefined {
+    if (input == null) return undefined;
+    const values = Array.isArray(input) ? input : input.split(/[,，]/);
+    const tags = values.map((value) => value.trim()).filter(Boolean);
+    return tags.length > 0 ? tags : undefined;
+  }
+
+  private normalizeNumber(input?: number | string): number | undefined {
+    if (input == null || input === '') return undefined;
+    const value = typeof input === 'number' ? input : Number(input);
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  private normalizeDate(input?: Date | string): Date | undefined {
+    if (input == null || input === '') return undefined;
+    if (input instanceof Date) return input;
+    const value = new Date(input);
+    return Number.isNaN(value.getTime()) ? undefined : value;
   }
 }
