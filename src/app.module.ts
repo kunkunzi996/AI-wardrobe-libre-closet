@@ -69,7 +69,7 @@ import { ViewContextModule } from './view-context/view-context.module';
           .valid('development', 'production', 'test')
           .default('production'),
         PORT: Joi.number().default(3000),
-        APP_NAME: Joi.string().default('Boilerplate'),
+        APP_NAME: Joi.string().default('AI穿搭衣橱'),
         AUTH_ENABLED: Joi.boolean().default(false),
         DISABLE_REGISTRATION: Joi.boolean().default(false),
         PWA_ENABLED: Joi.boolean().default(false),
@@ -160,7 +160,7 @@ import { ViewContextModule } from './view-context/view-context.module';
       isGlobal: true,
     }),
     I18nModule.forRoot({
-      fallbackLanguage: 'en',
+      fallbackLanguage: 'zh',
       resolvers: [AcceptLanguageResolver],
       loaderOptions: {
         path: path.join(__dirname, '/i18n/'),

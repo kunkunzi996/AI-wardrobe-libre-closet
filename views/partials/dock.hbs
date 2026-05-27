@@ -16,11 +16,18 @@
     </svg>
     <span class='dock-label'>{{t 'lang.WARDROBE'}}</span>
   </a>
+  <a {{#ifEquals baseUrl "/wardrobe/new"}} class='dock-active' {{/ifEquals}} href='/wardrobe/new'>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574v7.652A2.25 2.25 0 0 0 4.5 19.476h15a2.25 2.25 0 0 0 2.25-2.25V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.25 2.25 0 0 0 14.445 3.75h-4.89a2.25 2.25 0 0 0-1.907 1.109l-.821 1.316Z" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75h-9m4.5-4.5v9" />
+    </svg>
+    <span class='dock-label'>{{t 'lang.PHOTO_INTAKE'}}</span>
+  </a>
   <a {{#ifEquals baseUrl "/outfits"}} class='dock-active' {{/ifEquals}} href='/outfits'>
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
       <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
     </svg>
-    <span class='dock-label'>{{t 'lang.OUTFITS'}}</span>
+    <span class='dock-label'>{{t 'lang.AI_STYLING'}}</span>
   </a>
   <a {{#ifEquals baseUrl "/calendar"}} class='dock-active' {{/ifEquals}} href='/calendar'>
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
