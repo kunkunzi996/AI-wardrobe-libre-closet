@@ -20,6 +20,7 @@ describe('GarmentService', () => {
 
     const service = new GarmentService(
       garmentRepository as any,
+      { findOne: jest.fn(async () => null) } as any,
       {} as any,
       {} as any,
     );

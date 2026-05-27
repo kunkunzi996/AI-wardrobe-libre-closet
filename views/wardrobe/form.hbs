@@ -12,6 +12,10 @@
     </h1>
   </div>
 
+  {{#unless garment}}
+  <a href="/wardrobe/ai-intake" class="btn btn-outline w-full mb-4">{{t 'lang.AI_PHOTO_INTAKE'}}</a>
+  {{/unless}}
+
   <form
     method="POST"
     action="{{#if garment}}/wardrobe/{{garment.id}}{{else}}/wardrobe{{/if}}"

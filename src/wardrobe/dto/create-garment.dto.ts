@@ -25,4 +25,5 @@ export interface CreateGarmentDto {
   lastWornDate?: Date | string;
   notes?: string;
   photo?: MultipartFile | undefined;
+  photoFileName?: string;
 }

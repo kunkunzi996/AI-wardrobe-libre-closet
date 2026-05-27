@@ -26,6 +26,8 @@ import { WardrobeRecommendationService } from './recommendation/wardrobe-recomme
 import type { SearchGarmentDto } from './dto/search-garment.dto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { MultipartFile } from '@fastify/multipart';
+import { FileService } from '../file/file-service.abstract';
+import { GarmentVisionService } from '../ai/garment-vision.service';
 
 @UseGuards(ConditionalAuthGuard)
 @Controller('wardrobe')
@@ -37,6 +39,10 @@ export class WardrobeController {
     private readonly garmentService: GarmentService,
     @Inject()
     private readonly recommendationService: WardrobeRecommendationService,
+    @Inject()
+    private readonly fileService: FileService,
+    @Inject()
+    private readonly garmentVisionService: GarmentVisionService,
   ) {}
 
   private userId(req: any): number | undefined {
@@ -117,6 +123,43 @@ export class WardrobeController {
     return this.recommendViewModel(result, q, i18n);
   }
 
+  @Get('ai-intake')
+  @Render('wardrobe/ai-intake')
+  aiIntakeForm() {
+    return {};
+  }
+
+  @Post('ai-confirm')
+  @Render('wardrobe/ai-confirm')
+  async aiConfirm(
+    @Req() req: FastifyRequest,
+    @I18n() i18n: I18nContext,
+  ) {
+    const upload = await req.file();
+    const file = await this.fileService.storeImageFromFileUpload(
+      upload,
+      this.userId(req),
+    );
+    const draft = await this.garmentVisionService.analyzeImage(file.fileName);
+    const filters = await this.garmentService.findAvailableFilters(
+      this.userId(req),
+    );
+    const enumValues = Object.values(GarmentCategory) as string[];
+    const customCategories = filters.categories.filter(
+      (c) => !enumValues.includes(c),
+    );
+    const categories = [...enumValues, ...customCategories].map((value) => ({
+      value,
+      label: this.garmentService.resolveCategoryLabel(value, i18n),
+    }));
+    return {
+      draft,
+      categories,
+      colors: Object.values(GarmentColor),
+      statuses: Object.values(GarmentStatus),
+    };
+  }
+
   @Post()
   async create(
     @Body()
@@ -138,6 +181,7 @@ export class WardrobeController {
       purchaseDate?: string;
       purchaseChannel?: string;
       notes?: string;
+      photoFileName?: string;
     },
     @Req() req: FastifyRequest,
     @Res() reply: FastifyReply,
@@ -161,6 +205,7 @@ export class WardrobeController {
         purchaseDate: body.purchaseDate,
         purchaseChannel: body.purchaseChannel,
         notes: body.notes,
+        photoFileName: body.photoFileName,
       },
       this.userId(req),
     );

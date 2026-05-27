@@ -38,6 +38,8 @@ export class GarmentService {
   constructor(
     @InjectRepository(Garment)
     private readonly garmentRepository: EntityRepository<Garment>,
+    @InjectRepository(File)
+    private readonly fileRepository: EntityRepository<File>,
     @InjectRepository(User)
     private readonly userRepository: EntityRepository<User>,
     private readonly fileService: FileService,
@@ -116,6 +118,12 @@ export class GarmentService {
         dto.photo,
         userId,
       );
+    } else if (dto.photoFileName) {
+      photo =
+        (await this.fileRepository.findOne({
+          fileName: dto.photoFileName,
+          ...(userId != null ? { createdBy: userId } : { createdBy: null }),
+        })) ?? undefined;
     }
 
     const garment = this.garmentRepository.create({

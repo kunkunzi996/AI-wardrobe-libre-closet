@@ -20,6 +20,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { ErrorViewFilter } from './error-view.filter';
 import { ViewContextModule } from './view-context/view-context.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -182,6 +183,7 @@ import { ViewContextModule } from './view-context/view-context.module';
     EmailModule,
     NotificationModule,
     OpenGraphModule,
+    AiModule,
     WardrobeModule,
     ViewContextModule,
   ],

@@ -1,0 +1,96 @@
+{{>navbar}}
+
+<main class="p-4 pt-20 pb-24 max-w-lg mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <a href="/wardrobe/ai-intake" class="btn btn-ghost btn-sm btn-circle" aria-label="{{t 'lang.BACK'}}">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
+    </a>
+    <h1 class="text-2xl font-bold">{{t 'lang.AI_CONFIRM_TITLE'}}</h1>
+  </div>
+
+  <figure class="rounded-box overflow-hidden bg-base-200 aspect-square w-full max-w-sm mx-auto mb-4">
+    <img src="/file/nobg/{{draft.fileName}}" alt="" class="object-cover w-full h-full" />
+  </figure>
+
+  <div class="rounded-lg bg-base-200 p-3 mb-4 text-sm text-base-content/70">
+    {{draft.notes}}
+  </div>
+
+  <form method="post" action="/wardrobe" class="flex flex-col gap-4">
+    <input type="hidden" name="photoFileName" value="{{draft.fileName}}" />
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.NAME'}}</span></label>
+      <input type="text" name="name" class="input input-bordered" placeholder="{{t 'lang.AI_CONFIRM_NAME_PLACEHOLDER'}}" />
+    </div>
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.CATEGORY'}} *</span></label>
+      <select name="category" class="select select-bordered" required>
+        {{#each categories}}
+        <option value="{{this.value}}" {{#ifEquals this.value ../draft.category}}selected{{/ifEquals}}>{{this.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.SUBCATEGORY'}}</span></label>
+      <input type="text" name="subcategory" class="input input-bordered" value="{{draft.subcategory}}" placeholder="{{t 'lang.SUBCATEGORY_PLACEHOLDER'}}" />
+    </div>
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.COLOR'}}</span></label>
+      <select name="color" class="select select-bordered">
+        <option value="">{{t 'lang.SELECT_COLOR'}}</option>
+        {{#each colors}}
+        <option value="{{this}}" {{#ifEquals this ../draft.color}}selected{{/ifEquals}}>{{this}}</option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="form-control">
+        <span class="label-text mb-1">{{t 'lang.SEASONS'}}</span>
+        <input type="text" name="seasons" class="input input-bordered" value="{{draft.seasons}}" placeholder="{{t 'lang.TAG_INPUT_HINT'}}" />
+      </label>
+      <label class="form-control">
+        <span class="label-text mb-1">{{t 'lang.STYLE_TAGS'}}</span>
+        <input type="text" name="styleTags" class="input input-bordered" value="{{draft.styleTags}}" placeholder="{{t 'lang.TAG_INPUT_HINT'}}" />
+      </label>
+      <label class="form-control">
+        <span class="label-text mb-1">{{t 'lang.SCENE_TAGS'}}</span>
+        <input type="text" name="sceneTags" class="input input-bordered" value="{{draft.sceneTags}}" placeholder="{{t 'lang.TAG_INPUT_HINT'}}" />
+      </label>
+      <label class="form-control">
+        <span class="label-text mb-1">{{t 'lang.MATERIAL'}}</span>
+        <input type="text" name="material" class="input input-bordered" value="{{draft.material}}" placeholder="{{t 'lang.MATERIAL_PLACEHOLDER'}}" />
+      </label>
+      <label class="form-control">
+        <span class="label-text mb-1">{{t 'lang.THICKNESS'}}</span>
+        <input type="text" name="thickness" class="input input-bordered" value="{{draft.thickness}}" placeholder="{{t 'lang.THICKNESS_PLACEHOLDER'}}" />
+      </label>
+      <label class="form-control">
+        <span class="label-text mb-1">{{t 'lang.STATUS'}}</span>
+        <select name="status" class="select select-bordered">
+          {{#each statuses}}
+          <option value="{{this}}" {{#ifEquals this "wearable"}}selected{{/ifEquals}}>{{this}}</option>
+          {{/each}}
+        </select>
+      </label>
+    </div>
+
+    <div class="form-control">
+      <label class="label"><span class="label-text">{{t 'lang.NOTES'}}</span></label>
+      <textarea name="notes" class="textarea textarea-bordered" rows="3">{{draft.notes}}</textarea>
+    </div>
+
+    <div class="flex gap-2 mt-2">
+      <a href="/wardrobe/ai-intake" class="btn btn-ghost flex-1">{{t 'lang.CANCEL'}}</a>
+      <button type="submit" class="btn btn-primary flex-1">{{t 'lang.CONFIRM_AND_SAVE'}}</button>
+    </div>
+  </form>
+</main>
+
+{{>dock}}
