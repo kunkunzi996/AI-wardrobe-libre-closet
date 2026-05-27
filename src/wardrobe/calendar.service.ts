@@ -103,6 +103,12 @@ export class CalendarService {
     const entry = this.calendarRepository.create({
       date: dto.date,
       outfit,
+      scene: dto.scene,
+      weather: dto.weather,
+      temperature: dto.temperature,
+      rating: this.normalizeNumber(dto.rating),
+      feedback: dto.feedback,
+      complimented: this.normalizeBoolean(dto.complimented),
       notes: dto.notes,
     });
 
@@ -129,7 +135,13 @@ export class CalendarService {
    */
   async toggleWorn(id: number, userId?: number): Promise<OutfitCalendar> {
     const entry = await this.findOneOwned(id, userId);
-    entry.wornAt = entry.wornAt == null ? new Date() : undefined;
+    if (entry.wornAt == null) {
+      const wornAt = new Date();
+      entry.wornAt = wornAt;
+      this.recordGarmentUsage(entry, wornAt);
+    } else {
+      entry.wornAt = undefined;
+    }
     await this.calendarRepository.getEntityManager().flush();
     return entry;
   }
@@ -313,6 +325,13 @@ export class CalendarService {
         return {
           id: entry.id,
           wornAt: entry.wornAt ?? null,
+          scene: entry.scene ?? null,
+          weather: entry.weather ?? null,
+          temperature: entry.temperature ?? null,
+          rating: entry.rating ?? null,
+          feedback: entry.feedback ?? null,
+          complimented: entry.complimented,
+          notes: entry.notes ?? null,
           outfit: {
             id: outfit.id,
             name: outfit.name || null,
@@ -422,7 +441,7 @@ export class CalendarService {
     userId?: number,
   ): Promise<OutfitCalendar> {
     const entry = await this.calendarRepository.findOne(id, {
-      populate: ['outfit'],
+      populate: ['outfit', 'outfit.garments'],
     });
     if (!entry) throw new NotFoundException('Calendar entry not found');
 
@@ -432,6 +451,25 @@ export class CalendarService {
       if (entry.owner != null) throw new ForbiddenException();
     }
     return entry;
+  }
+
+  private recordGarmentUsage(entry: OutfitCalendar, wornAt: Date): void {
+    const outfit = entry.outfit.unwrap();
+    for (const garment of outfit.garments.getItems()) {
+      garment.wearCount = (garment.wearCount ?? 0) + 1;
+      garment.lastWornDate = wornAt;
+    }
+  }
+
+  private normalizeNumber(input?: number | string): number | undefined {
+    if (input == null || input === '') return undefined;
+    const value = typeof input === 'number' ? input : Number(input);
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  private normalizeBoolean(input?: boolean | string): boolean {
+    if (typeof input === 'boolean') return input;
+    return input === 'true' || input === 'on' || input === '1';
   }
 }
 

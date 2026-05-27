@@ -132,6 +132,37 @@
         class="mt-auto pt-2 text-xs text-base-content/30 hover:text-base-content/60 select-none"
       >+ {{t 'lang.BUILD_OUTFIT'}}</a>
 
+      <details class="mt-2">
+        <summary class="cursor-pointer text-xs text-base-content/40 hover:text-base-content/70">
+          + {{t 'lang.CALENDAR_RECORD_OUTFIT'}}
+        </summary>
+        <form method="post" action="/calendar" class="mt-2 flex flex-col gap-2">
+          <input type="hidden" name="date" value="{{this.dateParam}}" />
+          <input type="hidden" name="week" value="{{this.dateParam}}" />
+          <select name="outfitId" class="select select-bordered select-xs" required>
+            <option value="">{{t 'lang.SELECT_AN_OUTFIT'}}</option>
+            {{#if ../outfits.length}}
+            {{#each ../outfits}}
+            <option value="{{this.id}}">{{#if this.name}}{{this.name}}{{else}}{{t 'lang.UNTITLED_OUTFIT'}}{{/if}}</option>
+            {{/each}}
+            {{/if}}
+          </select>
+          <div class="grid grid-cols-2 gap-2">
+            <input name="scene" class="input input-bordered input-xs" placeholder="{{t 'lang.CALENDAR_SCENE'}}" />
+            <input name="weather" class="input input-bordered input-xs" placeholder="{{t 'lang.CALENDAR_WEATHER'}}" />
+            <input name="temperature" class="input input-bordered input-xs" placeholder="{{t 'lang.CALENDAR_TEMPERATURE'}}" />
+            <input name="rating" type="number" min="1" max="5" class="input input-bordered input-xs" placeholder="{{t 'lang.CALENDAR_RATING'}}" />
+          </div>
+          <textarea name="feedback" class="textarea textarea-bordered textarea-xs" rows="2" placeholder="{{t 'lang.CALENDAR_FEEDBACK'}}"></textarea>
+          <textarea name="notes" class="textarea textarea-bordered textarea-xs" rows="2" placeholder="{{t 'lang.NOTES'}}"></textarea>
+          <label class="label cursor-pointer justify-start gap-2 p-0 text-xs">
+            <input type="checkbox" name="complimented" class="checkbox checkbox-xs" />
+            <span>{{t 'lang.CALENDAR_COMPLIMENTED'}}</span>
+          </label>
+          <button type="submit" class="btn btn-primary btn-xs">{{t 'lang.SAVE'}}</button>
+        </form>
+      </details>
+
     </div>{{!-- /inner flex-col --}}
     </div>{{!-- /card --}}
     {{/each}}

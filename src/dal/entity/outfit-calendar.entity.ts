@@ -40,5 +40,23 @@ export class OutfitCalendar {
   public wornAt?: Date;
 
   @Property({ nullable: true })
+  public scene?: string;
+
+  @Property({ nullable: true })
+  public weather?: string;
+
+  @Property({ nullable: true })
+  public temperature?: string;
+
+  @Property({ nullable: true })
+  public rating?: number;
+
+  @Property({ nullable: true })
+  public feedback?: string;
+
+  @Property({ default: false })
+  public complimented = false;
+
+  @Property({ nullable: true })
   public notes?: string;
 }

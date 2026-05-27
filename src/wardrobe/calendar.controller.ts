@@ -50,7 +50,18 @@ export class CalendarController {
   @Post()
   async create(
     @Body()
-    body: { date: string; outfitId: string; notes?: string; week?: string },
+    body: {
+      date: string;
+      outfitId: string;
+      scene?: string;
+      weather?: string;
+      temperature?: string;
+      rating?: string;
+      feedback?: string;
+      complimented?: string;
+      notes?: string;
+      week?: string;
+    },
     @Req() req: FastifyRequest,
     @Res() reply: FastifyReply,
   ) {
@@ -58,6 +69,12 @@ export class CalendarController {
       {
         date: new Date(body.date),
         outfitId: Number(body.outfitId),
+        scene: body.scene,
+        weather: body.weather,
+        temperature: body.temperature,
+        rating: body.rating,
+        feedback: body.feedback,
+        complimented: body.complimented,
         notes: body.notes,
       },
       this.userId(req),
