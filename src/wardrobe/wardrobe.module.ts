@@ -13,6 +13,7 @@ import { CalendarController } from './calendar.controller';
 import { WardrobeController } from './wardrobe.controller';
 import { OutfitController } from './outfit.controller';
 import { WardrobeRecommendationService } from './recommendation/wardrobe-recommendation.service';
+import { OutfitGeneratorService } from './recommendation/outfit-generator.service';
 
 @Module({
   imports: [
@@ -26,12 +27,14 @@ import { WardrobeRecommendationService } from './recommendation/wardrobe-recomme
     OutfitService,
     CalendarService,
     WardrobeRecommendationService,
+    OutfitGeneratorService,
   ],
   exports: [
     GarmentService,
     OutfitService,
     CalendarService,
     WardrobeRecommendationService,
+    OutfitGeneratorService,
   ],
 })
 export class WardrobeModule {}

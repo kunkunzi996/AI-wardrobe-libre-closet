@@ -1,0 +1,64 @@
+{{>navbar}}
+
+<main class="p-4 pt-20 pb-24 max-w-3xl mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <a href="/wardrobe/{{garmentId}}" class="btn btn-ghost btn-sm btn-circle" aria-label="{{t 'lang.BACK'}}">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
+    </a>
+    <h1 class="text-2xl font-bold flex-1">{{t 'lang.RECOMMEND_FROM_GARMENT_TITLE'}}</h1>
+  </div>
+
+  <form method="get" action="/outfits/recommend" class="flex flex-col sm:flex-row gap-2 mb-6">
+    <input type="hidden" name="garmentId" value="{{garmentId}}" />
+    <input
+      type="text"
+      name="q"
+      value="{{q}}"
+      class="input input-bordered flex-1"
+      placeholder="{{t 'lang.RECOMMEND_FROM_GARMENT_PLACEHOLDER'}}"
+    />
+    <button type="submit" class="btn btn-primary">{{t 'lang.RECOMMEND_FROM_GARMENT_ACTION'}}</button>
+  </form>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    {{#each plans}}
+    <section class="card bg-base-100 shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="card-title text-base">{{this.title}}</h2>
+        <p class="text-sm text-base-content/60">{{this.reason}}</p>
+
+        <div class="flex flex-wrap gap-2 my-3">
+          {{#each this.garments}}
+          <a href="/wardrobe/{{this.id}}" class="flex flex-col items-center gap-1 w-20">
+            {{#if this.photo}}
+            <img src="/file/nobg/{{this.photo.fileName}}" alt="{{this.name}}" class="size-16 rounded-box object-cover bg-base-200" />
+            {{else}}
+            <div class="size-16 rounded-box bg-base-200 flex items-center justify-center text-base-content/30">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.251 2.251 0 0 1 2.012 1.244l.256.512a2.251 2.251 0 0 0 2.013 1.244h3.218a2.251 2.251 0 0 0 2.013-1.244l.256-.512a2.251 2.251 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3" />
+              </svg>
+            </div>
+            {{/if}}
+            <span class="text-[11px] text-center leading-tight line-clamp-2">{{this.name}}</span>
+          </a>
+          {{/each}}
+        </div>
+
+        <form method="post" action="/outfits" class="mt-auto">
+          <input type="hidden" name="name" value="{{this.title}}" />
+          <input type="hidden" name="notes" value="{{this.reason}}" />
+          {{#each this.slots}}
+          <input type="hidden" name="category" value="{{this.category}}" />
+          <input type="hidden" name="garmentId" value="{{this.garmentId}}" />
+          {{/each}}
+          <button type="submit" class="btn btn-primary btn-sm w-full">{{t 'lang.SAVE_OUTFIT_PLAN'}}</button>
+        </form>
+      </div>
+    </section>
+    {{/each}}
+  </div>
+</main>
+
+{{>dock}}

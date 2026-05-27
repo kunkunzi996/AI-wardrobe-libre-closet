@@ -219,6 +219,11 @@
   "WARDROBE_RECOMMEND_NO_MATCH": "No matching wearable garments yet.",
   "WARDROBE_RECOMMEND_EXCLUDED": "Excluded garments",
   "WARDROBE_RECOMMEND_EMPTY_HINT": "Type today's outfit idea. The app will filter by color, style, scene, season, and garment status first.",
+  "RECOMMEND_FROM_GARMENT": "Build around this item",
+  "RECOMMEND_FROM_GARMENT_TITLE": "Generate Outfits from an Item",
+  "RECOMMEND_FROM_GARMENT_PLACEHOLDER": "What mood do you want? Example: commute, date, comfortable",
+  "RECOMMEND_FROM_GARMENT_ACTION": "Regenerate",
+  "SAVE_OUTFIT_PLAN": "Save this outfit",
   "validation": {
     "IS_EMAIL": "Please provide a valid email address",
     "MIN_PASSWORD_LENGTH": "Password must be at least 8 characters long",

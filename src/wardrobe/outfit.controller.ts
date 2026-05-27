@@ -22,6 +22,7 @@ import { Payload } from '../auth/dto/payload.dto';
 import { OutfitService } from './outfit.service';
 import { GarmentService } from './garment.service';
 import { CalendarService } from './calendar.service';
+import { OutfitGeneratorService } from './recommendation/outfit-generator.service';
 
 @UseGuards(ConditionalAuthGuard)
 @Controller('outfits')
@@ -35,6 +36,8 @@ export class OutfitController {
     private readonly garmentService: GarmentService,
     @Inject()
     private readonly calendarService: CalendarService,
+    @Inject()
+    private readonly outfitGeneratorService: OutfitGeneratorService,
   ) {}
 
   private userId(req: FastifyRequest): number | undefined {
@@ -68,6 +71,26 @@ export class OutfitController {
       returnTo: returnTo || '/outfits',
       categoryRows,
       allCategoryRows: categoryRows,
+    };
+  }
+
+  @Get('recommend')
+  @Render('outfits/recommend-from-garment')
+  async recommendFromGarment(
+    @Req() req: FastifyRequest,
+    @Query('garmentId') garmentId: string,
+    @Query('q') q?: string,
+  ) {
+    const coreGarmentId = Number(garmentId);
+    const plans = await this.outfitGeneratorService.generate({
+      coreGarmentId,
+      requestText: q,
+      userId: this.userId(req),
+    });
+    return {
+      garmentId: coreGarmentId,
+      q: q ?? '',
+      plans,
     };
   }
 

@@ -72,6 +72,9 @@
   "SAVE": "保存",
   "DELETE": "删除",
   "CANCEL": "取消",
+  "SHARE": "分享",
+  "COPIED": "已复制",
+  "CONFIRM_DELETE": "确定要删除吗？",
   "EDIT": "编辑衣物",
   "NEW_GARMENT": "新增衣物",
   "EDIT_GARMENT": "编辑衣物",
@@ -168,5 +171,10 @@
   "WARDROBE_RECOMMEND_SCORE": "匹配分",
   "WARDROBE_RECOMMEND_NO_MATCH": "暂时没有匹配的可穿衣物。",
   "WARDROBE_RECOMMEND_EXCLUDED": "已排除衣物",
-  "WARDROBE_RECOMMEND_EMPTY_HINT": "输入一句今天的穿搭想法，系统会先按颜色、风格、场景、季节和衣物状态帮你筛选。"
+  "WARDROBE_RECOMMEND_EMPTY_HINT": "输入一句今天的穿搭想法，系统会先按颜色、风格、场景、季节和衣物状态帮你筛选。",
+  "RECOMMEND_FROM_GARMENT": "围绕这件衣服搭一套",
+  "RECOMMEND_FROM_GARMENT_TITLE": "围绕单品生成搭配",
+  "RECOMMEND_FROM_GARMENT_PLACEHOLDER": "想要什么感觉？例如：通勤、约会、舒服一点",
+  "RECOMMEND_FROM_GARMENT_ACTION": "重新生成",
+  "SAVE_OUTFIT_PLAN": "保存这套搭配"
 }
