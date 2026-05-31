@@ -16,4 +16,4 @@ echo Starting Libre Closet at http://127.0.0.1:%PORT%/
 echo Using node:
 node -v
 
-npm.cmd run start:prod > "logs\local-3100.log" 2>&1
+"%NODE_HOME%\npm.cmd" run start:prod > "logs\local-3100.log" 2>&1
