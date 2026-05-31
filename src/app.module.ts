@@ -127,7 +127,11 @@ import { AiModule } from './ai/ai.module';
           .valid('local', 'object')
           .default('local'),
         OPENAI_API_KEY: Joi.string().optional(),
+        AI_API_BASE_URL: Joi.string()
+          .uri({ scheme: ['http', 'https'] })
+          .default('https://api.openai.com'),
         AI_TEXT_MODEL: Joi.string().default('gpt-4.1-mini'),
+        AI_VISION_MODEL: Joi.string().default('gpt-4.1-mini'),
         OBJECT_STORAGE_BUCKET_NAME: Joi.string().when('FILE_STORAGE_TYPE', {
           is: 'object',
           then: Joi.string().required(),

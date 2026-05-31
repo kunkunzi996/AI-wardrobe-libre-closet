@@ -75,6 +75,7 @@ describe('OutfitAiService', () => {
       {
         get: jest.fn((key: string) => {
           if (key === 'OPENAI_API_KEY') return 'test-key';
+          if (key === 'AI_API_BASE_URL') return 'https://api.example.test/';
           if (key === 'AI_TEXT_MODEL') return 'gpt-4.1-mini';
           return undefined;
         }),
@@ -87,6 +88,10 @@ describe('OutfitAiService', () => {
       availableGarments: garments,
     });
 
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://api.example.test/v1/responses',
+      expect.any(Object),
+    );
     expect(result.source).toBe('ai');
     expect(result.recommendations).toEqual([
       {

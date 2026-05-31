@@ -48,14 +48,17 @@ export class OutfitAiService {
     if (!apiKey) return this.fallback(input);
 
     try {
-      const response = await this.fetchImpl('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+      const response = await this.fetchImpl(
+        `${this.apiBaseUrl()}/v1/responses`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(this.buildRequest(input)),
         },
-        body: JSON.stringify(this.buildRequest(input)),
-      });
+      );
       if (!response.ok) return this.fallback(input);
       const payload = await response.json();
       const parsed = this.parseRecommendations(payload);
@@ -68,6 +71,13 @@ export class OutfitAiService {
     } catch {
       return this.fallback(input);
     }
+  }
+
+  private apiBaseUrl(): string {
+    return (
+      this.configService.get<string>('AI_API_BASE_URL') ??
+      'https://api.openai.com'
+    ).replace(/\/+$/, '');
   }
 
   private buildRequest(input: OutfitAiInput) {
