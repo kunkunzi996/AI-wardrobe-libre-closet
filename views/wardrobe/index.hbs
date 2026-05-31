@@ -1,11 +1,12 @@
 {{>navbar}}
 
 <main class="p-4 pt-20 pb-40">
-  <div class="flex items-center justify-between mb-6 px-2">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6 px-2">
     <h1 class="text-2xl font-bold">{{t 'lang.WARDROBE'}}</h1>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <a href="/wardrobe/recommend" class="btn btn-outline btn-sm">{{t 'lang.WARDROBE_RECOMMEND'}}</a>
-      <a href="/wardrobe/new" class="btn btn-primary btn-sm">+ {{t 'lang.NEW_GARMENT'}}</a>
+      <a href="/wardrobe/ai-intake" class="btn btn-primary btn-sm">{{t 'lang.PHOTO_INTAKE'}}</a>
+      <a href="/wardrobe/new" class="btn btn-ghost btn-sm">{{t 'lang.MANUAL_ENTRY'}}</a>
     </div>
   </div>
 
@@ -37,12 +38,18 @@
     {{/each}}
   </div>
   {{else}}
-  <div class="flex flex-col items-center justify-center gap-4 pt-20 text-base-content/40">
+  <div class="flex flex-col items-center justify-center gap-4 pt-20 text-center text-base-content/60">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-16">
       <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.251 2.251 0 0 1 2.012 1.244l.256.512a2.251 2.251 0 0 0 2.013 1.244h3.218a2.251 2.251 0 0 0 2.013-1.244l.256-.512a2.251 2.251 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3" />
     </svg>
-    <p>{{t 'lang.NO_GARMENTS'}}</p>
-    <a href="/wardrobe/new" class="btn btn-primary btn-sm">{{t 'lang.ADD_FIRST_GARMENT'}}</a>
+    <div>
+      <p class="font-medium text-base-content">{{t 'lang.NO_GARMENTS'}}</p>
+      <p class="text-sm mt-1">先拍一张衣服照片入库；不方便拍照时，也可以手动录入。</p>
+    </div>
+    <div class="flex flex-wrap justify-center gap-2">
+      <a href="/wardrobe/ai-intake" class="btn btn-primary btn-sm">{{t 'lang.PHOTO_INTAKE'}}</a>
+      <a href="/wardrobe/new" class="btn btn-outline btn-sm">{{t 'lang.MANUAL_ENTRY'}}</a>
+    </div>
   </div>
   {{/if}}
 </main>

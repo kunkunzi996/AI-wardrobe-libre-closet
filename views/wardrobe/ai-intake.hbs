@@ -10,6 +10,15 @@
     <h1 class="text-2xl font-bold">{{t 'lang.AI_PHOTO_INTAKE_TITLE'}}</h1>
   </div>
 
+  <div class="alert bg-base-200 border-base-300 mb-4">
+    <div>
+      <p class="font-medium">上传衣服照片</p>
+      <p class="text-sm text-base-content/70">
+        AI 会先草拟衣物信息，你确认名称、品类、颜色等内容后，才会真正保存到衣橱。
+      </p>
+    </div>
+  </div>
+
   <form method="post" action="/wardrobe/ai-confirm" enctype="multipart/form-data" class="flex flex-col gap-4">
     <div class="form-control">
       <label class="label"><span class="label-text">{{t 'lang.PHOTO'}}</span></label>

@@ -7,6 +7,11 @@ describe('wardrobe views', () => {
       path.join(__dirname, '..', '..', 'views', 'wardrobe', name),
       'utf-8',
     );
+  const readProjectView = (...segments: string[]) =>
+    fs.readFileSync(
+      path.join(__dirname, '..', '..', 'views', ...segments),
+      'utf-8',
+    );
 
   it('exposes wardrobe metadata fields on the garment form', () => {
     const form = readView('form.hbs');
@@ -49,5 +54,31 @@ describe('wardrobe views', () => {
     ]) {
       expect(show).toContain(field);
     }
+  });
+
+  it('sends the homepage photo intake call to the AI photo flow', () => {
+    const home = readProjectView('index.hbs');
+
+    expect(home).toContain('href="/wardrobe/ai-intake"');
+  });
+
+  it('sends the desktop and drawer photo intake navigation to the AI photo flow', () => {
+    const navbar = readProjectView('partials', 'navbar.hbs');
+
+    expect(navbar).toContain('href="/wardrobe/ai-intake"');
+    expect(navbar).not.toContain('href="/wardrobe/new">{{t \'lang.PHOTO_INTAKE\'}}');
+  });
+
+  it('offers both AI photo intake and manual entry from the empty wardrobe state', () => {
+    const index = readView('index.hbs');
+
+    expect(index).toContain('href="/wardrobe/ai-intake"');
+    expect(index).toContain('href="/wardrobe/new"');
+  });
+
+  it('explains the AI photo intake confirmation flow in plain language', () => {
+    const aiIntake = readView('ai-intake.hbs');
+
+    expect(aiIntake).toContain('AI 会先草拟衣物信息');
   });
 });
