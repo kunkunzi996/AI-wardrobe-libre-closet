@@ -44,7 +44,11 @@ export class GarmentVisionService {
       );
 
       if (!response.ok) {
-        this.logger.warn(`AI garment vision failed: HTTP ${response.status}`);
+        this.logger.warn(
+          `AI garment vision failed: HTTP ${
+            response.status
+          } ${await this.safeErrorBody(response)}`,
+        );
         return this.fallback(fileName);
       }
 
@@ -130,6 +134,14 @@ export class GarmentVisionService {
       .replace(/^```(?:json)?/i, '')
       .replace(/```$/i, '')
       .trim();
+  }
+
+  private async safeErrorBody(response: Response): Promise<string> {
+    try {
+      return (await response.text()).replace(/\s+/g, ' ').slice(0, 500);
+    } catch {
+      return '';
+    }
   }
 
   private normalizeResult(
