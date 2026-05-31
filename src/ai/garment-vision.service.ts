@@ -24,8 +24,14 @@ const CHINESE_LABELS: Record<string, string> = {
   work: '上班',
   date: '约会',
   weekend: '周末',
+  daily: '日常',
+  outdoor: '户外',
+  warm: '保暖',
+  basic: '基础款',
   'wide-leg pants': '阔腿裤',
   'wide leg pants': '阔腿裤',
+  'puffer jacket': '羽绒服',
+  'down jacket': '羽绒服',
   trousers: '西裤',
   pants: '裤子',
   jeans: '牛仔裤',
@@ -38,6 +44,7 @@ const CHINESE_LABELS: Record<string, string> = {
   cotton: '棉',
   denim: '牛仔',
   leather: '皮革',
+  polyester: '聚酯纤维',
   medium: '中等',
   thin: '偏薄',
   thick: '偏厚',
@@ -204,9 +211,14 @@ export class GarmentVisionService {
   }
 
   private stringArray(value: unknown): string[] {
-    if (!Array.isArray(value)) return [];
-    return value.filter(
-      (item): item is string => typeof item === 'string' && item.trim() !== '',
+    const values = Array.isArray(value) ? value : [value];
+    return values.flatMap((item) =>
+      typeof item === 'string'
+        ? item
+            .split(/[,，、]/)
+            .map((part) => part.trim())
+            .filter(Boolean)
+        : [],
     );
   }
 

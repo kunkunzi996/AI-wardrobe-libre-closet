@@ -45,7 +45,7 @@
       <select name="color" class="select select-bordered">
         <option value="">{{t 'lang.SELECT_COLOR'}}</option>
         {{#each colors}}
-        <option value="{{this}}" {{#ifEquals this ../draft.color}}selected{{/ifEquals}}>{{this}}</option>
+        <option value="{{this.value}}" {{#ifEquals this.value ../draft.color}}selected{{/ifEquals}}>{{this.label}}</option>
         {{/each}}
       </select>
     </div>

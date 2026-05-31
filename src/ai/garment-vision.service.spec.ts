@@ -148,7 +148,7 @@ describe('GarmentVisionService', () => {
       subcategory: undefined,
       color: undefined,
       seasons: ['夏'],
-      styleTags: [],
+      styleTags: ['通勤'],
       sceneTags: ['约会'],
       material: undefined,
       thickness: undefined,
@@ -208,6 +208,59 @@ describe('GarmentVisionService', () => {
       thickness: '中等',
       confidence: 0.9,
       notes: '黑色阔腿裤，适合正式商务场合，材质可能为羊毛混纺。',
+    });
+  });
+
+  it('splits and localizes comma-separated English labels from the AI', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                category: 'outerwear',
+                subcategory: 'puffer jacket',
+                color: 'beige',
+                seasons: ['autumn,winter'],
+                styleTags: ['casual,warm,basic'],
+                sceneTags: ['daily,outdoor'],
+                material: 'polyester',
+                thickness: 'thick',
+                confidence: 0.88,
+                notes: '浅米色羽绒服，适合秋冬季节保暖穿着',
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) =>
+          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+        ),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.analyzeImage('puffer.webp');
+
+    expect(result).toMatchObject({
+      fileName: 'puffer.webp',
+      category: 'outerwear',
+      subcategory: '羽绒服',
+      color: 'beige',
+      seasons: ['秋', '冬'],
+      styleTags: ['休闲', '保暖', '基础款'],
+      sceneTags: ['日常', '户外'],
+      material: '聚酯纤维',
+      thickness: '偏厚',
+      notes: '浅米色羽绒服，适合秋冬季节保暖穿着',
     });
   });
 });

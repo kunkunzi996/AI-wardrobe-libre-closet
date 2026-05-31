@@ -131,10 +131,7 @@ export class WardrobeController {
 
   @Post('ai-confirm')
   @Render('wardrobe/ai-confirm')
-  async aiConfirm(
-    @Req() req: FastifyRequest,
-    @I18n() i18n: I18nContext,
-  ) {
+  async aiConfirm(@Req() req: FastifyRequest, @I18n() i18n: I18nContext) {
     const upload = await req.file();
     const file = await this.fileService.storeImageFromFileUpload(
       upload,
@@ -155,9 +152,34 @@ export class WardrobeController {
     return {
       draft,
       categories,
-      colors: Object.values(GarmentColor),
+      colors: Object.values(GarmentColor).map((value) => ({
+        value,
+        label: this.colorLabel(value),
+      })),
       statuses: Object.values(GarmentStatus),
     };
+  }
+
+  private colorLabel(color: GarmentColor): string {
+    const labels: Record<GarmentColor, string> = {
+      [GarmentColor.RED]: '红色',
+      [GarmentColor.PINK]: '粉色',
+      [GarmentColor.ORANGE]: '橙色',
+      [GarmentColor.YELLOW]: '黄色',
+      [GarmentColor.GREEN]: '绿色',
+      [GarmentColor.BLUE]: '蓝色',
+      [GarmentColor.PURPLE]: '紫色',
+      [GarmentColor.BLACK]: '黑色',
+      [GarmentColor.WHITE]: '白色',
+      [GarmentColor.GREY]: '灰色',
+      [GarmentColor.BEIGE]: '米色',
+      [GarmentColor.BROWN]: '棕色',
+      [GarmentColor.GOLD]: '金色',
+      [GarmentColor.SILVER]: '银色',
+      [GarmentColor.PATTERN]: '图案',
+      [GarmentColor.OTHER]: '其他',
+    };
+    return labels[color];
   }
 
   @Post()
@@ -213,7 +235,9 @@ export class WardrobeController {
   }
 
   private recommendViewModel(
-    result: Awaited<ReturnType<WardrobeRecommendationService['recommend']>> | null,
+    result: Awaited<
+      ReturnType<WardrobeRecommendationService['recommend']>
+    > | null,
     q: string,
     i18n: I18nContext,
   ) {
