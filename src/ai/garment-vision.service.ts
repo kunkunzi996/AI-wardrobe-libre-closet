@@ -9,6 +9,40 @@ type FetchLike = typeof fetch;
 
 export const GARMENT_VISION_FETCH = 'GARMENT_VISION_FETCH';
 
+const CHINESE_LABELS: Record<string, string> = {
+  spring: '春',
+  summer: '夏',
+  autumn: '秋',
+  fall: '秋',
+  winter: '冬',
+  formal: '正式',
+  business: '商务',
+  classic: '经典',
+  casual: '休闲',
+  commute: '通勤',
+  office: '办公室',
+  work: '上班',
+  date: '约会',
+  weekend: '周末',
+  'wide-leg pants': '阔腿裤',
+  'wide leg pants': '阔腿裤',
+  trousers: '西裤',
+  pants: '裤子',
+  jeans: '牛仔裤',
+  shirt: '衬衫',
+  blouse: '衬衫',
+  blazer: '西装外套',
+  coat: '外套',
+  'wool blend': '羊毛混纺',
+  wool: '羊毛',
+  cotton: '棉',
+  denim: '牛仔',
+  leather: '皮革',
+  medium: '中等',
+  thin: '偏薄',
+  thick: '偏厚',
+};
+
 @Injectable()
 export class GarmentVisionService {
   private readonly logger = new Logger(GarmentVisionService.name);
@@ -78,7 +112,7 @@ export class GarmentVisionService {
         {
           role: 'system',
           content:
-            '你是衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。',
+            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。除 category 和 color 必须使用给定枚举值外，subcategory、seasons、styleTags、sceneTags、material、thickness、notes 都必须使用简体中文。',
         },
         {
           role: 'user',
@@ -93,11 +127,9 @@ export class GarmentVisionService {
                     'tops | bottoms | outerwear | dresses | footwear | bags | accessories | activewear | swimwear | underwear | lingerie | other',
                   subcategory: 'string or null',
                   color: 'one allowed color or null',
-                  seasons: [
-                    'spring | summer | autumn | winter or Chinese tags',
-                  ],
-                  styleTags: ['style tag strings'],
-                  sceneTags: ['scene tag strings'],
+                  seasons: ['春 | 夏 | 秋 | 冬'],
+                  styleTags: ['中文风格标签，例如：通勤、休闲、正式、法式'],
+                  sceneTags: ['中文场景标签，例如：上班、约会、周末、旅行'],
                   material: 'string or null',
                   thickness: 'string or null',
                   confidence: 'number from 0 to 1',
@@ -151,17 +183,15 @@ export class GarmentVisionService {
     return {
       fileName,
       category: this.stringOrDefault(draft.category, 'tops'),
-      subcategory: this.stringOrUndefined(draft.subcategory),
+      subcategory: this.localizedString(draft.subcategory),
       color: this.normalizeColor(draft.color),
-      seasons: this.stringArray(draft.seasons),
-      styleTags: this.stringArray(draft.styleTags),
-      sceneTags: this.stringArray(draft.sceneTags),
-      material: this.stringOrUndefined(draft.material),
-      thickness: this.stringOrUndefined(draft.thickness),
+      seasons: this.localizedArray(draft.seasons),
+      styleTags: this.localizedArray(draft.styleTags),
+      sceneTags: this.localizedArray(draft.sceneTags),
+      material: this.localizedString(draft.material),
+      thickness: this.localizedString(draft.thickness),
       confidence: this.confidence(draft.confidence),
-      notes:
-        this.stringOrUndefined(draft.notes) ??
-        'AI 已生成草稿，请确认后再保存。',
+      notes: this.localizedNotes(draft) ?? 'AI 已生成草稿，请确认后再保存。',
     };
   }
 
@@ -178,6 +208,63 @@ export class GarmentVisionService {
     return value.filter(
       (item): item is string => typeof item === 'string' && item.trim() !== '',
     );
+  }
+
+  private localizedArray(value: unknown): string[] {
+    return this.stringArray(value).map((item) => this.localizeLabel(item));
+  }
+
+  private localizedString(value: unknown): string | undefined {
+    const text = this.stringOrUndefined(value);
+    return text ? this.localizeLabel(text) : undefined;
+  }
+
+  private localizedNotes(
+    draft: Partial<GarmentVisionResult>,
+  ): string | undefined {
+    const notes = this.stringOrUndefined(draft.notes);
+    if (!notes || !this.containsAsciiWord(notes)) return notes;
+
+    const colorPrefix = draft.color === GarmentColor.BLACK ? '黑色' : '';
+    const subcategory =
+      this.localizedString(draft.subcategory) ??
+      this.categoryLabel(draft.category);
+    const style = this.localizedArray(draft.styleTags).slice(0, 2).join('');
+    const material = this.localizedString(draft.material);
+    const details = [
+      colorPrefix && subcategory ? `${colorPrefix}${subcategory}` : subcategory,
+      style ? `适合${style}场合` : undefined,
+      material ? `材质可能为${material}` : undefined,
+    ].filter(Boolean);
+
+    return details.length ? `${details.join('，')}。` : undefined;
+  }
+
+  private categoryLabel(category: unknown): string | undefined {
+    const labels: Record<string, string> = {
+      tops: '上装',
+      bottoms: '下装',
+      outerwear: '外套',
+      dresses: '连衣裙',
+      footwear: '鞋履',
+      bags: '包袋',
+      accessories: '配饰',
+      activewear: '运动服',
+      swimwear: '泳装',
+      underwear: '内衣',
+      lingerie: '内衣',
+      other: '衣物',
+    };
+    return typeof category === 'string' ? labels[category] : undefined;
+  }
+
+  private containsAsciiWord(value: string): boolean {
+    return /[a-zA-Z]{2,}/.test(value);
+  }
+
+  private localizeLabel(value: string): string {
+    const normalized = value.trim().toLowerCase().replace(/[_-]+/g, ' ');
+    return CHINESE_LABELS[normalized] ?? value.trim();
   }
 
   private stringOrDefault(value: unknown, fallback: string): string {

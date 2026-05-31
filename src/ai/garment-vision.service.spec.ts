@@ -156,4 +156,58 @@ describe('GarmentVisionService', () => {
       notes: 'AI 已生成草稿，请确认后再保存。',
     });
   });
+
+  it('localizes common English AI labels before showing the draft', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                category: 'bottoms',
+                subcategory: 'wide-leg pants',
+                color: 'black',
+                seasons: ['spring', 'autumn', 'winter'],
+                styleTags: ['formal', 'business', 'classic'],
+                sceneTags: ['office', 'commute'],
+                material: 'wool blend',
+                thickness: 'medium',
+                confidence: 0.9,
+                notes: 'Black wide-leg pants for formal business occasions.',
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) =>
+          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+        ),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.analyzeImage('pants.webp');
+
+    expect(result).toEqual({
+      fileName: 'pants.webp',
+      category: 'bottoms',
+      subcategory: '阔腿裤',
+      color: 'black',
+      seasons: ['春', '秋', '冬'],
+      styleTags: ['正式', '商务', '经典'],
+      sceneTags: ['办公室', '通勤'],
+      material: '羊毛混纺',
+      thickness: '中等',
+      confidence: 0.9,
+      notes: '黑色阔腿裤，适合正式商务场合，材质可能为羊毛混纺。',
+    });
+  });
 });
