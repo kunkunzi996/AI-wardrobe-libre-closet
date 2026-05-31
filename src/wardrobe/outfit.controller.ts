@@ -156,7 +156,12 @@ export class OutfitController {
     @Req() req: FastifyRequest,
   ) {
     const outfit = await this.outfitService.findOne(id, this.userId(req));
-    return { outfit };
+    return {
+      outfit: {
+        ...outfit,
+        garments: outfit.garments.getItems(),
+      },
+    };
   }
 
   @Get(':id/edit')

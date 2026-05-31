@@ -130,19 +130,17 @@ export class OutfitService {
     category: string | string[] | undefined,
     garmentId: string | string[] | undefined,
   ): OutfitSlot[] {
-    const cats = Array.isArray(category)
-      ? category
-      : category
-        ? [category]
-        : [];
-    const ids = Array.isArray(garmentId)
-      ? garmentId
-      : garmentId
-        ? [garmentId]
-        : [];
+    const normalize = (value: string | string[] | undefined): string[] => {
+      if (Array.isArray(value)) return value;
+      if (!value) return [];
+      return value.split(',').map((item) => item.trim());
+    };
+    const cats = normalize(category);
+    const ids = normalize(garmentId);
     return cats.map((cat, i) => ({
       category: cat,
-      garmentId: ids[i] ? Number(ids[i]) : null,
+      garmentId:
+        ids[i] && Number.isFinite(Number(ids[i])) ? Number(ids[i]) : null,
     }));
   }
 
