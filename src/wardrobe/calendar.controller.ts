@@ -38,13 +38,15 @@ export class CalendarController {
     @Query('calMonth') calMonthParam: string | undefined,
     @Req() req: FastifyRequest,
     @I18n() i18n: I18nContext,
+    @Query('saved') saved?: string,
   ) {
-    return this.calendarService.buildIndexViewModel(
+    const model = await this.calendarService.buildIndexViewModel(
       weekParam,
       calMonthParam,
       this.userId(req),
       i18n,
     );
+    return { ...model, saved: saved === '1' };
   }
 
   @Post()
@@ -82,7 +84,10 @@ export class CalendarController {
     if (req.headers['hx-request'] === 'true') {
       return reply.status(204).send();
     }
-    return reply.redirect(`/calendar?week=${body.week ?? body.date}`, 302);
+    return reply.redirect(
+      `/calendar?week=${body.week ?? body.date}&saved=1`,
+      302,
+    );
   }
 
   @Post(':id/delete')

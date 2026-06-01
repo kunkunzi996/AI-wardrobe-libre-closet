@@ -100,6 +100,13 @@ export class CalendarService {
     );
     if (!outfit) throw new NotFoundException('Outfit not found');
 
+    const existing = await this.findExistingEntryForDay(
+      dto.date,
+      outfit,
+      userId,
+    );
+    if (existing) return existing;
+
     const entry = this.calendarRepository.create({
       date: dto.date,
       outfit,
@@ -122,6 +129,26 @@ export class CalendarService {
       `Calendar entry created: outfitId=${dto.outfitId} date=${dto.date.toISOString()} userId=${userId}`,
     );
     return entry;
+  }
+
+  private async findExistingEntryForDay(
+    date: Date,
+    outfit: Outfit,
+    userId?: number,
+  ): Promise<OutfitCalendar | null> {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const ownerFilter =
+      userId != null ? { owner: { id: userId } } : { owner: null };
+
+    return this.calendarRepository.findOne({
+      ...ownerFilter,
+      outfit,
+      date: { $gte: dayStart, $lt: dayEnd },
+    });
   }
 
   async remove(id: number, userId?: number): Promise<void> {

@@ -69,7 +69,15 @@
           {{/each}}
         </div>
 
-        <form method="post" action="/outfits" class="mt-auto">
+        <form
+          method="post"
+          action="/outfits"
+          class="mt-auto"
+          _="on submit
+              set btn to the first <button[type='submit']/> in me
+              set btn.disabled to true
+              set btn.innerText to '保存中...'"
+        >
           <input type="hidden" name="name" value="{{this.title}}" />
           <input type="hidden" name="notes" value="{{this.reason}}" />
           {{#each this.slots}}

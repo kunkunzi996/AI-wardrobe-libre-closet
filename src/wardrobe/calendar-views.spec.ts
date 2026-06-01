@@ -25,4 +25,13 @@ describe('calendar views', () => {
 
     expect(view).toContain("{{t 'lang.SELECT_AN_OUTFIT'}}");
   });
+
+  it('shows save feedback and disables repeated calendar submissions', () => {
+    const view = calendarView();
+
+    expect(view).toContain('set btn.disabled to true');
+    expect(view).toContain("set btn.innerText to '保存中...'");
+    expect(view).toContain('{{#if saved}}');
+    expect(view).toContain("{{t 'lang.CALENDAR_OUTFIT_ADDED'}}");
+  });
 });

@@ -87,6 +87,33 @@ describe('CalendarService', () => {
     expect(entry.notes).toBe('白衬衫很好用');
   });
 
+  it('reuses an existing calendar entry for the same outfit on the same day', async () => {
+    const { service, outfitRepository, calendarRepository, entityManager } =
+      makeService();
+    const outfit = Object.assign(new Outfit(), { id: 1 });
+    const existing = {
+      id: 7,
+      date: new Date('2026-05-27T00:00:00.000Z'),
+      outfit,
+    } as OutfitCalendar;
+    outfitRepository.findOne.mockResolvedValue(outfit);
+    calendarRepository.findOne.mockResolvedValue(existing);
+
+    const entry = await service.create({
+      date: new Date('2026-05-27T12:30:00.000Z'),
+      outfitId: 1,
+    });
+
+    expect(entry.id).toBe(existing.id);
+    expect(calendarRepository.create).not.toHaveBeenCalled();
+    expect(entityManager.persistAndFlush).not.toHaveBeenCalled();
+    const duplicateQuery = calendarRepository.findOne.mock.calls[0][0];
+    expect(duplicateQuery).toEqual(expect.objectContaining({ outfit }));
+    expect(
+      duplicateQuery.date.$lt.getTime() - duplicateQuery.date.$gte.getTime(),
+    ).toBe(24 * 60 * 60 * 1000);
+  });
+
   it('marks worn and updates garment usage without decrementing on unmark', async () => {
     const { entry, jacket, shoes } = makeEntryWithGarments();
     const { service, entityManager } = makeService(entry);
