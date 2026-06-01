@@ -77,21 +77,10 @@ export class WardrobeController {
   @Get('new')
   @Render('wardrobe/form')
   async newForm(@Req() req: FastifyRequest, @I18n() i18n: I18nContext) {
-    const filters = await this.garmentService.findAvailableFilters(
-      this.userId(req),
-    );
-    const enumValues = Object.values(GarmentCategory) as string[];
-    const customCategories = filters.categories.filter(
-      (c) => !enumValues.includes(c),
-    );
-    const categories = [...enumValues, ...customCategories].map((value) => ({
-      value,
-      label: this.garmentService.resolveCategoryLabel(value, i18n),
-    }));
     return {
-      categories,
-      colors: Object.values(GarmentColor),
-      statuses: Object.values(GarmentStatus),
+      categories: await this.categoryOptions(req, i18n),
+      colors: this.colorOptions(),
+      statuses: this.statusOptions(),
       garment: null,
     };
   }
@@ -138,6 +127,15 @@ export class WardrobeController {
       this.userId(req),
     );
     const draft = await this.garmentVisionService.analyzeImage(file.fileName);
+    return {
+      draft,
+      categories: await this.categoryOptions(req, i18n),
+      colors: this.colorOptions(),
+      statuses: this.statusOptions(),
+    };
+  }
+
+  private async categoryOptions(req: FastifyRequest, i18n: I18nContext) {
     const filters = await this.garmentService.findAvailableFilters(
       this.userId(req),
     );
@@ -145,19 +143,24 @@ export class WardrobeController {
     const customCategories = filters.categories.filter(
       (c) => !enumValues.includes(c),
     );
-    const categories = [...enumValues, ...customCategories].map((value) => ({
+    return [...enumValues, ...customCategories].map((value) => ({
       value,
       label: this.garmentService.resolveCategoryLabel(value, i18n),
     }));
-    return {
-      draft,
-      categories,
-      colors: Object.values(GarmentColor).map((value) => ({
-        value,
-        label: this.colorLabel(value),
-      })),
-      statuses: Object.values(GarmentStatus),
-    };
+  }
+
+  private colorOptions() {
+    return Object.values(GarmentColor).map((value) => ({
+      value,
+      label: this.colorLabel(value),
+    }));
+  }
+
+  private statusOptions() {
+    return Object.values(GarmentStatus).map((value) => ({
+      value,
+      label: this.statusLabel(value),
+    }));
   }
 
   private colorLabel(color: GarmentColor): string {
@@ -180,6 +183,17 @@ export class WardrobeController {
       [GarmentColor.OTHER]: '其他',
     };
     return labels[color];
+  }
+
+  private statusLabel(status: GarmentStatus): string {
+    const labels: Record<GarmentStatus, string> = {
+      [GarmentStatus.Wearable]: '可穿',
+      [GarmentStatus.Laundry]: '待洗',
+      [GarmentStatus.Stored]: '收纳中',
+      [GarmentStatus.Damaged]: '需修补',
+      [GarmentStatus.Archived]: '已归档',
+    };
+    return labels[status];
   }
 
   @Post()
@@ -282,23 +296,15 @@ export class WardrobeController {
     @Req() req: FastifyRequest,
     @I18n() i18n: I18nContext,
   ) {
-    const [garment, filters] = await Promise.all([
-      this.garmentService.findOne(id, this.userId(req)),
-      this.garmentService.findAvailableFilters(this.userId(req)),
-    ]);
-    const enumValues = Object.values(GarmentCategory) as string[];
-    const customCategories = filters.categories.filter(
-      (c) => !enumValues.includes(c),
+    const garment = await this.garmentService.findOne(
+      id,
+      this.userId(req),
     );
-    const categories = [...enumValues, ...customCategories].map((value) => ({
-      value,
-      label: this.garmentService.resolveCategoryLabel(value, i18n),
-    }));
     return {
       garment,
-      categories,
-      colors: Object.values(GarmentColor),
-      statuses: Object.values(GarmentStatus),
+      categories: await this.categoryOptions(req, i18n),
+      colors: this.colorOptions(),
+      statuses: this.statusOptions(),
     };
   }
 

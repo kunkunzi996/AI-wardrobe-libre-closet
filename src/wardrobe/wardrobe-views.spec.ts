@@ -33,6 +33,16 @@ describe('wardrobe views', () => {
     }
   });
 
+  it('renders localized option labels without changing submitted values', () => {
+    const form = readView('form.hbs');
+
+    expect(form).toContain('<select name="category"');
+    expect(form).toContain('value="{{this.value}}"');
+    expect(form).toContain('{{this.label}}');
+    expect(form).toContain('{{#ifEquals this.value ../garment.color}}');
+    expect(form).toContain('{{#ifEquals this.value ../garment.status}}');
+  });
+
   it('exposes metadata filters and detail fields', () => {
     const index = readView('index.hbs');
     const show = readView('show.hbs');

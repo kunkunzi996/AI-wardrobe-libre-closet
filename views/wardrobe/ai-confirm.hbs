@@ -75,7 +75,7 @@
         <span class="label-text mb-1">{{t 'lang.STATUS'}}</span>
         <select name="status" class="select select-bordered">
           {{#each statuses}}
-          <option value="{{this}}" {{#ifEquals this "wearable"}}selected{{/ifEquals}}>{{this}}</option>
+          <option value="{{this.value}}" {{#ifEquals this.value "wearable"}}selected{{/ifEquals}}>{{this.label}}</option>
           {{/each}}
         </select>
       </label>

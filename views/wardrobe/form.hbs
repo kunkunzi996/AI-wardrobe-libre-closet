@@ -34,21 +34,11 @@
 
     <div class="form-control">
       <label class="label"><span class="label-text">{{t 'lang.CATEGORY'}} *</span></label>
-      <input
-        type="text"
-        name="category"
-        list="category-suggestions"
-        class="input input-bordered w-full"
-        value="{{#if garment}}{{garment.category}}{{/if}}"
-        required
-        placeholder="{{t 'lang.TYPE_OR_SELECT_CATEGORY'}}"
-        autocomplete="off"
-      />
-      <datalist id="category-suggestions">
+      <select name="category" class="select select-bordered w-full" required>
         {{#each categories}}
-        <option value="{{this.value}}"></option>
+        <option value="{{this.value}}" {{#ifEquals this.value ../garment.category}}selected{{/ifEquals}}>{{this.label}}</option>
         {{/each}}
-      </datalist>
+      </select>
     </div>
 
     <div class="form-control">
@@ -78,7 +68,7 @@
       <select name="color" class="select select-bordered">
         <option value="">{{t 'lang.SELECT_COLOR'}}</option>
         {{#each colors}}
-        <option value="{{this}}" {{#ifEquals this ../garment.color}}selected{{/ifEquals}} class="capitalize">{{this}}</option>
+        <option value="{{this.value}}" {{#ifEquals this.value ../garment.color}}selected{{/ifEquals}}>{{this.label}}</option>
         {{/each}}
       </select>
     </div>
@@ -98,7 +88,7 @@
       <label class="label"><span class="label-text">{{t 'lang.STATUS'}}</span></label>
       <select name="status" class="select select-bordered">
         {{#each statuses}}
-        <option value="{{this}}" {{#ifEquals this ../garment.status}}selected{{/ifEquals}}>{{this}}</option>
+        <option value="{{this.value}}" {{#ifEquals this.value ../garment.status}}selected{{/ifEquals}}>{{this.label}}</option>
         {{/each}}
       </select>
     </div>
