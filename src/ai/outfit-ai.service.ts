@@ -49,7 +49,7 @@ export class OutfitAiService {
 
     try {
       const response = await this.fetchImpl(
-        `${this.apiBaseUrl()}/v1/responses`,
+        `${this.apiBaseUrl()}/v1/chat/completions`,
         {
           method: 'POST',
           headers: {
@@ -82,8 +82,8 @@ export class OutfitAiService {
 
   private buildRequest(input: OutfitAiInput) {
     return {
-      model: this.configService.get('AI_TEXT_MODEL') ?? 'gpt-4.1-mini',
-      input: [
+      model: this.textModel(),
+      messages: [
         {
           role: 'system',
           content:
@@ -107,41 +107,16 @@ export class OutfitAiService {
           }),
         },
       ],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'wardrobe_outfit_recommendations',
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              recommendations: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    title: { type: 'string' },
-                    garmentIds: {
-                      type: 'array',
-                      items: { type: 'number' },
-                    },
-                    reason: { type: 'string' },
-                    cautions: {
-                      type: 'array',
-                      items: { type: 'string' },
-                    },
-                  },
-                  required: ['title', 'garmentIds', 'reason', 'cautions'],
-                },
-              },
-            },
-            required: ['recommendations'],
-          },
-          strict: true,
-        },
-      },
+      response_format: { type: 'json_object' },
+      max_completion_tokens: 900,
     };
+  }
+
+  private textModel(): string {
+    const configured =
+      this.configService.get<string>('AI_TEXT_MODEL') ?? 'gpt-4.1-mini';
+    if (configured === 'gpt-5.3') return 'gpt-5.3-chat-latest';
+    return configured;
   }
 
   private parseRecommendations(payload: any): {
@@ -149,6 +124,7 @@ export class OutfitAiService {
   } {
     const outputText =
       payload?.output_text ??
+      payload?.choices?.[0]?.message?.content ??
       payload?.output
         ?.flatMap((item: any) => item?.content ?? [])
         ?.find((content: any) => content?.type === 'output_text')?.text;

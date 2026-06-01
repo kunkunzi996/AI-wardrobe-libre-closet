@@ -89,7 +89,7 @@ describe('OutfitAiService', () => {
     });
 
     expect(fetchImpl).toHaveBeenCalledWith(
-      'https://api.example.test/v1/responses',
+      'https://api.example.test/v1/chat/completions',
       expect.any(Object),
     );
     expect(result.source).toBe('ai');
@@ -101,5 +101,61 @@ describe('OutfitAiService', () => {
         cautions: ['已移除不存在或不可穿的衣物。'],
       },
     ]);
+  });
+  it('parses chat completions JSON content', async () => {
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                recommendations: [
+                  {
+                    title: 'Plan A',
+                    garmentIds: [3],
+                    reason: 'Use the available shirt.',
+                    cautions: [],
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new OutfitAiService(
+      {
+        get: jest.fn((key: string) => {
+          if (key === 'OPENAI_API_KEY') return 'test-key';
+          if (key === 'AI_API_BASE_URL') return 'https://api.example.test/';
+          if (key === 'AI_TEXT_MODEL') return 'gpt-5.3';
+          return undefined;
+        }),
+      } as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.recommend({
+      requestText: 'commute',
+      availableGarments: garments,
+    });
+
+    const requestBody = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(requestBody.messages).toEqual(expect.any(Array));
+    expect(requestBody.model).toBe('gpt-5.3-chat-latest');
+    expect(requestBody.response_format).toEqual({ type: 'json_object' });
+    expect(requestBody.max_completion_tokens).toBe(900);
+    expect(result).toEqual({
+      source: 'ai',
+      recommendations: [
+        {
+          title: 'Plan A',
+          garmentIds: [3],
+          reason: 'Use the available shirt.',
+          cautions: [],
+        },
+      ],
+    });
   });
 });
