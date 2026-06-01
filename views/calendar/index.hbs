@@ -201,6 +201,8 @@
             hx-post="/calendar"
             hx-swap="none"
             hx-push-url="false"
+            hx-on::after-request="if (event.detail.successful) { window.location.href = event.detail.xhr.getResponseHeader('HX-Redirect') || window.location.href; }"
+            hx-on::response-error="this.querySelector('button[type=submit]').disabled = false; this.querySelector('button[type=submit]').innerText = '{{t 'lang.SAVE'}}';"
             class="mt-2 flex flex-col gap-2"
             _="on submit
               set btn to the first <button[type='submit']/> in me

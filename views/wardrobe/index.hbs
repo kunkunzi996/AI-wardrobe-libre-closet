@@ -29,9 +29,9 @@
       </figure>
       <div class="card-body p-3">
         <h2 class="card-title text-sm">{{this.name}}</h2>
-        <p class="text-xs text-base-content/60 capitalize">{{this.category}}</p>
-        {{#if this.status}}
-        <p class="text-xs text-base-content/50">{{this.status}}</p>
+        <p class="text-xs text-base-content/60">{{this.categoryLabel}}</p>
+        {{#if this.statusLabel}}
+        <p class="text-xs text-base-content/50">{{this.statusLabel}}</p>
         {{/if}}
       </div>
     </a>
@@ -70,13 +70,13 @@
     {{#if search.category}}
     <a href="/wardrobe?keyword={{search.keyword}}&color={{search.color}}&size={{search.size}}"
       class="badge badge-primary badge-sm gap-1 cursor-pointer capitalize no-underline">
-      {{search.category}} &times;
+      {{searchLabels.category}} &times;
     </a>
     {{/if}}
     {{#if search.color}}
     <a href="/wardrobe?keyword={{search.keyword}}&category={{search.category}}&size={{search.size}}"
       class="badge badge-secondary badge-sm gap-1 cursor-pointer capitalize no-underline">
-      {{search.color}} &times;
+      {{searchLabels.color}} &times;
     </a>
     {{/if}}
     {{#if search.size}}
@@ -130,11 +130,11 @@
     <div class="mb-5">
       <h4 class="font-medium text-sm text-base-content/60 uppercase tracking-wide mb-2">{{t 'lang.COLOR'}}</h4>
       <div class="flex flex-wrap gap-2">
-        {{#each colors}}
-        <label class="cursor-pointer">
-          <input type="radio" name="modal-color" value="{{this}}" class="hidden peer"
-            {{#ifEquals this ../search.color}}checked{{/ifEquals}}>
-          <span class="badge badge-outline peer-checked:badge-secondary capitalize select-none">{{this}}</span>
+          {{#each colors}}
+          <label class="cursor-pointer">
+            <input type="radio" name="modal-color" value="{{this.value}}" class="hidden peer"
+              {{#ifEquals this.value ../search.color}}checked{{/ifEquals}}>
+            <span class="badge badge-outline peer-checked:badge-secondary select-none">{{this.label}}</span>
         </label>
         {{/each}}
       </div>
@@ -160,11 +160,11 @@
     <div class="mb-5">
       <h4 class="font-medium text-sm text-base-content/60 uppercase tracking-wide mb-2">{{t 'lang.STATUS'}}</h4>
       <div class="flex flex-wrap gap-2">
-        {{#each statuses}}
-        <label class="cursor-pointer">
-          <input type="radio" name="modal-status" value="{{this}}" class="hidden peer"
-            {{#ifEquals this ../search.status}}checked{{/ifEquals}}>
-          <span class="badge badge-outline peer-checked:badge-info select-none">{{this}}</span>
+            {{#each statuses}}
+            <label class="cursor-pointer">
+              <input type="radio" name="modal-status" value="{{this.value}}" class="hidden peer"
+                {{#ifEquals this.value ../search.status}}checked{{/ifEquals}}>
+              <span class="badge badge-outline peer-checked:badge-info select-none">{{this.label}}</span>
         </label>
         {{/each}}
       </div>

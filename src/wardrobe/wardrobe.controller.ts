@@ -65,12 +65,32 @@ export class WardrobeController {
       label: this.garmentService.resolveCategoryLabel(value, i18n),
     }));
     return {
-      garments,
+      garments: garments.map((garment) =>
+        Object.assign(garment, {
+          categoryLabel: this.garmentService.resolveCategoryLabel(
+            garment.category,
+            i18n,
+          ),
+          colorLabel: this.garmentService.resolveColorLabel(garment.color),
+          statusLabel: this.garmentService.resolveStatusLabel(garment.status),
+        }),
+      ),
       availableCategories,
-      colors: Object.values(GarmentColor),
+      colors: this.colorOptions(),
       availableSizes: filters.sizes,
       search: query,
-      statuses: Object.values(GarmentStatus),
+      searchLabels: {
+        category: query.category
+          ? this.garmentService.resolveCategoryLabel(query.category, i18n)
+          : '',
+        color: query.color
+          ? this.garmentService.resolveColorLabel(query.color)
+          : '',
+        status: query.status
+          ? this.garmentService.resolveStatusLabel(query.status)
+          : '',
+      },
+      statuses: this.statusOptions(),
     };
   }
 
@@ -152,14 +172,14 @@ export class WardrobeController {
   private colorOptions() {
     return Object.values(GarmentColor).map((value) => ({
       value,
-      label: this.colorLabel(value),
+      label: this.garmentService.resolveColorLabel(value),
     }));
   }
 
   private statusOptions() {
     return Object.values(GarmentStatus).map((value) => ({
       value,
-      label: this.statusLabel(value),
+      label: this.garmentService.resolveStatusLabel(value),
     }));
   }
 
@@ -286,6 +306,8 @@ export class WardrobeController {
         garment.category,
         i18n,
       ),
+      colorLabel: this.garmentService.resolveColorLabel(garment.color),
+      statusLabel: this.garmentService.resolveStatusLabel(garment.status),
     };
   }
 

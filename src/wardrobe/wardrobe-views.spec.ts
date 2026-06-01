@@ -51,8 +51,11 @@ describe('wardrobe views', () => {
       expect(index).toContain(`name="${field}"`);
     }
 
+    expect(index).toContain('{{this.statusLabel}}');
+    expect(show).toContain('{{statusLabel}}');
+    expect(show).toContain('{{colorLabel}}');
+
     for (const field of [
-      'garment.status',
       'garment.seasons',
       'garment.styleTags',
       'garment.sceneTags',

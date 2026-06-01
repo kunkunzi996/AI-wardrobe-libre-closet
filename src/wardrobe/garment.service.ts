@@ -16,6 +16,7 @@ import { CreateGarmentDto } from './dto/create-garment.dto';
 import { UpdateGarmentDto } from './dto/update-garment.dto';
 import { SearchGarmentDto } from './dto/search-garment.dto';
 import { GarmentCategory } from './garment-category.enum';
+import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
 
 const CANONICAL_SIZES = [
@@ -51,6 +52,41 @@ export class GarmentService {
       return i18n.t(`lang.CATEGORY_${normalized.toUpperCase()}`);
     }
     return value;
+  }
+
+  resolveColorLabel(color?: string): string {
+    if (!color) return '';
+    const labels: Record<GarmentColor, string> = {
+      [GarmentColor.RED]: '红色',
+      [GarmentColor.PINK]: '粉色',
+      [GarmentColor.ORANGE]: '橙色',
+      [GarmentColor.YELLOW]: '黄色',
+      [GarmentColor.GREEN]: '绿色',
+      [GarmentColor.BLUE]: '蓝色',
+      [GarmentColor.PURPLE]: '紫色',
+      [GarmentColor.BLACK]: '黑色',
+      [GarmentColor.WHITE]: '白色',
+      [GarmentColor.GREY]: '灰色',
+      [GarmentColor.BEIGE]: '米色',
+      [GarmentColor.BROWN]: '棕色',
+      [GarmentColor.GOLD]: '金色',
+      [GarmentColor.SILVER]: '银色',
+      [GarmentColor.PATTERN]: '图案',
+      [GarmentColor.OTHER]: '其他',
+    };
+    return labels[color as GarmentColor] ?? color;
+  }
+
+  resolveStatusLabel(status?: string): string {
+    if (!status) return '';
+    const labels: Record<GarmentStatus, string> = {
+      [GarmentStatus.Wearable]: '可穿',
+      [GarmentStatus.Laundry]: '待洗',
+      [GarmentStatus.Stored]: '收纳中',
+      [GarmentStatus.Damaged]: '需修补',
+      [GarmentStatus.Archived]: '已归档',
+    };
+    return labels[status as GarmentStatus] ?? status;
   }
 
   async findAll(

@@ -32,6 +32,14 @@ describe('calendar views', () => {
     expect(view).toContain('hx-post="/calendar"');
     expect(view).toContain('hx-swap="none"');
     expect(view).toContain('set btn.disabled to true');
+    expect(view).toContain('hx-on::after-request');
+    expect(view).toContain(
+      "window.location.href = event.detail.xhr.getResponseHeader('HX-Redirect')",
+    );
+    expect(view).toContain('hx-on::response-error');
+    expect(view).toContain(
+      "this.querySelector('button[type=submit]').disabled = false",
+    );
     expect(view).toContain("set btn.innerText to '保存中...'");
     expect(view).toContain('{{#if saved}}');
     expect(view).toContain("{{t 'lang.CALENDAR_OUTFIT_ADDED'}}");
