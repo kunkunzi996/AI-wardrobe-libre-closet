@@ -198,6 +198,9 @@
           <form
             method="post"
             action="/calendar"
+            hx-post="/calendar"
+            hx-swap="none"
+            hx-push-url="false"
             class="mt-2 flex flex-col gap-2"
             _="on submit
               set btn to the first <button[type='submit']/> in me

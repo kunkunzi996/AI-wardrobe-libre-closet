@@ -29,6 +29,8 @@ describe('calendar views', () => {
   it('shows save feedback and disables repeated calendar submissions', () => {
     const view = calendarView();
 
+    expect(view).toContain('hx-post="/calendar"');
+    expect(view).toContain('hx-swap="none"');
     expect(view).toContain('set btn.disabled to true');
     expect(view).toContain("set btn.innerText to '保存中...'");
     expect(view).toContain('{{#if saved}}');
