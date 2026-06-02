@@ -65,7 +65,9 @@ export class WardrobeAnalyticsService {
         garments.map((g) => this.resolveColorLabel(g.color)),
       ),
       styleDistribution: this.distribution(
-        garments.flatMap((g) => g.styleTags ?? []),
+        garments.flatMap((g) =>
+          (g.styleTags ?? []).map((tag) => this.resolveStyleLabel(tag)),
+        ),
       ),
       advice: this.buildAdvice(garments),
     };
@@ -119,6 +121,35 @@ export class WardrobeAnalyticsService {
       [GarmentColor.OTHER]: '其他',
     };
     return labels[color as GarmentColor] ?? color;
+  }
+
+  private resolveStyleLabel(style?: string): string {
+    if (!style) return '';
+    const labels: Record<string, string> = {
+      accent: '点睛',
+      basic: '基础',
+      business: '商务',
+      casual: '休闲',
+      classic: '经典',
+      denim: '牛仔',
+      elegant: '优雅',
+      feminine: '柔美',
+      formal: '正式',
+      fresh: '清新',
+      layering: '叠穿',
+      light: '轻盈',
+      minimal: '极简',
+      outdoor: '户外',
+      relaxed: '松弛',
+      romantic: '浪漫',
+      soft: '柔和',
+      sporty: '运动',
+      street: '街头',
+      utility: '机能',
+      vacation: '度假',
+      warm: '保暖',
+    };
+    return labels[style.toLowerCase()] ?? style;
   }
 
   private buildAdvice(garments: Garment[]): string[] {

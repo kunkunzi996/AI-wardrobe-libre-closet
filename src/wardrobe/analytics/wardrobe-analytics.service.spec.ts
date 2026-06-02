@@ -82,4 +82,29 @@ describe('WardrobeAnalyticsService', () => {
     expect(result.advice).toContain('下装数量较少，可以后续考虑补一件适合春秋的基础下装。');
     expect(result.advice.join('')).not.toContain('购买链接');
   });
+
+  it('localizes English style tags in analytics distributions', async () => {
+    const { service } = makeService([
+      makeGarment({
+        id: 10,
+        name: 'AI test blazer',
+        category: 'outerwear',
+        color: 'black' as any,
+        status: GarmentStatus.Wearable,
+        wearCount: 0,
+        styleTags: ['casual', 'business', 'classic', 'minimal'],
+      }),
+    ]);
+
+    const result = await service.analyze(undefined, new Date('2026-05-27'));
+
+    expect(result.styleDistribution).toEqual(
+      expect.arrayContaining([
+        { label: '休闲', count: 1 },
+        { label: '商务', count: 1 },
+        { label: '经典', count: 1 },
+        { label: '极简', count: 1 },
+      ]),
+    );
+  });
 });
