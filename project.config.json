@@ -1,0 +1,15 @@
+{
+  "description": "Libre Closet WeChat mini-program web-view shell",
+  "miniprogramRoot": "miniprogram/",
+  "projectname": "Libre Closet",
+  "appid": "touristappid",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "latest"
+}

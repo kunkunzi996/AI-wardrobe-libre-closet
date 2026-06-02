@@ -1,0 +1,9 @@
+<web-view wx:if="{{targetUrl}}" src="{{targetUrl}}" />
+
+<view wx:else class="setup">
+  <view class="panel">
+    <view class="title">还没有配置网页地址</view>
+    <view class="body">请先把 Libre Closet 部署成 HTTPS 网站，然后在 index.js 里填写 WEB_APP_URL。</view>
+    <view class="hint">微信正式版还需要在微信公众平台添加业务域名。</view>
+  </view>
+</view>

@@ -1,0 +1,10 @@
+{
+  "pages": ["pages/webview/index"],
+  "window": {
+    "navigationBarTitleText": "AI 衣橱",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f7f5"
+  },
+  "style": "v2"
+}
