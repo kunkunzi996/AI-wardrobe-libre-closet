@@ -1,27 +1,27 @@
-# WeChat Mini Program Web-View Deploy Design
+# 微信小程序 Web-View 部署设计
 
-## Goal
+## 目标
 
-Create the fastest usable WeChat mini-program version of this wardrobe app by keeping the existing Libre Closet web/PWA application as the main product and wrapping it in a minimal WeChat mini-program `web-view`.
+用最快、最稳的方式做出可用的微信小程序版本：保留现在的 Libre Closet 网页/PWA 应用作为主产品，再用一个很小的微信小程序 `web-view` 壳把网页打开。
 
-In plain terms: first make the current website available through a real HTTPS address, then create a small WeChat mini-program project that opens that website.
+大白话说：先把现在这个网站部署成一个真正的 HTTPS 网址，然后做一个小程序入口，让小程序打开这个网址。
 
-## Current Project State
+## 当前项目状态
 
-- Repository path: `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`
-- Current branch: `main`
-- App type: NestJS web/PWA application with Handlebars views
-- Existing WeChat mini-program project: none
-- Existing `project.config.json`: none
-- Deployment-ready web app scripts:
+- 仓库路径：`C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`
+- 当前分支：`main`
+- 应用类型：NestJS 网页/PWA 应用，页面使用 Handlebars
+- 现有微信小程序项目：没有
+- 现有 `project.config.json`：没有
+- 可用于网页部署的脚本：
   - `npm run build`
   - `npm run start:prod`
 
-## Chosen Approach
+## 选定方案
 
-Use a small native mini-program shell with one `web-view` page.
+创建一个很小的原生微信小程序壳，只放一个 `web-view` 页面。
 
-The mini-program shell will contain:
+这个小程序壳会包含：
 
 - `project.config.json`
 - `miniprogram/app.json`
@@ -31,53 +31,53 @@ The mini-program shell will contain:
 - `miniprogram/pages/webview/index.wxss`
 - `miniprogram/pages/webview/index.js`
 
-The page will read a configured HTTPS URL and open it through WeChat's `web-view` component.
+页面会读取配置好的 HTTPS 网址，然后通过微信的 `web-view` 组件打开这个网页。
 
-## Required User-Provided Values
+## 需要用户提供或确认的信息
 
-Before final publishing in WeChat Developer Tools, the user must provide or confirm:
+在微信开发者工具里正式发布前，需要用户提供或确认：
 
-- WeChat mini-program AppID
-- Final HTTPS web app URL
-- Whether the web domain has been added to the mini-program business domain list in WeChat public platform
+- 微信小程序 AppID
+- 最终的 HTTPS 网页地址
+- 这个网页域名是否已经添加到微信公众平台的小程序业务域名里
 
-Without those values, the repository can still contain a local importable mini-program shell, but it cannot be fully published as a production mini-program.
+没有这些信息，仓库里仍然可以先放一个本地可导入的小程序壳，但不能完整发布成正式生产小程序。
 
-## Web Deployment Requirements
+## 网页部署要求
 
-The existing Libre Closet server must be deployed somewhere that provides:
+现有 Libre Closet 服务端需要部署到一个满足下面条件的地方：
 
 - HTTPS
-- Persistent storage for SQLite data and uploaded clothing photos, or a configured PostgreSQL/S3 setup
-- Environment variables matching the current app config
-- A stable public domain that WeChat can whitelist
+- 能持久保存 SQLite 数据和上传的衣物图片，或者已经配置好 PostgreSQL/S3
+- 环境变量要和当前应用配置匹配
+- 有一个稳定的公网域名，后续可以在微信里加入白名单
 
-The web deployment is separate from the mini-program shell. The mini-program only opens the HTTPS web app.
+网页部署和小程序壳是两件事。小程序壳只负责打开 HTTPS 网页。
 
-## Error Handling
+## 错误处理
 
-The mini-program shell will keep the `web-view` page simple:
+小程序壳会让 `web-view` 页面保持简单：
 
-- If the configured URL is missing, show a clear setup page in WeChat Developer Tools.
-- If the URL exists but WeChat blocks it, the fix is outside the code: add the domain in WeChat public platform.
-- If login, upload, or AI features fail, debug the web app backend first because the mini-program shell is only a container.
+- 如果没有配置网址，就在微信开发者工具里显示一个清楚的设置提示页。
+- 如果网址存在但被微信拦截，修复点不在代码里，而是在微信公众平台添加业务域名。
+- 如果登录、上传、AI 功能失败，优先排查网页应用后端，因为小程序壳只是一个容器。
 
-## Testing
+## 测试方式
 
-Local verification will include:
+本地验证包括：
 
-- Run `npm run build` for the web app.
-- Import the mini-program folder in WeChat Developer Tools.
-- Confirm the project opens without JSON or encoding errors.
-- Confirm the web-view points to the configured HTTPS URL.
+- 运行 `npm run build` 构建网页应用。
+- 在微信开发者工具里导入小程序文件夹。
+- 确认项目打开时没有 JSON 错误或编码错误。
+- 确认 `web-view` 指向配置好的 HTTPS 网址。
 
-Production verification will include:
+生产环境验证包括：
 
-- Open the mini-program in WeChat Developer Tools preview mode.
-- Confirm the HTTPS domain is allowed by WeChat.
-- Confirm the wardrobe homepage loads.
-- Confirm core flows still work through the web app: garment list, upload, outfit recommendation, and AI-assisted entry if configured.
+- 在微信开发者工具里用预览模式打开小程序。
+- 确认 HTTPS 域名已被微信允许。
+- 确认衣橱首页可以加载。
+- 确认核心流程在网页应用里仍然可用：衣物列表、上传、搭配推荐，以及已配置时的 AI 辅助录入。
 
-## Not In Scope
+## 不在本次范围内
 
-This design does not rewrite Libre Closet into native WeChat pages. A native rewrite is larger work and should be handled as a separate project after the web-view version is usable.
+这份设计不会把 Libre Closet 重写成原生微信小程序页面。原生重写是更大的工作，应该等 web-view 版本可用后，再作为单独项目处理。
