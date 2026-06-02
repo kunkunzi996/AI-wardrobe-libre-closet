@@ -93,4 +93,101 @@ describe('OutfitGeneratorService', () => {
       NotFoundException,
     );
   });
+
+  it('attaches AI recommendation garments for the template', async () => {
+    const core = makeGarment({
+      id: 1,
+      name: '凉鞋',
+      category: 'footwear',
+      status: GarmentStatus.Wearable,
+    });
+    const shirt = makeGarment({
+      id: 2,
+      name: '白T',
+      category: 'tops',
+      status: GarmentStatus.Wearable,
+    });
+    const shorts = makeGarment({
+      id: 3,
+      name: '短裤',
+      category: 'bottoms',
+      status: GarmentStatus.Wearable,
+    });
+    const outfitAiService = {
+      recommend: jest.fn().mockResolvedValue({
+        source: 'ai',
+        recommendations: [
+          {
+            title: '清爽日常',
+            garmentIds: [1, 2, 3],
+            reason: '轻薄单品更适合热天。',
+            cautions: [],
+          },
+        ],
+      }),
+    };
+    const garmentRepository = { find: jest.fn(async () => [core, shirt, shorts]) };
+    const service = new OutfitGeneratorService(
+      garmentRepository as any,
+      outfitAiService as any,
+    );
+
+    const result = await service.generateWithAi({
+      coreGarmentId: 1,
+      requestText: '太热了，想穿清爽一点',
+    });
+
+    expect(result.ai?.recommendations[0].garments).toEqual([
+      core,
+      shirt,
+      shorts,
+    ]);
+  });
+
+  it('avoids heavy winter pieces for hot weather requests', async () => {
+    const core = makeGarment({
+      id: 1,
+      name: '小白鞋',
+      category: 'footwear',
+      status: GarmentStatus.Wearable,
+    });
+    const puffer = makeGarment({
+      id: 2,
+      name: '羽绒服',
+      category: 'outerwear',
+      status: GarmentStatus.Wearable,
+      seasons: ['winter'],
+      styleTags: ['warm'],
+      thickness: 'thick',
+    });
+    const tshirt = makeGarment({
+      id: 3,
+      name: '白T',
+      category: 'tops',
+      status: GarmentStatus.Wearable,
+      seasons: ['summer'],
+      thickness: 'thin',
+    });
+    const shorts = makeGarment({
+      id: 4,
+      name: '短裤',
+      category: 'bottoms',
+      status: GarmentStatus.Wearable,
+      seasons: ['summer'],
+      thickness: 'thin',
+    });
+    const { service } = makeService([core, puffer, tshirt, shorts]);
+
+    const plans = await service.generate({
+      coreGarmentId: 1,
+      requestText: '最近太热了，想穿清爽一点',
+    });
+
+    expect(plans[0].garments.map((garment) => garment.id)).toEqual(
+      expect.arrayContaining([1, 3, 4]),
+    );
+    expect(
+      plans.flatMap((plan) => plan.garments).some((garment) => garment.id === 2),
+    ).toBe(false);
+  });
 });

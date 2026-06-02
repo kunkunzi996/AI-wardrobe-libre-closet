@@ -39,6 +39,20 @@
         {{#if this.cautions.length}}
         <p class="text-xs text-warning mt-1">{{this.cautions}}</p>
         {{/if}}
+        {{#if this.garments.length}}
+        <div class="flex flex-wrap gap-2 mt-3">
+          {{#each this.garments}}
+          <a href="/wardrobe/{{this.id}}" class="flex flex-col items-center gap-1 w-16">
+            {{#if this.photo}}
+            <img src="/file/nobg/{{this.photo.fileName}}" alt="{{this.name}}" class="size-14 rounded-box object-cover bg-base-200" />
+            {{else}}
+            <div class="size-14 rounded-box bg-base-200 flex items-center justify-center text-base-content/30"></div>
+            {{/if}}
+            <span class="text-[10px] text-center leading-tight line-clamp-2">{{this.name}}</span>
+          </a>
+          {{/each}}
+        </div>
+        {{/if}}
       </div>
       {{/each}}
     </div>

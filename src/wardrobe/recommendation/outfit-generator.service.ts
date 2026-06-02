@@ -21,7 +21,11 @@ export interface GeneratedOutfitPlan {
 
 export interface GeneratedOutfitResult {
   plans: GeneratedOutfitPlan[];
-  ai?: OutfitAiResult;
+  ai?: OutfitAiResult & {
+    recommendations: Array<
+      OutfitAiResult['recommendations'][number] & { garments: Garment[] }
+    >;
+  };
 }
 
 const PLAN_TITLES = [
@@ -69,7 +73,7 @@ export class OutfitGeneratorService {
       };
     });
 
-    const ai = this.outfitAiService
+    const rawAi = this.outfitAiService
       ? await this.outfitAiService.recommend({
           requestText: input.requestText || core.name || '围绕这件衣服搭配',
           availableGarments: garments.map((garment) => ({
@@ -83,6 +87,10 @@ export class OutfitGeneratorService {
             status: garment.status,
           })),
         })
+      : undefined;
+
+    const ai = rawAi
+      ? this.attachAiGarments(rawAi, garments, input.requestText, core)
       : undefined;
 
     return { plans, ai };
@@ -100,7 +108,12 @@ export class OutfitGeneratorService {
 
     for (const category of categories) {
       if (category === core.category) continue;
-      const candidates = garments.filter((garment) => garment.category === category);
+      const candidates = garments
+        .filter((garment) => garment.category === category)
+        .filter(
+          (garment) =>
+            !this.isIncompatibleWithRequest(garment, requestText, core),
+        );
       const picked = this.pickOne(candidates, core, requestText, planIndex);
       if (picked) selected.set(picked.id, picked);
     }
@@ -135,6 +148,86 @@ export class OutfitGeneratorService {
     if (this.overlaps(garment.styleTags, core.styleTags)) score += 2;
     if (requestText && this.matchesRequest(garment, requestText)) score += 2;
     return score;
+  }
+
+  private attachAiGarments(
+    ai: OutfitAiResult,
+    garments: Garment[],
+    requestText?: string,
+    core?: Garment,
+  ): GeneratedOutfitResult['ai'] {
+    const garmentById = new Map(garments.map((garment) => [garment.id, garment]));
+    return {
+      ...ai,
+      recommendations: ai.recommendations.map((recommendation) => {
+        const recommendationGarments = recommendation.garmentIds
+          .map((id) => garmentById.get(id))
+          .filter((garment): garment is Garment => Boolean(garment))
+          .filter(
+            (garment) =>
+              !this.isIncompatibleWithRequest(garment, requestText, core),
+          );
+        return {
+          ...recommendation,
+          garmentIds: recommendationGarments.map((garment) => garment.id),
+          garments: recommendationGarments,
+        };
+      }),
+    };
+  }
+
+  private isIncompatibleWithRequest(
+    garment: Garment,
+    requestText: string | undefined,
+    core?: Garment,
+  ): boolean {
+    if (core && garment.id === core.id) return false;
+    if (!this.isHotWeatherRequest(requestText)) return false;
+
+    const searchable = [
+      garment.name,
+      garment.category,
+      garment.subcategory,
+      garment.material,
+      garment.thickness,
+      garment.fit,
+      ...(garment.seasons ?? []),
+      ...(garment.styleTags ?? []),
+      ...(garment.sceneTags ?? []),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    if (garment.category === 'outerwear') return true;
+    return [
+      'winter',
+      'thick',
+      'warm',
+      'puffer',
+      'coat',
+      'parka',
+      'sweater',
+      'turtleneck',
+      'scarf',
+      '羽绒',
+      '大衣',
+      '外套',
+      '毛衣',
+      '高领',
+      '围巾',
+      '保暖',
+      '厚',
+      '冬',
+    ].some((word) => searchable.includes(word));
+  }
+
+  private isHotWeatherRequest(requestText?: string): boolean {
+    if (!requestText) return false;
+    const text = requestText.toLowerCase();
+    return ['热', '太热', '清爽', '凉快', '夏', '透气', 'light', 'cool', 'summer'].some(
+      (word) => text.includes(word),
+    );
   }
 
   private overlaps(a?: string[], b?: string[]): boolean {
