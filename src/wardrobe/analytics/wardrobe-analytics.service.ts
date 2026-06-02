@@ -2,6 +2,7 @@ import { EntityRepository } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { Injectable } from '@nestjs/common';
 import { Garment } from '../../dal/entity/garment.entity';
+import { GarmentColor } from '../garment-color.enum';
 import { GarmentStatus } from '../garment-status.enum';
 
 export interface DistributionItem {
@@ -60,8 +61,12 @@ export class WardrobeAnalyticsService {
         .sort((a, b) => (a.wearCount ?? 0) - (b.wearCount ?? 0))
         .slice(0, 5),
       longUnworn,
-      colorDistribution: this.distribution(garments.map((g) => g.color)),
-      styleDistribution: this.distribution(garments.flatMap((g) => g.styleTags ?? [])),
+      colorDistribution: this.distribution(
+        garments.map((g) => this.resolveColorLabel(g.color)),
+      ),
+      styleDistribution: this.distribution(
+        garments.flatMap((g) => g.styleTags ?? []),
+      ),
       advice: this.buildAdvice(garments),
     };
   }
@@ -91,6 +96,29 @@ export class WardrobeAnalyticsService {
     return Array.from(counts.entries())
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }
+
+  private resolveColorLabel(color?: string): string {
+    if (!color) return '';
+    const labels: Record<GarmentColor, string> = {
+      [GarmentColor.RED]: '红色',
+      [GarmentColor.PINK]: '粉色',
+      [GarmentColor.ORANGE]: '橙色',
+      [GarmentColor.YELLOW]: '黄色',
+      [GarmentColor.GREEN]: '绿色',
+      [GarmentColor.BLUE]: '蓝色',
+      [GarmentColor.PURPLE]: '紫色',
+      [GarmentColor.BLACK]: '黑色',
+      [GarmentColor.WHITE]: '白色',
+      [GarmentColor.GREY]: '灰色',
+      [GarmentColor.BEIGE]: '米色',
+      [GarmentColor.BROWN]: '棕色',
+      [GarmentColor.GOLD]: '金色',
+      [GarmentColor.SILVER]: '银色',
+      [GarmentColor.PATTERN]: '图案',
+      [GarmentColor.OTHER]: '其他',
+    };
+    return labels[color as GarmentColor] ?? color;
   }
 
   private buildAdvice(garments: Garment[]): string[] {

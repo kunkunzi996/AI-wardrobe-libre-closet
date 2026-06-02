@@ -68,9 +68,9 @@ describe('WardrobeAnalyticsService', () => {
     expect(result.lowUsage.map((item) => item.id)).toEqual([4, 2]);
     expect(result.longUnworn.map((item) => item.id)).toEqual([2, 4]);
     expect(result.colorDistribution).toEqual([
-      { label: 'black', count: 2 },
-      { label: 'blue', count: 1 },
-      { label: 'white', count: 1 },
+      { label: '黑色', count: 2 },
+      { label: '白色', count: 1 },
+      { label: '蓝色', count: 1 },
     ]);
     expect(result.styleDistribution).toEqual(
       expect.arrayContaining([
