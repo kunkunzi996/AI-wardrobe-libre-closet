@@ -72,4 +72,13 @@ if (!pageJs.includes('WEB_APP_URL') || !pageJs.includes('targetUrl')) {
   throw new Error('miniprogram/pages/webview/index.js must define WEB_APP_URL and expose targetUrl');
 }
 
+const webAppUrlMatch = pageJs.match(/WEB_APP_URL\s*=\s*['"]([^'"]+)['"]/);
+if (!webAppUrlMatch) {
+  throw new Error('miniprogram/pages/webview/index.js must configure WEB_APP_URL');
+}
+
+if (!webAppUrlMatch[1].startsWith('https://')) {
+  throw new Error('WEB_APP_URL must be an HTTPS URL for WeChat web-view');
+}
+
 console.log('Mini-program shell validation passed.');

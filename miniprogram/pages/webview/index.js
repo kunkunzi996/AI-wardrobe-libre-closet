@@ -1,4 +1,4 @@
-const WEB_APP_URL = '';
+const WEB_APP_URL = 'https://aimatchwear.asia';
 
 Page({
   data: {

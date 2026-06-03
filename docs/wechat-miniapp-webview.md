@@ -38,13 +38,13 @@ project.config.json
 miniprogram/pages/webview/index.js
 ```
 
-现在默认是：
+现在已经配置为：
 
 ```js
-const WEB_APP_URL = '';
+const WEB_APP_URL = 'https://aimatchwear.asia';
 ```
 
-等 Libre Closet 网页部署好以后，把它改成你的正式 HTTPS 地址，例如：
+如果以后更换域名，把它改成新的正式 HTTPS 地址，例如：
 
 ```js
 const WEB_APP_URL = 'https://your-domain.example.com';
