@@ -57,20 +57,22 @@ export class MiniappWardrobeController {
 
   @Post()
   async create(@Body() body: MiniappCreateBody, @Req() req: MiniappRequest) {
-    if (!body.category) {
+    const photo = await this.readImageUpload(req);
+    const form = this.mergeMultipartFields(body, photo);
+
+    if (!form.category) {
       throw new BadRequestException('分类不能为空');
     }
 
-    const photo = await this.readImageUpload(req);
     const garment = await this.garmentService.create(
       {
-        name: body.name,
-        category: body.category,
-        color: body.color,
-        seasons: body.season,
-        brand: body.brand,
-        size: body.size,
-        notes: body.notes,
+        name: form.name,
+        category: form.category,
+        color: form.color,
+        seasons: form.season,
+        brand: form.brand,
+        size: form.size,
+        notes: form.notes,
         photo,
       },
       this.userId(req),
@@ -94,7 +96,7 @@ export class MiniappWardrobeController {
 
   private async readImageUpload(
     req: MiniappRequest,
-  ): Promise<MultipartFile | undefined> {
+  ): Promise<MultipartFile> {
     const file = await req.file?.();
     if (!file) {
       throw new BadRequestException('请先选择图片');
@@ -103,6 +105,36 @@ export class MiniappWardrobeController {
       throw new BadRequestException('上传文件必须是图片');
     }
     return file;
+  }
+
+  private mergeMultipartFields(
+    body: MiniappCreateBody,
+    file: MultipartFile,
+  ): MiniappCreateBody {
+    return {
+      name: this.fieldValue(body.name, file, 'name'),
+      category: this.fieldValue(body.category, file, 'category'),
+      color: this.fieldValue(body.color, file, 'color') as
+        | GarmentColor
+        | undefined,
+      season: this.fieldValue(body.season, file, 'season'),
+      brand: this.fieldValue(body.brand, file, 'brand'),
+      size: this.fieldValue(body.size, file, 'size'),
+      notes: this.fieldValue(body.notes, file, 'notes'),
+    };
+  }
+
+  private fieldValue(
+    bodyValue: string | undefined,
+    file: MultipartFile,
+    name: string,
+  ): string | undefined {
+    const value =
+      bodyValue ??
+      (file.fields?.[name] as { value?: unknown } | undefined)?.value;
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
   }
 
   private toViewModel(garment: Garment, req: MiniappRequest) {

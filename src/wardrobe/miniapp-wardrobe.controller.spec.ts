@@ -98,6 +98,41 @@ describe('MiniappWardrobeController', () => {
     );
   });
 
+  it('reads miniapp form data from multipart file fields when body is empty', async () => {
+    const { controller, garmentService, req } = makeController();
+    const upload = {
+      mimetype: 'image/jpeg',
+      fields: {
+        name: { value: '白T' },
+        category: { value: 'T袖' },
+        color: { value: '白色' },
+        season: { value: '夏天' },
+        brand: { value: '' },
+        size: { value: 'M' },
+        notes: { value: '' },
+      },
+    };
+    req.file = jest.fn(async () => upload);
+    garmentService.create.mockResolvedValue(makeGarment({ id: 10 }));
+
+    await expect(controller.create({}, req)).resolves.toEqual({
+      item: expect.objectContaining({ id: 10 }),
+    });
+    expect(garmentService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '白T',
+        category: 'T袖',
+        color: '白色',
+        seasons: '夏天',
+        brand: undefined,
+        size: 'M',
+        notes: undefined,
+        photo: upload,
+      }),
+      undefined,
+    );
+  });
+
   it('rejects non-image uploads before creating a garment', async () => {
     const { controller, garmentService, req } = makeController();
     req.file = jest.fn(async () => ({ mimetype: 'text/plain' }));
