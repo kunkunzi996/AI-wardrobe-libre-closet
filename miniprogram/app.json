@@ -1,5 +1,10 @@
 {
-  "pages": ["pages/webview/index"],
+  "pages": [
+    "pages/wardrobe/index",
+    "pages/garment-form/index",
+    "pages/garment-detail/index",
+    "pages/webview/index"
+  ],
   "window": {
     "navigationBarTitleText": "AI 衣橱",
     "navigationBarBackgroundColor": "#ffffff",

@@ -7,17 +7,27 @@ const requiredFiles = [
   'project.config.json',
   'miniprogram/app.json',
   'miniprogram/app.wxss',
-  'miniprogram/pages/webview/index.json',
-  'miniprogram/pages/webview/index.wxml',
-  'miniprogram/pages/webview/index.wxss',
-  'miniprogram/pages/webview/index.js',
-  'docs/wechat-miniapp-webview.md',
+  'miniprogram/utils/api.js',
+  'miniprogram/pages/wardrobe/index.json',
+  'miniprogram/pages/wardrobe/index.wxml',
+  'miniprogram/pages/wardrobe/index.wxss',
+  'miniprogram/pages/wardrobe/index.js',
+  'miniprogram/pages/garment-form/index.json',
+  'miniprogram/pages/garment-form/index.wxml',
+  'miniprogram/pages/garment-form/index.wxss',
+  'miniprogram/pages/garment-form/index.js',
+  'miniprogram/pages/garment-detail/index.json',
+  'miniprogram/pages/garment-detail/index.wxml',
+  'miniprogram/pages/garment-detail/index.wxss',
+  'miniprogram/pages/garment-detail/index.js',
 ];
 
 const jsonFiles = [
   'project.config.json',
   'miniprogram/app.json',
-  'miniprogram/pages/webview/index.json',
+  'miniprogram/pages/wardrobe/index.json',
+  'miniprogram/pages/garment-form/index.json',
+  'miniprogram/pages/garment-detail/index.json',
 ];
 
 function readRequiredFile(relativePath) {
@@ -58,27 +68,48 @@ if (!projectConfig.appid) {
 }
 
 const appJson = parseJson('miniprogram/app.json');
-if (!Array.isArray(appJson.pages) || !appJson.pages.includes('pages/webview/index')) {
-  throw new Error('miniprogram/app.json must include pages/webview/index');
+const expectedPages = [
+  'pages/wardrobe/index',
+  'pages/garment-form/index',
+  'pages/garment-detail/index',
+];
+if (!Array.isArray(appJson.pages)) {
+  throw new Error('miniprogram/app.json must define pages');
 }
 
-const wxml = readRequiredFile('miniprogram/pages/webview/index.wxml');
-if (!wxml.includes('<web-view') || !wxml.includes('targetUrl')) {
-  throw new Error('miniprogram/pages/webview/index.wxml must render a web-view bound to targetUrl');
+for (const page of expectedPages) {
+  if (!appJson.pages.includes(page)) {
+    throw new Error(`miniprogram/app.json must include ${page}`);
+  }
 }
 
-const pageJs = readRequiredFile('miniprogram/pages/webview/index.js');
-if (!pageJs.includes('WEB_APP_URL') || !pageJs.includes('targetUrl')) {
-  throw new Error('miniprogram/pages/webview/index.js must define WEB_APP_URL and expose targetUrl');
+if (appJson.pages[0] !== 'pages/wardrobe/index') {
+  throw new Error('miniprogram/app.json must open the native wardrobe page first');
 }
 
-const webAppUrlMatch = pageJs.match(/WEB_APP_URL\s*=\s*['"]([^'"]+)['"]/);
-if (!webAppUrlMatch) {
-  throw new Error('miniprogram/pages/webview/index.js must configure WEB_APP_URL');
+const apiJs = readRequiredFile('miniprogram/utils/api.js');
+const apiBaseMatch = apiJs.match(/API_BASE_URL\s*=\s*['"]([^'"]+)['"]/);
+if (!apiBaseMatch) {
+  throw new Error('miniprogram/utils/api.js must configure API_BASE_URL');
 }
 
-if (!webAppUrlMatch[1].startsWith('https://')) {
-  throw new Error('WEB_APP_URL must be an HTTPS URL for WeChat web-view');
+if (apiBaseMatch[1] !== 'https://aimatchwear.asia') {
+  throw new Error('API_BASE_URL must be https://aimatchwear.asia');
 }
 
-console.log('Mini-program shell validation passed.');
+const wardrobeWxml = readRequiredFile('miniprogram/pages/wardrobe/index.wxml');
+if (!wardrobeWxml.includes('garments') || !wardrobeWxml.includes('goToAdd')) {
+  throw new Error('wardrobe page must render garments and expose goToAdd');
+}
+
+const formWxml = readRequiredFile('miniprogram/pages/garment-form/index.wxml');
+if (!formWxml.includes('choosePhoto') || !formWxml.includes('submitGarment')) {
+  throw new Error('garment form page must choose a photo and submit a garment');
+}
+
+const detailWxml = readRequiredFile('miniprogram/pages/garment-detail/index.wxml');
+if (!detailWxml.includes('garment') || !detailWxml.includes('deleteGarment')) {
+  throw new Error('garment detail page must render garment data and delete action');
+}
+
+console.log('Native mini-program validation passed.');

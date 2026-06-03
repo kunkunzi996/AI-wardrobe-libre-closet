@@ -1,0 +1,19 @@
+<view class="page">
+  <view wx:if="{{error}}" class="notice">{{error}}</view>
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view wx:if="{{garment}}" class="detail">
+    <image wx:if="{{garment.photoUrl}}" class="photo" src="{{garment.photoUrl}}" mode="aspectFill" />
+    <view class="info">
+      <text class="name">{{garment.name || garment.categoryLabel}}</text>
+      <view class="row"><text>分类</text><text>{{garment.categoryLabel}}</text></view>
+      <view class="row"><text>颜色</text><text>{{garment.colorLabel}}</text></view>
+      <view class="row"><text>状态</text><text>{{garment.statusLabel}}</text></view>
+      <view class="row"><text>季节</text><text>{{garment.season || '-'}}</text></view>
+      <view class="row"><text>品牌</text><text>{{garment.brand || '-'}}</text></view>
+      <view class="row"><text>尺码</text><text>{{garment.size || '-'}}</text></view>
+      <view class="notes">{{garment.notes || '暂无备注'}}</view>
+    </view>
+    <button class="danger" bindtap="deleteGarment">删除衣物</button>
+  </view>
+</view>

@@ -1,0 +1,41 @@
+<view class="page">
+  <view class="photo-picker" bindtap="choosePhoto">
+    <image wx:if="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="preview" />
+    <view wx:else class="pick-placeholder">选择衣物图片</view>
+  </view>
+
+  <view wx:if="{{error}}" class="notice">{{error}}</view>
+
+  <view class="form">
+    <label class="field">
+      <text>名称</text>
+      <input value="{{form.name}}" data-field="name" bindinput="onInput" placeholder="例如：黑色外套" />
+    </label>
+    <label class="field">
+      <text>分类 *</text>
+      <input value="{{form.category}}" data-field="category" bindinput="onInput" placeholder="tops / outerwear" />
+    </label>
+    <label class="field">
+      <text>颜色</text>
+      <input value="{{form.color}}" data-field="color" bindinput="onInput" placeholder="black / white" />
+    </label>
+    <label class="field">
+      <text>季节</text>
+      <input value="{{form.season}}" data-field="season" bindinput="onInput" placeholder="spring / summer / winter" />
+    </label>
+    <label class="field">
+      <text>品牌</text>
+      <input value="{{form.brand}}" data-field="brand" bindinput="onInput" placeholder="可不填" />
+    </label>
+    <label class="field">
+      <text>尺码</text>
+      <input value="{{form.size}}" data-field="size" bindinput="onInput" placeholder="S / M / L" />
+    </label>
+    <label class="field">
+      <text>备注</text>
+      <textarea value="{{form.notes}}" data-field="notes" bindinput="onInput" placeholder="可不填" />
+    </label>
+  </view>
+
+  <button class="submit" loading="{{submitting}}" bindtap="submitGarment">保存衣物</button>
+</view>

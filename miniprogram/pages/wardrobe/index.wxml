@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="hero">
+    <text class="eyebrow">Libre Closet</text>
+    <text class="title">AI 衣橱</text>
+    <text class="subtitle">管理你的第一批衣物，先把衣橱跑通。</text>
+  </view>
+
+  <view wx:if="{{error}}" class="notice">{{error}}</view>
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view wx:elif="{{garments.length === 0}}" class="empty">
+    <text class="empty-title">还没有衣物</text>
+    <text class="empty-text">先添加第一件衣物，小程序就能开始显示你的衣橱。</text>
+    <button class="primary" bindtap="goToAdd">添加第一件衣物</button>
+  </view>
+
+  <view wx:else class="grid">
+    <view
+      wx:for="{{garments}}"
+      wx:key="id"
+      class="card"
+      data-id="{{item.id}}"
+      bindtap="goToDetail"
+    >
+      <image wx:if="{{item.photoUrl}}" class="photo" src="{{item.photoUrl}}" mode="aspectFill" />
+      <view wx:else class="photo placeholder">暂无图片</view>
+      <text class="name">{{item.name || item.categoryLabel}}</text>
+      <text class="meta">{{item.categoryLabel}} · {{item.colorLabel}}</text>
+    </view>
+  </view>
+
+  <button class="fab" bindtap="goToAdd">+</button>
+</view>
