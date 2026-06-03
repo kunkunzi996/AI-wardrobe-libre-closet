@@ -17,6 +17,7 @@ RUN npm ci
 COPY src ./src
 COPY views ./views
 COPY public ./public
+COPY scripts ./scripts
 COPY tsconfig*.json ./
 COPY nest-cli.json .
 COPY tailwind.config.js .
