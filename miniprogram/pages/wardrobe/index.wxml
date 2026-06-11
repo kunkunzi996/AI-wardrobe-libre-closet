@@ -5,10 +5,14 @@
     <text class="subtitle">管理你的第一批衣物，先把衣橱跑通。</text>
   </view>
 
-  <view wx:if="{{error}}" class="notice">{{error}}</view>
+  <view wx:if="{{error}}" class="notice error-card">
+    <text class="error-title">服务器连接失败</text>
+    <text class="error-text">{{error}}</text>
+    <button class="retry" loading="{{loading}}" bindtap="retryLoad">重试</button>
+  </view>
   <view wx:if="{{loading}}" class="loading">加载中...</view>
 
-  <view wx:elif="{{garments.length === 0}}" class="empty">
+  <view wx:elif="{{!error && garments.length === 0}}" class="empty">
     <text class="empty-title">还没有衣物</text>
     <text class="empty-text">先添加第一件衣物，小程序就能开始显示你的衣橱。</text>
     <button class="primary" bindtap="goToAdd">添加第一件衣物</button>

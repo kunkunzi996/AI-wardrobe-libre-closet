@@ -21,6 +21,10 @@ Page({
     this.loadGarments().finally(() => wx.stopPullDownRefresh());
   },
 
+  retryLoad() {
+    this.loadGarments();
+  },
+
   async loadGarments() {
     this.setData({ loading: true, error: '' });
     try {

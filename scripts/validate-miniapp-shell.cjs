@@ -101,6 +101,9 @@ const wardrobeWxml = readRequiredFile('miniprogram/pages/wardrobe/index.wxml');
 if (!wardrobeWxml.includes('garments') || !wardrobeWxml.includes('goToAdd')) {
   throw new Error('wardrobe page must render garments and expose goToAdd');
 }
+if (!wardrobeWxml.includes('retryLoad')) {
+  throw new Error('wardrobe page must expose retryLoad for server connection failures');
+}
 
 const formWxml = readRequiredFile('miniprogram/pages/garment-form/index.wxml');
 if (!formWxml.includes('choosePhoto') || !formWxml.includes('submitGarment')) {
