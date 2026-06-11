@@ -11,18 +11,24 @@
       <text>名称</text>
       <input value="{{form.name}}" data-field="name" bindinput="onInput" placeholder="例如：黑色外套" />
     </label>
-    <label class="field">
+    <view class="field">
       <text>分类 *</text>
-      <input value="{{form.category}}" data-field="category" bindinput="onInput" placeholder="tops / outerwear" />
-    </label>
-    <label class="field">
+      <picker range="{{categoryOptions}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{categoryLabel}}</view>
+      </picker>
+    </view>
+    <view class="field">
       <text>颜色</text>
-      <input value="{{form.color}}" data-field="color" bindinput="onInput" placeholder="black / white" />
-    </label>
-    <label class="field">
+      <picker range="{{colorOptions}}" range-key="label" value="{{colorIndex}}" bindchange="onColorChange">
+        <view class="picker-value">{{colorLabel}}</view>
+      </picker>
+    </view>
+    <view class="field">
       <text>季节</text>
-      <input value="{{form.season}}" data-field="season" bindinput="onInput" placeholder="spring / summer / winter" />
-    </label>
+      <picker range="{{seasonOptions}}" range-key="label" value="{{seasonIndex}}" bindchange="onSeasonChange">
+        <view class="picker-value">{{seasonLabel}}</view>
+      </picker>
+    </view>
     <label class="field">
       <text>品牌</text>
       <input value="{{form.brand}}" data-field="brand" bindinput="onInput" placeholder="可不填" />

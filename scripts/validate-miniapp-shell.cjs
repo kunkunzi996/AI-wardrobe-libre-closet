@@ -106,6 +106,13 @@ const formWxml = readRequiredFile('miniprogram/pages/garment-form/index.wxml');
 if (!formWxml.includes('choosePhoto') || !formWxml.includes('submitGarment')) {
   throw new Error('garment form page must choose a photo and submit a garment');
 }
+if (
+  !formWxml.includes('onCategoryChange') ||
+  !formWxml.includes('onColorChange') ||
+  !formWxml.includes('onSeasonChange')
+) {
+  throw new Error('garment form page must expose category, color, and season pickers');
+}
 
 const detailWxml = readRequiredFile('miniprogram/pages/garment-detail/index.wxml');
 if (!detailWxml.includes('garment') || !detailWxml.includes('deleteGarment')) {

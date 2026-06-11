@@ -50,7 +50,8 @@
 }
 
 input,
-textarea {
+textarea,
+.picker-value {
   width: 100%;
   margin-top: 10rpx;
   padding: 18rpx 0;
@@ -62,6 +63,10 @@ textarea {
 
 textarea {
   min-height: 130rpx;
+}
+
+.picker-value {
+  box-sizing: border-box;
 }
 
 .submit {
