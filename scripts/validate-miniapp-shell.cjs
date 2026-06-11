@@ -121,5 +121,11 @@ const detailWxml = readRequiredFile('miniprogram/pages/garment-detail/index.wxml
 if (!detailWxml.includes('garment') || !detailWxml.includes('deleteGarment')) {
   throw new Error('garment detail page must render garment data and delete action');
 }
+if (
+  !detailWxml.includes('goBackToWardrobe') ||
+  !detailWxml.includes('reloadGarment')
+) {
+  throw new Error('garment detail page must expose wardrobe navigation and reload actions');
+}
 
 console.log('Native mini-program validation passed.');

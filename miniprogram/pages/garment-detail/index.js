@@ -26,6 +26,14 @@ Page({
     }
   },
 
+  reloadGarment() {
+    this.loadGarment();
+  },
+
+  goBackToWardrobe() {
+    wx.reLaunch({ url: '/pages/wardrobe/index' });
+  },
+
   deleteGarment() {
     wx.showModal({
       title: '删除衣物',

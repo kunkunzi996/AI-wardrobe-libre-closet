@@ -1,4 +1,8 @@
 <view class="page">
+  <view class="actions">
+    <button class="secondary" bindtap="goBackToWardrobe">返回衣橱</button>
+    <button class="secondary" loading="{{loading}}" bindtap="reloadGarment">重新加载</button>
+  </view>
   <view wx:if="{{error}}" class="notice">{{error}}</view>
   <view wx:if="{{loading}}" class="loading">加载中...</view>
 
