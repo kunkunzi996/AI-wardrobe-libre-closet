@@ -5,6 +5,18 @@
   </view>
 
   <view wx:if="{{error}}" class="notice">{{error}}</view>
+  <view wx:if="{{recognizing}}" class="ai-panel ai-loading">AI正在识别衣服...</view>
+  <view wx:elif="{{aiError}}" class="notice">{{aiError}}</view>
+  <view wx:elif="{{aiDraft}}" class="ai-panel">
+    <text class="ai-title">AI识别建议</text>
+    <view class="ai-tags">
+      <text wx:if="{{form.subcategory}}" class="ai-tag">{{form.subcategory}}</text>
+      <text wx:if="{{form.material}}" class="ai-tag">{{form.material}}</text>
+      <text wx:if="{{form.thickness}}" class="ai-tag">{{form.thickness}}</text>
+      <text wx:for="{{aiDraft.styleTags}}" wx:key="*this" class="ai-tag">{{item}}</text>
+      <text wx:for="{{aiDraft.sceneTags}}" wx:key="*this" class="ai-tag">{{item}}</text>
+    </view>
+  </view>
 
   <view class="form">
     <label class="field">
@@ -29,6 +41,26 @@
         <view class="picker-value">{{seasonLabel}}</view>
       </picker>
     </view>
+    <label class="field">
+      <text>细分</text>
+      <input value="{{form.subcategory}}" data-field="subcategory" bindinput="onInput" placeholder="例如：牛仔裤 / 衬衫" />
+    </label>
+    <label class="field">
+      <text>材质</text>
+      <input value="{{form.material}}" data-field="material" bindinput="onInput" placeholder="例如：牛仔 / 棉" />
+    </label>
+    <label class="field">
+      <text>厚薄</text>
+      <input value="{{form.thickness}}" data-field="thickness" bindinput="onInput" placeholder="例如：偏薄 / 中等 / 偏厚" />
+    </label>
+    <label class="field">
+      <text>风格标签</text>
+      <input value="{{form.styleTags}}" data-field="styleTags" bindinput="onInput" placeholder="例如：休闲、通勤" />
+    </label>
+    <label class="field">
+      <text>场景标签</text>
+      <input value="{{form.sceneTags}}" data-field="sceneTags" bindinput="onInput" placeholder="例如：日常、上班" />
+    </label>
     <label class="field">
       <text>品牌</text>
       <input value="{{form.brand}}" data-field="brand" bindinput="onInput" placeholder="可不填" />

@@ -50,11 +50,39 @@ function uploadGarment(filePath, formData) {
   });
 }
 
+function analyzeGarmentPhoto(filePath) {
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: `${API_BASE_URL}/api/miniapp/garments/analyze`,
+      filePath,
+      name: 'photo',
+      timeout: 180000,
+      success(res) {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(res.data));
+          } catch (error) {
+            reject(new Error('服务器返回格式不正确'));
+          }
+          return;
+        }
+        console.warn('analyzeGarmentPhoto bad status', res.statusCode, res.data);
+        reject(new Error('AI识别失败，请手动填写'));
+      },
+      fail(error) {
+        console.warn('analyzeGarmentPhoto failed', error);
+        reject(new Error('AI识别失败，请手动填写'));
+      },
+    });
+  });
+}
+
 module.exports = {
   API_BASE_URL,
   listGarments: () => request('/api/miniapp/garments'),
   getGarment: (id) => request(`/api/miniapp/garments/${id}`),
   deleteGarment: (id) =>
     request(`/api/miniapp/garments/${id}`, { method: 'DELETE', data: {} }),
+  analyzeGarmentPhoto,
   uploadGarment,
 };

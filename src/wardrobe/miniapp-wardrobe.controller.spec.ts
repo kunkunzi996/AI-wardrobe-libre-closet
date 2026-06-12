@@ -14,6 +14,7 @@ describe('MiniappWardrobeController', () => {
     };
     const garmentVisionService = {
       analyzeImage: jest.fn(),
+      analyzeUpload: jest.fn(),
     };
     garmentVisionService.analyzeImage.mockResolvedValue({
       fileName: 'coat.webp',
@@ -115,32 +116,11 @@ describe('MiniappWardrobeController', () => {
     expect(garmentService.update).not.toHaveBeenCalled();
   });
 
-  it('applies AI garment tags after miniapp upload when vision succeeds', async () => {
+  it('returns an AI editable draft without saving a garment', async () => {
     const { controller, garmentService, garmentVisionService, req } =
       makeController();
     const upload = { mimetype: 'image/jpeg' };
     req.file = jest.fn(async () => upload);
-    garmentService.create.mockResolvedValue(
-      makeGarment({
-        id: 12,
-        category: 'tops',
-        color: GarmentColor.BLACK,
-        seasons: [],
-        notes: undefined,
-      }),
-    );
-    garmentService.update.mockResolvedValue(
-      makeGarment({
-        id: 12,
-        category: 'bottoms',
-        color: GarmentColor.BLUE,
-        seasons: ['夏'],
-        styleTags: ['休闲'],
-        sceneTags: ['日常'],
-        material: '牛仔',
-        notes: '蓝色牛仔裤，适合日常场合。',
-      } as Partial<Garment>),
-    );
     garmentVisionService.analyzeImage.mockResolvedValue({
       fileName: 'coat.webp',
       category: 'bottoms',
@@ -154,13 +134,65 @@ describe('MiniappWardrobeController', () => {
       confidence: 0.86,
       notes: '蓝色牛仔裤，适合日常场合。',
     });
+    garmentVisionService.analyzeUpload.mockResolvedValue({
+      fileName: 'miniapp-upload.webp',
+      category: 'bottoms',
+      subcategory: '牛仔裤',
+      color: GarmentColor.BLUE,
+      seasons: ['夏'],
+      styleTags: ['休闲'],
+      sceneTags: ['日常'],
+      material: '牛仔',
+      thickness: '中等',
+      confidence: 0.86,
+      notes: '蓝色牛仔裤，适合日常场合。',
+    });
+
+    await expect(controller.analyze(req)).resolves.toEqual({
+      draft: expect.objectContaining({
+        category: 'bottoms',
+        color: GarmentColor.BLUE,
+        seasons: ['夏'],
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '牛仔',
+      }),
+    });
+    expect(garmentVisionService.analyzeUpload).toHaveBeenCalledWith(upload);
+    expect(garmentService.create).not.toHaveBeenCalled();
+    expect(garmentService.update).not.toHaveBeenCalled();
+  });
+
+  it('saves user-confirmed AI draft fields from miniapp upload data', async () => {
+    const { controller, garmentService, req } = makeController();
+    const upload = { mimetype: 'image/jpeg' };
+    req.file = jest.fn(async () => upload);
+    garmentService.create.mockResolvedValue(
+      makeGarment({
+        id: 12,
+        category: 'bottoms',
+        color: GarmentColor.BLUE,
+        seasons: ['夏'],
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '牛仔',
+        thickness: '中等',
+      } as Partial<Garment>),
+    );
 
     await expect(
       controller.create(
         {
-          category: 'tops',
-          color: GarmentColor.BLACK,
-          notes: '用户备注',
+          name: '牛仔裤',
+          category: 'bottoms',
+          color: GarmentColor.BLUE,
+          season: '夏',
+          subcategory: '牛仔裤',
+          styleTags: '休闲',
+          sceneTags: '日常',
+          material: '牛仔',
+          thickness: '中等',
+          notes: '用户确认后的备注',
         },
         req,
       ),
@@ -173,24 +205,26 @@ describe('MiniappWardrobeController', () => {
         styleTags: ['休闲'],
         sceneTags: ['日常'],
         material: '牛仔',
+        thickness: '中等',
       }),
     });
-    expect(garmentVisionService.analyzeImage).toHaveBeenCalledWith('coat.webp');
-    expect(garmentService.update).toHaveBeenCalledWith(
-      12,
+    expect(garmentService.create).toHaveBeenCalledWith(
       expect.objectContaining({
         name: '牛仔裤',
         category: 'bottoms',
         color: GarmentColor.BLUE,
-        seasons: ['夏'],
-        styleTags: ['休闲'],
-        sceneTags: ['日常'],
+        seasons: '夏',
+        subcategory: '牛仔裤',
+        styleTags: '休闲',
+        sceneTags: '日常',
         material: '牛仔',
         thickness: '中等',
-        notes: '用户备注\n蓝色牛仔裤，适合日常场合。',
+        notes: '用户确认后的备注',
+        photo: upload,
       }),
       undefined,
     );
+    expect(garmentService.update).not.toHaveBeenCalled();
   });
 
   it('reads miniapp form data from multipart file fields when body is empty', async () => {

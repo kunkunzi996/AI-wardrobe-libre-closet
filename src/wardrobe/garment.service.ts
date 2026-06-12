@@ -353,7 +353,7 @@ export class GarmentService {
 
   private normalizeTags(input?: string | string[]): string[] | undefined {
     if (input == null) return undefined;
-    const values = Array.isArray(input) ? input : input.split(/[,，]/);
+    const values = Array.isArray(input) ? input : input.split(/[,，、]/);
     const tags = values.map((value) => value.trim()).filter(Boolean);
     return tags.length > 0 ? tags : undefined;
   }

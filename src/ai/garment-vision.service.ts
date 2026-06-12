@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import type { MultipartFile } from '@fastify/multipart';
 import { ConfigService } from '@nestjs/config';
 import { buffer } from 'node:stream/consumers';
 import { FileService } from '../file/file-service.abstract';
@@ -63,15 +64,46 @@ export class GarmentVisionService {
   ) {}
 
   async analyzeImage(fileName: string): Promise<GarmentVisionResult> {
-    const apiKey =
-      this.configService.get<string>('QWEN_API_KEY') ??
-      this.configService.get<string>('OPENAI_API_KEY');
-    if (!apiKey) return this.fallback(fileName);
+    if (!this.apiKey()) return this.fallback(fileName);
 
     try {
       const image = await this.fileService.get(fileName);
       if (!image) return this.fallback(fileName);
+      return this.analyzeImageBuffer(fileName, await buffer(image));
+    } catch (error) {
+      this.logger.warn(
+        `AI garment vision failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return this.fallback(fileName);
+    }
+  }
 
+  async analyzeUpload(upload: MultipartFile): Promise<GarmentVisionResult> {
+    const fileName = upload.filename || 'miniapp-upload.webp';
+    if (!this.apiKey()) return this.fallback(fileName);
+
+    try {
+      return this.analyzeImageBuffer(fileName, await buffer(upload.file));
+    } catch (error) {
+      this.logger.warn(
+        `AI garment vision failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return this.fallback(fileName);
+    }
+  }
+
+  private async analyzeImageBuffer(
+    fileName: string,
+    imageBuffer: Buffer,
+  ): Promise<GarmentVisionResult> {
+    const apiKey = this.apiKey();
+    if (!apiKey) return this.fallback(fileName);
+
+    try {
       const response = await this.fetchImpl(
         `${this.apiBaseUrl()}/v1/chat/completions`,
         {
@@ -80,9 +112,7 @@ export class GarmentVisionService {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(
-            this.buildRequest(fileName, await buffer(image)),
-          ),
+          body: JSON.stringify(this.buildRequest(fileName, imageBuffer)),
         },
       );
 
@@ -105,6 +135,13 @@ export class GarmentVisionService {
       );
       return this.fallback(fileName);
     }
+  }
+
+  private apiKey(): string | undefined {
+    return (
+      this.configService.get<string>('QWEN_API_KEY') ??
+      this.configService.get<string>('OPENAI_API_KEY')
+    );
   }
 
   private apiBaseUrl(): string {

@@ -14,7 +14,6 @@ import {
 import type { MultipartFile } from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
 import { GarmentVisionService } from '../ai/garment-vision.service';
-import type { GarmentVisionResult } from '../ai/dto/garment-vision-result.dto';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
@@ -35,6 +34,11 @@ type MiniappCreateBody = {
   brand?: string;
   size?: string;
   notes?: string;
+  subcategory?: string;
+  styleTags?: string;
+  sceneTags?: string;
+  material?: string;
+  thickness?: string;
 };
 
 @UseGuards(ConditionalAuthGuard)
@@ -60,6 +64,13 @@ export class MiniappWardrobeController {
     return { item: this.toViewModel(garment, req) };
   }
 
+  @Post('analyze')
+  async analyze(@Req() req: MiniappRequest) {
+    const photo = await this.readImageUpload(req);
+    const draft = await this.garmentVisionService.analyzeUpload(photo);
+    return { draft };
+  }
+
   @Post()
   async create(@Body() body: MiniappCreateBody = {}, @Req() req: MiniappRequest) {
     const photo = await this.readImageUpload(req);
@@ -75,6 +86,11 @@ export class MiniappWardrobeController {
         category: form.category,
         color: form.color,
         seasons: form.season,
+        subcategory: form.subcategory,
+        styleTags: form.styleTags,
+        sceneTags: form.sceneTags,
+        material: form.material,
+        thickness: form.thickness,
         brand: form.brand,
         size: form.size,
         notes: form.notes,
@@ -82,9 +98,7 @@ export class MiniappWardrobeController {
       },
       this.userId(req),
     );
-
-    const analyzedGarment = await this.applyAiTags(garment, form, req);
-    return { item: this.toViewModel(analyzedGarment, req) };
+    return { item: this.toViewModel(garment, req) };
   }
 
   @Delete(':id')
@@ -128,6 +142,11 @@ export class MiniappWardrobeController {
       brand: this.fieldValue(body.brand, file, 'brand'),
       size: this.fieldValue(body.size, file, 'size'),
       notes: this.fieldValue(body.notes, file, 'notes'),
+      subcategory: this.fieldValue(body.subcategory, file, 'subcategory'),
+      styleTags: this.fieldValue(body.styleTags, file, 'styleTags'),
+      sceneTags: this.fieldValue(body.sceneTags, file, 'sceneTags'),
+      material: this.fieldValue(body.material, file, 'material'),
+      thickness: this.fieldValue(body.thickness, file, 'thickness'),
     };
   }
 
@@ -142,46 +161,6 @@ export class MiniappWardrobeController {
     if (typeof value !== 'string') return undefined;
     const trimmed = value.trim();
     return trimmed ? trimmed : undefined;
-  }
-
-  private async applyAiTags(
-    garment: Garment,
-    form: MiniappCreateBody,
-    req: MiniappRequest,
-  ): Promise<Garment> {
-    const photoFileName = garment.photo?.fileName;
-    if (!photoFileName) return garment;
-
-    const ai = await this.garmentVisionService.analyzeImage(photoFileName);
-    if (!this.hasUsefulAiResult(ai)) return garment;
-
-    return this.garmentService.update(
-      garment.id,
-      {
-        name: form.name || ai.subcategory || garment.name,
-        category: ai.category,
-        color: ai.color,
-        seasons: ai.seasons,
-        styleTags: ai.styleTags,
-        sceneTags: ai.sceneTags,
-        material: ai.material,
-        thickness: ai.thickness,
-        notes: this.mergeNotes(form.notes, ai),
-      },
-      this.userId(req),
-    );
-  }
-
-  private hasUsefulAiResult(ai: GarmentVisionResult): boolean {
-    return ai.confidence > 0;
-  }
-
-  private mergeNotes(
-    notes: string | undefined,
-    ai: GarmentVisionResult,
-  ): string | undefined {
-    const parts = [notes, ai.notes].filter(Boolean);
-    return parts.length ? parts.join('\n') : undefined;
   }
 
   private toViewModel(garment: Garment, req: MiniappRequest) {

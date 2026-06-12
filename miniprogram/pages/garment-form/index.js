@@ -39,6 +39,33 @@ const seasonOptions = [
   { label: '四季', value: 'all-season' },
 ];
 
+const seasonValueMap = {
+  春: 'spring',
+  春天: 'spring',
+  spring: 'spring',
+  夏: 'summer',
+  夏天: 'summer',
+  summer: 'summer',
+  秋: 'autumn',
+  秋天: 'autumn',
+  autumn: 'autumn',
+  fall: 'autumn',
+  冬: 'winter',
+  冬天: 'winter',
+  winter: 'winter',
+  四季: 'all-season',
+  'all-season': 'all-season',
+};
+
+function optionIndex(options, value) {
+  const index = options.findIndex((option) => option.value === value);
+  return index >= 0 ? index : -1;
+}
+
+function listText(value) {
+  return Array.isArray(value) ? value.filter(Boolean).join('、') : '';
+}
+
 Page({
   data: {
     photoPath: '',
@@ -59,7 +86,15 @@ Page({
       brand: '',
       size: '',
       notes: '',
+      subcategory: '',
+      styleTags: '',
+      sceneTags: '',
+      material: '',
+      thickness: '',
     },
+    recognizing: false,
+    aiDraft: null,
+    aiError: '',
     submitting: false,
     error: '',
   },
@@ -83,6 +118,7 @@ Page({
   compressPhoto(filePath) {
     if (!wx.compressImage) {
       this.setData({ photoPath: filePath });
+      this.analyzePhoto(filePath);
       return;
     }
 
@@ -90,11 +126,64 @@ Page({
       src: filePath,
       quality: 70,
       success: (res) => {
-        this.setData({ photoPath: res.tempFilePath || filePath });
+        const nextPath = res.tempFilePath || filePath;
+        this.setData({ photoPath: nextPath });
+        this.analyzePhoto(nextPath);
       },
       fail: () => {
         this.setData({ photoPath: filePath });
+        this.analyzePhoto(filePath);
       },
+    });
+  },
+
+  async analyzePhoto(filePath) {
+    this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
+    try {
+      const data = await api.analyzeGarmentPhoto(filePath);
+      if (this.data.photoPath !== filePath) return;
+      this.applyAiDraft(data.draft || {});
+    } catch (error) {
+      if (this.data.photoPath !== filePath) return;
+      this.setData({ aiError: error.message || 'AI识别失败，请手动填写' });
+    } finally {
+      if (this.data.photoPath === filePath) {
+        this.setData({ recognizing: false });
+      }
+    }
+  },
+
+  applyAiDraft(draft) {
+    const categoryIndex = optionIndex(categoryOptions, draft.category);
+    const colorIndex = optionIndex(colorOptions, draft.color);
+    const seasonValue = seasonValueMap[(draft.seasons || [])[0]] || '';
+    const seasonIndex = optionIndex(seasonOptions, seasonValue);
+    const nextForm = {
+      ...this.data.form,
+      name: this.data.form.name || draft.subcategory || '',
+      subcategory: draft.subcategory || '',
+      styleTags: listText(draft.styleTags),
+      sceneTags: listText(draft.sceneTags),
+      material: draft.material || '',
+      thickness: draft.thickness || '',
+      notes: this.data.form.notes || draft.notes || '',
+    };
+
+    if (categoryIndex >= 0) nextForm.category = categoryOptions[categoryIndex].value;
+    if (colorIndex >= 0) nextForm.color = colorOptions[colorIndex].value;
+    if (seasonIndex >= 0) nextForm.season = seasonOptions[seasonIndex].value;
+
+    this.setData({
+      aiDraft: draft,
+      form: nextForm,
+      categoryIndex: categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
+      categoryLabel:
+        categoryIndex >= 0 ? categoryOptions[categoryIndex].label : this.data.categoryLabel,
+      colorIndex: colorIndex >= 0 ? colorIndex : this.data.colorIndex,
+      colorLabel: colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
+      seasonIndex: seasonIndex >= 0 ? seasonIndex : this.data.seasonIndex,
+      seasonLabel:
+        seasonIndex >= 0 ? seasonOptions[seasonIndex].label : this.data.seasonLabel,
     });
   },
 

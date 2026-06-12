@@ -34,6 +34,39 @@
   color: #a23e20;
 }
 
+.ai-panel {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ai-loading {
+  color: #5d685f;
+}
+
+.ai-title {
+  display: block;
+  margin-bottom: 18rpx;
+  color: #26362d;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.ai-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.ai-tag {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #edf4ef;
+  color: #26362d;
+  font-size: 24rpx;
+}
+
 .form {
   margin-top: 28rpx;
   padding: 28rpx;
