@@ -54,6 +54,7 @@ module.exports = {
   API_BASE_URL,
   listGarments: () => request('/api/miniapp/garments'),
   getGarment: (id) => request(`/api/miniapp/garments/${id}`),
-  deleteGarment: (id) => request(`/api/miniapp/garments/${id}`, { method: 'DELETE' }),
+  deleteGarment: (id) =>
+    request(`/api/miniapp/garments/${id}`, { method: 'DELETE', data: {} }),
   uploadGarment,
 };
