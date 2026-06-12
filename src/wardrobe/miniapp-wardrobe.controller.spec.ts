@@ -133,6 +133,35 @@ describe('MiniappWardrobeController', () => {
     );
   });
 
+  it('reads miniapp form data when Fastify does not provide a body object', async () => {
+    const { controller, garmentService, req } = makeController();
+    const upload = {
+      mimetype: 'image/jpeg',
+      fields: {
+        name: { value: 'Blue Pants' },
+        category: { value: 'bottoms' },
+        color: { value: GarmentColor.BLUE },
+        season: { value: 'summer' },
+      },
+    };
+    req.file = jest.fn(async () => upload);
+    garmentService.create.mockResolvedValue(makeGarment({ id: 11 }));
+
+    await expect(controller.create(undefined as any, req)).resolves.toEqual({
+      item: expect.objectContaining({ id: 11 }),
+    });
+    expect(garmentService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Blue Pants',
+        category: 'bottoms',
+        color: GarmentColor.BLUE,
+        seasons: 'summer',
+        photo: upload,
+      }),
+      undefined,
+    );
+  });
+
   it('rejects non-image uploads before creating a garment', async () => {
     const { controller, garmentService, req } = makeController();
     req.file = jest.fn(async () => ({ mimetype: 'text/plain' }));

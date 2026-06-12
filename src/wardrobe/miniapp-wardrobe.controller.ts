@@ -56,7 +56,7 @@ export class MiniappWardrobeController {
   }
 
   @Post()
-  async create(@Body() body: MiniappCreateBody, @Req() req: MiniappRequest) {
+  async create(@Body() body: MiniappCreateBody = {}, @Req() req: MiniappRequest) {
     const photo = await this.readImageUpload(req);
     const form = this.mergeMultipartFields(body, photo);
 
@@ -108,7 +108,7 @@ export class MiniappWardrobeController {
   }
 
   private mergeMultipartFields(
-    body: MiniappCreateBody,
+    body: MiniappCreateBody = {},
     file: MultipartFile,
   ): MiniappCreateBody {
     return {
