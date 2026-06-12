@@ -71,7 +71,29 @@ Page({
       sourceType: ['album', 'camera'],
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
-        this.setData({ photoPath: file ? file.tempFilePath : '' });
+        if (!file || !file.tempFilePath) {
+          this.setData({ photoPath: '' });
+          return;
+        }
+        this.compressPhoto(file.tempFilePath);
+      },
+    });
+  },
+
+  compressPhoto(filePath) {
+    if (!wx.compressImage) {
+      this.setData({ photoPath: filePath });
+      return;
+    }
+
+    wx.compressImage({
+      src: filePath,
+      quality: 70,
+      success: (res) => {
+        this.setData({ photoPath: res.tempFilePath || filePath });
+      },
+      fail: () => {
+        this.setData({ photoPath: filePath });
       },
     });
   },

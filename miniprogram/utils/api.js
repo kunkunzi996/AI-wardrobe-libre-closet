@@ -27,6 +27,7 @@ function uploadGarment(filePath, formData) {
       filePath,
       name: 'photo',
       formData,
+      timeout: 180000,
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
@@ -36,9 +37,11 @@ function uploadGarment(filePath, formData) {
           }
           return;
         }
+        console.warn('uploadGarment bad status', res.statusCode, res.data);
         reject(new Error('上传失败，请重新选择图片'));
       },
-      fail() {
+      fail(error) {
+        console.warn('uploadGarment failed', error);
         reject(new Error('上传失败，请重新选择图片'));
       },
     });
