@@ -11,9 +11,11 @@ function request(path, options = {}) {
           resolve(res.data);
           return;
         }
+        console.warn('api request bad status', path, res.statusCode, res.data);
         reject(new Error(res.data && res.data.message ? res.data.message : '服务器连接失败，请稍后重试'));
       },
-      fail() {
+      fail(error) {
+        console.warn('api request failed', path, error);
         reject(new Error('服务器连接失败，请稍后重试'));
       },
     });
