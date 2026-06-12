@@ -143,6 +143,7 @@ describe('OutfitAiService', () => {
 
     const requestBody = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(requestBody.messages).toEqual(expect.any(Array));
+    expect(JSON.stringify(requestBody.messages)).toContain('json');
     expect(requestBody.model).toBe('gpt-5.3-chat-latest');
     expect(requestBody.response_format).toEqual({ type: 'json_object' });
     expect(requestBody.max_completion_tokens).toBe(900);

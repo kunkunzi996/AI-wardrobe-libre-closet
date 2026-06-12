@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface OutfitAiGarment {
@@ -36,6 +36,8 @@ export const OUTFIT_AI_FETCH = 'OUTFIT_AI_FETCH';
 
 @Injectable()
 export class OutfitAiService {
+  private readonly logger = new Logger(OutfitAiService.name);
+
   constructor(
     private readonly configService: ConfigService,
     @Optional()
@@ -59,7 +61,12 @@ export class OutfitAiService {
           body: JSON.stringify(this.buildRequest(input)),
         },
       );
-      if (!response.ok) return this.fallback(input);
+      if (!response.ok) {
+        this.logger.warn(
+          `AI outfit recommendation failed: HTTP ${response.status} ${await this.safeErrorBody(response)}`,
+        );
+        return this.fallback(input);
+      }
       const payload = await response.json();
       const parsed = this.parseRecommendations(payload);
       const recommendations = this.guardRecommendations(
@@ -68,7 +75,12 @@ export class OutfitAiService {
       );
       if (!recommendations.length) return this.fallback(input);
       return { source: 'ai', recommendations };
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `AI outfit recommendation failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
       return this.fallback(input);
     }
   }
@@ -97,7 +109,7 @@ export class OutfitAiService {
         {
           role: 'system',
           content:
-            '你是衣橱搭配助手。只能从用户真实衣橱里挑选 garment id，不能编造衣物。返回 JSON，不要返回 Markdown。',
+            '你是衣橱搭配助手。只能从用户真实衣橱里挑选 garment id，不能编造衣物。返回严格 json 对象，不要返回 Markdown。',
         },
         {
           role: 'user',
@@ -120,6 +132,14 @@ export class OutfitAiService {
       response_format: { type: 'json_object' },
       max_completion_tokens: 900,
     };
+  }
+
+  private async safeErrorBody(response: Response): Promise<string> {
+    try {
+      return (await response.text()).slice(0, 500);
+    } catch {
+      return '';
+    }
   }
 
   private textModel(): string {

@@ -124,8 +124,12 @@ export class MiniappOutfitController {
   }
 
   private origin(req: MiniappRequest): string {
-    const protocol = req.protocol ?? 'https';
-    const host = req.host ?? req.headers.host ?? 'aimatchwear.asia';
+    const forwardedProto = req.headers?.['x-forwarded-proto'];
+    const protocol =
+      (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto) ??
+      req.protocol ??
+      'https';
+    const host = req.host ?? req.headers?.host ?? 'aimatchwear.asia';
     return `${protocol}://${host}`;
   }
 
