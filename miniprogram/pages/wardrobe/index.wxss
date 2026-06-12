@@ -34,6 +34,20 @@
   opacity: 0.82;
 }
 
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18rpx;
+  margin-top: 24rpx;
+}
+
+.secondary-action {
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.9);
+  color: #26362d;
+  font-size: 28rpx;
+}
+
 .notice,
 .loading,
 .empty {

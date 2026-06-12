@@ -131,6 +131,7 @@ import { AiModule } from './ai/ai.module';
         QWEN_API_BASE_URL: Joi.string()
           .uri({ scheme: ['http', 'https'] })
           .default('https://dashscope.aliyuncs.com/compatible-mode'),
+        QWEN_TEXT_MODEL: Joi.string().default('qwen3.5-plus'),
         QWEN_VISION_MODEL: Joi.string().default('qwen3.5-plus'),
         AI_API_BASE_URL: Joi.string()
           .uri({ scheme: ['http', 'https'] })

@@ -18,6 +18,7 @@ import { WardrobeRecommendationService } from './recommendation/wardrobe-recomme
 import { OutfitGeneratorService } from './recommendation/outfit-generator.service';
 import { WardrobeAnalyticsService } from './analytics/wardrobe-analytics.service';
 import { AnalyticsController } from './analytics.controller';
+import { MiniappOutfitController } from './miniapp-outfit.controller';
 import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
 
 @Module({
@@ -32,6 +33,7 @@ import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
     OutfitController,
     CalendarController,
     AnalyticsController,
+    MiniappOutfitController,
     MiniappWardrobeController,
   ],
   providers: [

@@ -83,6 +83,11 @@ module.exports = {
   getGarment: (id) => request(`/api/miniapp/garments/${id}`),
   deleteGarment: (id) =>
     request(`/api/miniapp/garments/${id}`, { method: 'DELETE', data: {} }),
+  recommendOutfit: (requestText) =>
+    request('/api/miniapp/outfits/recommend', {
+      method: 'POST',
+      data: { requestText },
+    }),
   analyzeGarmentPhoto,
   uploadGarment,
 };

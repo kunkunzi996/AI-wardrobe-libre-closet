@@ -44,7 +44,7 @@ export class OutfitAiService {
   ) {}
 
   async recommend(input: OutfitAiInput): Promise<OutfitAiResult> {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    const apiKey = this.apiKey();
     if (!apiKey) return this.fallback(input);
 
     try {
@@ -74,10 +74,20 @@ export class OutfitAiService {
   }
 
   private apiBaseUrl(): string {
+    const isQwen = Boolean(this.configService.get<string>('QWEN_API_KEY'));
+    const url = isQwen
+      ? (this.configService.get<string>('QWEN_API_BASE_URL') ??
+        'https://dashscope.aliyuncs.com/compatible-mode')
+      : (this.configService.get<string>('AI_API_BASE_URL') ??
+        'https://api.openai.com');
+    return url.replace(/\/+$/, '');
+  }
+
+  private apiKey(): string | undefined {
     return (
-      this.configService.get<string>('AI_API_BASE_URL') ??
-      'https://api.openai.com'
-    ).replace(/\/+$/, '');
+      this.configService.get<string>('QWEN_API_KEY') ??
+      this.configService.get<string>('OPENAI_API_KEY')
+    );
   }
 
   private buildRequest(input: OutfitAiInput) {
@@ -113,6 +123,11 @@ export class OutfitAiService {
   }
 
   private textModel(): string {
+    if (this.configService.get<string>('QWEN_API_KEY')) {
+      return (
+        this.configService.get<string>('QWEN_TEXT_MODEL') ?? 'qwen3.5-plus'
+      );
+    }
     const configured =
       this.configService.get<string>('AI_TEXT_MODEL') ?? 'gpt-4.1-mini';
     if (configured === 'gpt-5.3') return 'gpt-5.3-chat-latest';

@@ -44,6 +44,10 @@ Page({
     wx.navigateTo({ url: '/pages/garment-form/index' });
   },
 
+  goToOutfit() {
+    wx.navigateTo({ url: '/pages/outfit/index' });
+  },
+
   goToDetail(event) {
     const id = event.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/garment-detail/index?id=${id}` });
