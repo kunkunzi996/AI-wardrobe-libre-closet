@@ -11,11 +11,18 @@
     <view class="info">
       <text class="name">{{garment.name || garment.categoryLabel}}</text>
       <view class="row"><text>分类</text><text>{{garment.categoryLabel}}</text></view>
+      <view wx:if="{{garment.subcategory}}" class="row"><text>细分</text><text>{{garment.subcategory}}</text></view>
       <view class="row"><text>颜色</text><text>{{garment.colorLabel}}</text></view>
       <view class="row"><text>状态</text><text>{{garment.statusLabel}}</text></view>
       <view class="row"><text>季节</text><text>{{garment.season || '-'}}</text></view>
+      <view wx:if="{{garment.material}}" class="row"><text>材质</text><text>{{garment.material}}</text></view>
+      <view wx:if="{{garment.thickness}}" class="row"><text>厚薄</text><text>{{garment.thickness}}</text></view>
       <view class="row"><text>品牌</text><text>{{garment.brand || '-'}}</text></view>
       <view class="row"><text>尺码</text><text>{{garment.size || '-'}}</text></view>
+      <view wx:if="{{garment.styleTags.length || garment.sceneTags.length}}" class="tag-panel">
+        <text wx:for="{{garment.styleTags}}" wx:key="*this" class="tag">{{item}}</text>
+        <text wx:for="{{garment.sceneTags}}" wx:key="*this" class="tag">{{item}}</text>
+      </view>
       <view class="notes">{{garment.notes || '暂无备注'}}</view>
     </view>
     <button class="danger" bindtap="deleteGarment">删除衣物</button>

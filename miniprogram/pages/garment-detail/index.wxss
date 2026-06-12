@@ -51,9 +51,27 @@
 .row {
   display: flex;
   justify-content: space-between;
+  gap: 24rpx;
   padding: 18rpx 0;
   border-top: 1rpx solid #e7dfd3;
   color: #5d685f;
+}
+
+.tag-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e7dfd3;
+}
+
+.tag {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: #edf4ef;
+  color: #26362d;
+  font-size: 24rpx;
 }
 
 .notes {

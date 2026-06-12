@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import type { MultipartFile } from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
+import { GarmentVisionService } from '../ai/garment-vision.service';
+import type { GarmentVisionResult } from '../ai/dto/garment-vision-result.dto';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
@@ -38,7 +40,10 @@ type MiniappCreateBody = {
 @UseGuards(ConditionalAuthGuard)
 @Controller('api/miniapp/garments')
 export class MiniappWardrobeController {
-  constructor(private readonly garmentService: GarmentService) {}
+  constructor(
+    private readonly garmentService: GarmentService,
+    private readonly garmentVisionService: GarmentVisionService,
+  ) {}
 
   @Get()
   async index(@Req() req: MiniappRequest) {
@@ -77,7 +82,9 @@ export class MiniappWardrobeController {
       },
       this.userId(req),
     );
-    return { item: this.toViewModel(garment, req) };
+
+    const analyzedGarment = await this.applyAiTags(garment, form, req);
+    return { item: this.toViewModel(analyzedGarment, req) };
   }
 
   @Delete(':id')
@@ -137,6 +144,46 @@ export class MiniappWardrobeController {
     return trimmed ? trimmed : undefined;
   }
 
+  private async applyAiTags(
+    garment: Garment,
+    form: MiniappCreateBody,
+    req: MiniappRequest,
+  ): Promise<Garment> {
+    const photoFileName = garment.photo?.fileName;
+    if (!photoFileName) return garment;
+
+    const ai = await this.garmentVisionService.analyzeImage(photoFileName);
+    if (!this.hasUsefulAiResult(ai)) return garment;
+
+    return this.garmentService.update(
+      garment.id,
+      {
+        name: form.name || ai.subcategory || garment.name,
+        category: ai.category,
+        color: ai.color,
+        seasons: ai.seasons,
+        styleTags: ai.styleTags,
+        sceneTags: ai.sceneTags,
+        material: ai.material,
+        thickness: ai.thickness,
+        notes: this.mergeNotes(form.notes, ai),
+      },
+      this.userId(req),
+    );
+  }
+
+  private hasUsefulAiResult(ai: GarmentVisionResult): boolean {
+    return ai.confidence > 0;
+  }
+
+  private mergeNotes(
+    notes: string | undefined,
+    ai: GarmentVisionResult,
+  ): string | undefined {
+    const parts = [notes, ai.notes].filter(Boolean);
+    return parts.length ? parts.join('\n') : undefined;
+  }
+
   private toViewModel(garment: Garment, req: MiniappRequest) {
     const photoFileName = garment.photo?.fileName;
     return {
@@ -149,6 +196,12 @@ export class MiniappWardrobeController {
       status: garment.status,
       statusLabel: this.statusLabel(garment.status),
       season: garment.seasons?.[0] ?? '',
+      seasons: garment.seasons ?? [],
+      subcategory: garment.subcategory ?? '',
+      styleTags: garment.styleTags ?? [],
+      sceneTags: garment.sceneTags ?? [],
+      material: garment.material ?? '',
+      thickness: garment.thickness ?? '',
       brand: garment.brand ?? '',
       size: garment.size ?? '',
       notes: garment.notes ?? '',

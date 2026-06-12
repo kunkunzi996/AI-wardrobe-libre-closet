@@ -9,12 +9,28 @@ describe('MiniappWardrobeController', () => {
       findAll: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
       remove: jest.fn(),
     };
-    const controller = new MiniappWardrobeController(garmentService as any);
+    const garmentVisionService = {
+      analyzeImage: jest.fn(),
+    };
+    garmentVisionService.analyzeImage.mockResolvedValue({
+      fileName: 'coat.webp',
+      category: 'tops',
+      seasons: [],
+      styleTags: [],
+      sceneTags: [],
+      confidence: 0,
+      notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
+    });
+    const controller = new MiniappWardrobeController(
+      garmentService as any,
+      garmentVisionService as any,
+    );
     const req = { protocol: 'https', host: 'aimatchwear.asia' } as any;
 
-    return { controller, garmentService, req };
+    return { controller, garmentService, garmentVisionService, req };
   };
 
   const makeGarment = (overrides: Partial<Garment> = {}) =>
@@ -93,6 +109,85 @@ describe('MiniappWardrobeController', () => {
         size: 'S',
         notes: 'Office',
         photo: upload,
+      }),
+      undefined,
+    );
+    expect(garmentService.update).not.toHaveBeenCalled();
+  });
+
+  it('applies AI garment tags after miniapp upload when vision succeeds', async () => {
+    const { controller, garmentService, garmentVisionService, req } =
+      makeController();
+    const upload = { mimetype: 'image/jpeg' };
+    req.file = jest.fn(async () => upload);
+    garmentService.create.mockResolvedValue(
+      makeGarment({
+        id: 12,
+        category: 'tops',
+        color: GarmentColor.BLACK,
+        seasons: [],
+        notes: undefined,
+      }),
+    );
+    garmentService.update.mockResolvedValue(
+      makeGarment({
+        id: 12,
+        category: 'bottoms',
+        color: GarmentColor.BLUE,
+        seasons: ['夏'],
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '牛仔',
+        notes: '蓝色牛仔裤，适合日常场合。',
+      } as Partial<Garment>),
+    );
+    garmentVisionService.analyzeImage.mockResolvedValue({
+      fileName: 'coat.webp',
+      category: 'bottoms',
+      subcategory: '牛仔裤',
+      color: GarmentColor.BLUE,
+      seasons: ['夏'],
+      styleTags: ['休闲'],
+      sceneTags: ['日常'],
+      material: '牛仔',
+      thickness: '中等',
+      confidence: 0.86,
+      notes: '蓝色牛仔裤，适合日常场合。',
+    });
+
+    await expect(
+      controller.create(
+        {
+          category: 'tops',
+          color: GarmentColor.BLACK,
+          notes: '用户备注',
+        },
+        req,
+      ),
+    ).resolves.toEqual({
+      item: expect.objectContaining({
+        id: 12,
+        category: 'bottoms',
+        color: GarmentColor.BLUE,
+        season: '夏',
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '牛仔',
+      }),
+    });
+    expect(garmentVisionService.analyzeImage).toHaveBeenCalledWith('coat.webp');
+    expect(garmentService.update).toHaveBeenCalledWith(
+      12,
+      expect.objectContaining({
+        name: '牛仔裤',
+        category: 'bottoms',
+        color: GarmentColor.BLUE,
+        seasons: ['夏'],
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '牛仔',
+        thickness: '中等',
+        notes: '用户备注\n蓝色牛仔裤，适合日常场合。',
       }),
       undefined,
     );
