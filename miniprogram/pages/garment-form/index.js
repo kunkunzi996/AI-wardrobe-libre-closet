@@ -151,33 +151,41 @@ Page({
     });
   },
 
-  async analyzePhoto(filePath) {
+  analyzePhoto(filePath) {
     if (this.data.isEdit) return;
+    const page = this;
     this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
-    try {
-      const data = await api.analyzeGarmentPhoto(filePath);
-      if (this.data.photoPath !== filePath) return;
-      this.applyAiDraft(data.draft || {});
-    } catch (error) {
-      if (this.data.photoPath !== filePath) return;
-      this.setData({ aiError: error.message || 'AI识别失败，请手动填写' });
-    } finally {
-      if (this.data.photoPath === filePath) {
-        this.setData({ recognizing: false });
-      }
-    }
+    api
+      .analyzeGarmentPhoto(filePath)
+      .then(function (data) {
+        if (page.data.photoPath !== filePath) return;
+        page.applyAiDraft(data.draft || {});
+      })
+      .catch(function (error) {
+        if (page.data.photoPath !== filePath) return;
+        page.setData({ aiError: error.message || 'AI识别失败，请手动填写' });
+      })
+      .finally(function () {
+        if (page.data.photoPath === filePath) {
+          page.setData({ recognizing: false });
+        }
+      });
   },
 
-  async loadGarmentForEdit(id) {
+  loadGarmentForEdit(id) {
+    const page = this;
     this.setData({ submitting: true, error: '' });
-    try {
-      const data = await api.getGarment(id);
-      this.applyGarment(data.item || {});
-    } catch (error) {
-      this.setData({ error: error.message || '衣物加载失败，请稍后重试' });
-    } finally {
-      this.setData({ submitting: false });
-    }
+    api
+      .getGarment(id)
+      .then(function (data) {
+        page.applyGarment(data.item || {});
+      })
+      .catch(function (error) {
+        page.setData({ error: error.message || '衣物加载失败，请稍后重试' });
+      })
+      .finally(function () {
+        page.setData({ submitting: false });
+      });
   },
 
   applyGarment(garment) {
@@ -249,7 +257,9 @@ Page({
 
   onInput(event) {
     const field = event.currentTarget.dataset.field;
-    this.setData({ [`form.${field}`]: event.detail.value });
+    const nextData = {};
+    nextData['form.' + field] = event.detail.value;
+    this.setData(nextData);
   },
 
   onCategoryChange(event) {
@@ -279,7 +289,7 @@ Page({
     });
   },
 
-  async submitGarment() {
+  submitGarment() {
     if (!this.data.isEdit && !this.data.photoPath) {
       this.setData({ error: '请先选择衣物图片' });
       return;
@@ -289,19 +299,22 @@ Page({
       return;
     }
 
+    const page = this;
+    const saveTask = this.data.isEdit
+      ? api.updateGarment(this.data.id, this.data.form)
+      : api.uploadGarment(this.data.photoPath, this.data.form);
+
     this.setData({ submitting: true, error: '' });
-    try {
-      if (this.data.isEdit) {
-        await api.updateGarment(this.data.id, this.data.form);
-      } else {
-        await api.uploadGarment(this.data.photoPath, this.data.form);
-      }
-      wx.showToast({ title: '已保存' });
-      wx.navigateBack();
-    } catch (error) {
-      this.setData({ error: error.message || '上传失败，请重新选择图片' });
-    } finally {
-      this.setData({ submitting: false });
-    }
+    saveTask
+      .then(function () {
+        wx.showToast({ title: '已保存' });
+        wx.navigateBack();
+      })
+      .catch(function (error) {
+        page.setData({ error: error.message || '上传失败，请重新选择图片' });
+      })
+      .finally(function () {
+        page.setData({ submitting: false });
+      });
   },
 });

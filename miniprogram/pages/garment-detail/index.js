@@ -13,17 +13,21 @@ Page({
     this.loadGarment();
   },
 
-  async loadGarment() {
+  loadGarment() {
     if (!this.data.id) return;
+    const page = this;
     this.setData({ loading: true, error: '' });
-    try {
-      const data = await api.getGarment(this.data.id);
-      this.setData({ garment: data.item });
-    } catch (error) {
-      this.setData({ error: error.message || '服务器连接失败，请稍后重试' });
-    } finally {
-      this.setData({ loading: false });
-    }
+    return api
+      .getGarment(this.data.id)
+      .then(function (data) {
+        page.setData({ garment: data.item });
+      })
+      .catch(function (error) {
+        page.setData({ error: error.message || '服务器连接失败，请稍后重试' });
+      })
+      .finally(function () {
+        page.setData({ loading: false });
+      });
   },
 
   reloadGarment() {
@@ -36,24 +40,27 @@ Page({
 
   goToEdit() {
     if (!this.data.id) return;
-    wx.navigateTo({ url: `/pages/garment-form/index?id=${this.data.id}` });
+    wx.navigateTo({ url: '/pages/garment-form/index?id=' + this.data.id });
   },
 
   deleteGarment() {
+    const page = this;
     wx.showModal({
       title: '删除衣物',
       content: '确定删除这件衣物吗？',
       confirmText: '删除',
       confirmColor: '#d96c3f',
-      success: async (res) => {
+      success(res) {
         if (!res.confirm) return;
-        try {
-          await api.deleteGarment(this.data.id);
-          wx.showToast({ title: '已删除' });
-          wx.navigateBack();
-        } catch (error) {
-          this.setData({ error: error.message || '服务器连接失败，请稍后重试' });
-        }
+        api
+          .deleteGarment(page.data.id)
+          .then(function () {
+            wx.showToast({ title: '已删除' });
+            wx.navigateBack();
+          })
+          .catch(function (error) {
+            page.setData({ error: error.message || '服务器连接失败，请稍后重试' });
+          });
       },
     });
   },

@@ -19,27 +19,33 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.loadToday().finally(() => wx.stopPullDownRefresh());
+    this.loadToday().finally(function () {
+      wx.stopPullDownRefresh();
+    });
   },
 
   retryLoad() {
     this.loadToday();
   },
 
-  async loadToday() {
+  loadToday() {
     const date = this.todayDate();
+    const page = this;
     this.setData({ loading: true, error: '', date });
-    try {
-      const data = await api.getTodayOutfits(date);
-      this.setData({
-        items: data.items || [],
-        loadedOnce: true,
+    return api
+      .getTodayOutfits(date)
+      .then(function (data) {
+        page.setData({
+          items: data.items || [],
+          loadedOnce: true,
+        });
+      })
+      .catch(function (error) {
+        page.setData({ error: error.message || '今日穿搭加载失败' });
+      })
+      .finally(function () {
+        page.setData({ loading: false });
       });
-    } catch (error) {
-      this.setData({ error: error.message || '今日穿搭加载失败' });
-    } finally {
-      this.setData({ loading: false });
-    }
   },
 
   goToWardrobe() {
@@ -53,7 +59,7 @@ Page({
   goToGarment(event) {
     const id = event.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/garment-detail/index?id=${id}` });
+    wx.navigateTo({ url: '/pages/garment-detail/index?id=' + id });
   },
 
   todayDate() {
@@ -61,6 +67,6 @@ Page({
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return year + '-' + month + '-' + day;
   },
 });
