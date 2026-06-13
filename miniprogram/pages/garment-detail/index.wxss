@@ -83,9 +83,19 @@
   line-height: 1.6;
 }
 
+.edit,
 .danger {
   margin-top: 32rpx;
   border-radius: 999rpx;
+}
+
+.edit {
+  background: #26362d;
+  color: #fff8e8;
+}
+
+.danger {
+  margin-top: 18rpx;
   background: #d96c3f;
   color: #fff;
 }

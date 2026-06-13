@@ -25,6 +25,7 @@
       </view>
       <view class="notes">{{garment.notes || '暂无备注'}}</view>
     </view>
+    <button class="edit" bindtap="goToEdit">编辑衣物</button>
     <button class="danger" bindtap="deleteGarment">删除衣物</button>
   </view>
 </view>

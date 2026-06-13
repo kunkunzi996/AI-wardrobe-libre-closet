@@ -34,6 +34,11 @@ Page({
     wx.reLaunch({ url: '/pages/wardrobe/index' });
   },
 
+  goToEdit() {
+    if (!this.data.id) return;
+    wx.navigateTo({ url: `/pages/garment-form/index?id=${this.data.id}` });
+  },
+
   deleteGarment() {
     wx.showModal({
       title: '删除衣物',

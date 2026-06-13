@@ -12,6 +12,19 @@
   background: #ded7ca;
 }
 
+.readonly-photo {
+  opacity: 0.96;
+}
+
+.edit-banner {
+  margin-bottom: 24rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.9);
+  color: #5d685f;
+  font-size: 26rpx;
+}
+
 .preview {
   width: 100%;
   height: 100%;

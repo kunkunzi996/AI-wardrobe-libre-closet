@@ -68,6 +68,8 @@ function listText(value) {
 
 Page({
   data: {
+    id: '',
+    isEdit: false,
     photoPath: '',
     categoryOptions,
     colorOptions,
@@ -99,7 +101,19 @@ Page({
     error: '',
   },
 
+  onLoad(options) {
+    const id = options.id || '';
+    if (!id) return;
+    this.setData({ id, isEdit: true });
+    wx.setNavigationBarTitle({ title: '编辑衣物' });
+    this.loadGarmentForEdit(id);
+  },
+
   choosePhoto() {
+    if (this.data.isEdit) {
+      wx.showToast({ title: '暂不支持换图', icon: 'none' });
+      return;
+    }
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
@@ -138,6 +152,7 @@ Page({
   },
 
   async analyzePhoto(filePath) {
+    if (this.data.isEdit) return;
     this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
     try {
       const data = await api.analyzeGarmentPhoto(filePath);
@@ -151,6 +166,52 @@ Page({
         this.setData({ recognizing: false });
       }
     }
+  },
+
+  async loadGarmentForEdit(id) {
+    this.setData({ submitting: true, error: '' });
+    try {
+      const data = await api.getGarment(id);
+      this.applyGarment(data.item || {});
+    } catch (error) {
+      this.setData({ error: error.message || '衣物加载失败，请稍后重试' });
+    } finally {
+      this.setData({ submitting: false });
+    }
+  },
+
+  applyGarment(garment) {
+    const categoryIndex = optionIndex(categoryOptions, garment.category);
+    const colorIndex = optionIndex(colorOptions, garment.color);
+    const seasonValue = seasonValueMap[garment.season] || garment.season || '';
+    const seasonIndex = optionIndex(seasonOptions, seasonValue);
+    const nextForm = {
+      name: garment.name || '',
+      category: garment.category || categoryOptions[0].value,
+      color: garment.color || colorOptions[0].value,
+      season: seasonValue,
+      brand: garment.brand || '',
+      size: garment.size || '',
+      notes: garment.notes || '',
+      subcategory: garment.subcategory || '',
+      styleTags: listText(garment.styleTags),
+      sceneTags: listText(garment.sceneTags),
+      material: garment.material || '',
+      thickness: garment.thickness || '',
+    };
+
+    this.setData({
+      photoPath: garment.photoUrl || '',
+      form: nextForm,
+      categoryIndex: categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
+      categoryLabel:
+        categoryIndex >= 0 ? categoryOptions[categoryIndex].label : this.data.categoryLabel,
+      colorIndex: colorIndex >= 0 ? colorIndex : this.data.colorIndex,
+      colorLabel: colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
+      seasonIndex: seasonIndex >= 0 ? seasonIndex : this.data.seasonIndex,
+      seasonLabel:
+        seasonIndex >= 0 ? seasonOptions[seasonIndex].label : this.data.seasonLabel,
+    });
   },
 
   applyAiDraft(draft) {
@@ -220,7 +281,7 @@ Page({
   },
 
   async submitGarment() {
-    if (!this.data.photoPath) {
+    if (!this.data.isEdit && !this.data.photoPath) {
       this.setData({ error: '请先选择衣物图片' });
       return;
     }
@@ -231,7 +292,11 @@ Page({
 
     this.setData({ submitting: true, error: '' });
     try {
-      await api.uploadGarment(this.data.photoPath, this.data.form);
+      if (this.data.isEdit) {
+        await api.updateGarment(this.data.id, this.data.form);
+      } else {
+        await api.uploadGarment(this.data.photoPath, this.data.form);
+      }
       wx.showToast({ title: '已保存' });
       wx.navigateBack();
     } catch (error) {

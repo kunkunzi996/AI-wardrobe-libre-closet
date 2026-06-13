@@ -1,7 +1,9 @@
 <view class="page">
-  <view class="photo-picker" bindtap="choosePhoto">
+  <view wx:if="{{isEdit}}" class="edit-banner">正在编辑衣物信息，第一版暂不支持更换图片。</view>
+
+  <view class="photo-picker {{isEdit ? 'readonly-photo' : ''}}" bindtap="choosePhoto">
     <image wx:if="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="preview" />
-    <view wx:else class="pick-placeholder">选择衣物图片</view>
+    <view wx:else class="pick-placeholder">{{isEdit ? '暂无图片' : '选择衣物图片'}}</view>
   </view>
 
   <view wx:if="{{error}}" class="notice">{{error}}</view>
@@ -75,5 +77,7 @@
     </label>
   </view>
 
-  <button class="submit" loading="{{submitting}}" bindtap="submitGarment">保存衣物</button>
+  <button class="submit" loading="{{submitting}}" bindtap="submitGarment">
+    {{isEdit ? '保存修改' : '保存衣物'}}
+  </button>
 </view>

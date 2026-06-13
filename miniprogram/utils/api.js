@@ -81,6 +81,11 @@ module.exports = {
   API_BASE_URL,
   listGarments: () => request('/api/miniapp/garments'),
   getGarment: (id) => request(`/api/miniapp/garments/${id}`),
+  updateGarment: (id, formData) =>
+    request(`/api/miniapp/garments/${id}`, {
+      method: 'POST',
+      data: formData,
+    }),
   deleteGarment: (id) =>
     request(`/api/miniapp/garments/${id}`, { method: 'DELETE', data: {} }),
   recommendOutfit: (requestText) =>
