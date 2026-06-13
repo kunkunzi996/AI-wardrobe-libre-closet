@@ -227,6 +227,70 @@ describe('MiniappWardrobeController', () => {
     expect(garmentService.update).not.toHaveBeenCalled();
   });
 
+  it('updates miniapp garment text fields without changing photo', async () => {
+    const { controller, garmentService, req } = makeController();
+    garmentService.update.mockResolvedValue(
+      makeGarment({
+        id: 7,
+        name: '白色衬衫',
+        category: 'tops',
+        color: GarmentColor.WHITE,
+        seasons: ['spring'],
+        styleTags: ['通勤'],
+        sceneTags: ['上班'],
+        material: '棉',
+        thickness: '薄款',
+        notes: '编辑后的备注',
+      } as Partial<Garment>),
+    );
+
+    await expect(
+      controller.update(
+        7,
+        {
+          name: '白色衬衫',
+          category: 'tops',
+          color: GarmentColor.WHITE,
+          season: 'spring',
+          styleTags: '通勤',
+          sceneTags: '上班',
+          material: '棉',
+          thickness: '薄款',
+          notes: '编辑后的备注',
+        },
+        req,
+      ),
+    ).resolves.toEqual({
+      item: expect.objectContaining({
+        id: 7,
+        name: '白色衬衫',
+        category: 'tops',
+        color: GarmentColor.WHITE,
+        season: 'spring',
+        styleTags: ['通勤'],
+        sceneTags: ['上班'],
+        material: '棉',
+        thickness: '薄款',
+        photoUrl: 'https://aimatchwear.asia/file/coat.webp',
+      }),
+    });
+    expect(garmentService.update).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        name: '白色衬衫',
+        category: 'tops',
+        color: GarmentColor.WHITE,
+        seasons: 'spring',
+        styleTags: '通勤',
+        sceneTags: '上班',
+        material: '棉',
+        thickness: '薄款',
+        notes: '编辑后的备注',
+      }),
+      undefined,
+    );
+  });
+
   it('reads miniapp form data from multipart file fields when body is empty', async () => {
     const { controller, garmentService, req } = makeController();
     const upload = {

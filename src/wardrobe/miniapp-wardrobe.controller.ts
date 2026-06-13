@@ -101,6 +101,37 @@ export class MiniappWardrobeController {
     return { item: this.toViewModel(garment, req) };
   }
 
+  @Post(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: MiniappCreateBody = {},
+    @Req() req: MiniappRequest,
+  ) {
+    if (!body.category) {
+      throw new BadRequestException('分类不能为空');
+    }
+
+    const garment = await this.garmentService.update(
+      id,
+      {
+        name: body.name,
+        category: body.category,
+        color: body.color,
+        seasons: body.season,
+        subcategory: body.subcategory,
+        styleTags: body.styleTags,
+        sceneTags: body.sceneTags,
+        material: body.material,
+        thickness: body.thickness,
+        brand: body.brand,
+        size: body.size,
+        notes: body.notes,
+      },
+      this.userId(req),
+    );
+    return { item: this.toViewModel(garment, req) };
+  }
+
   @Delete(':id')
   @HttpCode(200)
   async remove(

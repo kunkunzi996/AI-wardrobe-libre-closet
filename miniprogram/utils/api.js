@@ -1,9 +1,10 @@
 const API_BASE_URL = 'https://aimatchwear.asia';
 
-function request(path, options = {}) {
-  return new Promise((resolve, reject) => {
+function request(path, options) {
+  options = options || {};
+  return new Promise(function (resolve, reject) {
     wx.request({
-      url: `${API_BASE_URL}${path}`,
+      url: API_BASE_URL + path,
       method: options.method || 'GET',
       data: options.data,
       success(res) {
@@ -23,12 +24,12 @@ function request(path, options = {}) {
 }
 
 function uploadGarment(filePath, formData) {
-  return new Promise((resolve, reject) => {
+  return new Promise(function (resolve, reject) {
     wx.uploadFile({
-      url: `${API_BASE_URL}/api/miniapp/garments`,
-      filePath,
+      url: API_BASE_URL + '/api/miniapp/garments',
+      filePath: filePath,
       name: 'photo',
-      formData,
+      formData: formData,
       timeout: 180000,
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -51,10 +52,10 @@ function uploadGarment(filePath, formData) {
 }
 
 function analyzeGarmentPhoto(filePath) {
-  return new Promise((resolve, reject) => {
+  return new Promise(function (resolve, reject) {
     wx.uploadFile({
-      url: `${API_BASE_URL}/api/miniapp/garments/analyze`,
-      filePath,
+      url: API_BASE_URL + '/api/miniapp/garments/analyze',
+      filePath: filePath,
       name: 'photo',
       timeout: 180000,
       success(res) {
@@ -78,28 +79,44 @@ function analyzeGarmentPhoto(filePath) {
 }
 
 module.exports = {
-  API_BASE_URL,
-  listGarments: () => request('/api/miniapp/garments'),
-  getGarment: (id) => request(`/api/miniapp/garments/${id}`),
-  deleteGarment: (id) =>
-    request(`/api/miniapp/garments/${id}`, { method: 'DELETE', data: {} }),
-  recommendOutfit: (requestText) =>
-    request('/api/miniapp/outfits/recommend', {
+  API_BASE_URL: API_BASE_URL,
+  listGarments: function () {
+    return request('/api/miniapp/garments');
+  },
+  getGarment: function (id) {
+    return request('/api/miniapp/garments/' + id);
+  },
+  updateGarment: function (id, formData) {
+    return request('/api/miniapp/garments/' + id, {
       method: 'POST',
-      data: { requestText },
-    }),
-  saveDailyOutfit: (plan, date) =>
-    request('/api/miniapp/daily-outfits', {
+      data: formData,
+    });
+  },
+  deleteGarment: function (id) {
+    return request('/api/miniapp/garments/' + id, { method: 'DELETE', data: {} });
+  },
+  recommendOutfit: function (requestText) {
+    return request('/api/miniapp/outfits/recommend', {
+      method: 'POST',
+      data: { requestText: requestText },
+    });
+  },
+  saveDailyOutfit: function (plan, date) {
+    return request('/api/miniapp/daily-outfits', {
       method: 'POST',
       data: {
-        date,
+        date: date,
         title: plan.title,
         reason: plan.reason,
-        garmentIds: (plan.garments || []).map((garment) => garment.id),
+        garmentIds: (plan.garments || []).map(function (garment) {
+          return garment.id;
+        }),
       },
-    }),
-  getTodayOutfits: (date) =>
-    request(`/api/miniapp/daily-outfits/today${date ? `?date=${date}` : ''}`),
-  analyzeGarmentPhoto,
-  uploadGarment,
+    });
+  },
+  getTodayOutfits: function (date) {
+    return request('/api/miniapp/daily-outfits/today' + (date ? '?date=' + date : ''));
+  },
+  analyzeGarmentPhoto: analyzeGarmentPhoto,
+  uploadGarment: uploadGarment,
 };

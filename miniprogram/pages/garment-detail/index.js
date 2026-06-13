@@ -1,5 +1,27 @@
 const api = require('../../utils/api');
 
+const seasonLabelMap = {
+  spring: '春天',
+  summer: '夏天',
+  autumn: '秋天',
+  fall: '秋天',
+  winter: '冬天',
+  'all-season': '四季',
+  春: '春天',
+  夏: '夏天',
+  秋: '秋天',
+  冬: '冬天',
+  四季: '四季',
+};
+
+function withDisplayLabels(garment) {
+  if (!garment) return garment;
+  const nextGarment = Object.assign({}, garment);
+  nextGarment.seasonDisplay =
+    seasonLabelMap[garment.season] || seasonLabelMap[garment.seasonLabel] || garment.seasonLabel || garment.season || '-';
+  return nextGarment;
+}
+
 Page({
   data: {
     id: '',
@@ -13,17 +35,30 @@ Page({
     this.loadGarment();
   },
 
-  async loadGarment() {
-    if (!this.data.id) return;
-    this.setData({ loading: true, error: '' });
-    try {
-      const data = await api.getGarment(this.data.id);
-      this.setData({ garment: data.item });
-    } catch (error) {
-      this.setData({ error: error.message || '服务器连接失败，请稍后重试' });
-    } finally {
-      this.setData({ loading: false });
+  onShow() {
+    if (this.data.loadedOnce) {
+      this.loadGarment();
     }
+  },
+
+  loadGarment() {
+    if (!this.data.id) return;
+    const page = this;
+    this.setData({ loading: true, error: '' });
+    return api
+      .getGarment(this.data.id)
+      .then(function (data) {
+        page.setData({
+          garment: withDisplayLabels(data.item),
+          loadedOnce: true,
+        });
+      })
+      .catch(function (error) {
+        page.setData({ error: error.message || '服务器连接失败，请稍后重试' });
+      })
+      .finally(function () {
+        page.setData({ loading: false });
+      });
   },
 
   reloadGarment() {
@@ -34,21 +69,29 @@ Page({
     wx.reLaunch({ url: '/pages/wardrobe/index' });
   },
 
+  goToEdit() {
+    if (!this.data.id) return;
+    wx.navigateTo({ url: '/pages/garment-form/index?id=' + this.data.id });
+  },
+
   deleteGarment() {
+    const page = this;
     wx.showModal({
       title: '删除衣物',
       content: '确定删除这件衣物吗？',
       confirmText: '删除',
       confirmColor: '#d96c3f',
-      success: async (res) => {
+      success(res) {
         if (!res.confirm) return;
-        try {
-          await api.deleteGarment(this.data.id);
-          wx.showToast({ title: '已删除' });
-          wx.navigateBack();
-        } catch (error) {
-          this.setData({ error: error.message || '服务器连接失败，请稍后重试' });
-        }
+        api
+          .deleteGarment(page.data.id)
+          .then(function () {
+            wx.showToast({ title: '已删除' });
+            wx.navigateBack();
+          })
+          .catch(function (error) {
+            page.setData({ error: error.message || '服务器连接失败，请稍后重试' });
+          });
       },
     });
   },
