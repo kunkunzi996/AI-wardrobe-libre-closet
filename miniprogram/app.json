@@ -13,5 +13,6 @@
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f7f7f5"
   },
+  "lazyCodeLoading": "requiredComponents",
   "style": "v2"
 }
