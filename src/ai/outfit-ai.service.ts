@@ -86,8 +86,7 @@ export class OutfitAiService {
   }
 
   private apiBaseUrl(): string {
-    const isQwen = Boolean(this.configService.get<string>('QWEN_API_KEY'));
-    const url = isQwen
+    const url = this.usesQwen()
       ? (this.configService.get<string>('QWEN_API_BASE_URL') ??
         'https://dashscope.aliyuncs.com/compatible-mode')
       : (this.configService.get<string>('AI_API_BASE_URL') ??
@@ -131,6 +130,7 @@ export class OutfitAiService {
       ],
       response_format: { type: 'json_object' },
       max_completion_tokens: 900,
+      ...(this.usesQwen() ? { enable_thinking: false } : {}),
     };
   }
 
@@ -143,7 +143,7 @@ export class OutfitAiService {
   }
 
   private textModel(): string {
-    if (this.configService.get<string>('QWEN_API_KEY')) {
+    if (this.usesQwen()) {
       return (
         this.configService.get<string>('QWEN_TEXT_MODEL') ?? 'qwen3.5-plus'
       );
@@ -152,6 +152,10 @@ export class OutfitAiService {
       this.configService.get<string>('AI_TEXT_MODEL') ?? 'gpt-4.1-mini';
     if (configured === 'gpt-5.3') return 'gpt-5.3-chat-latest';
     return configured;
+  }
+
+  private usesQwen(): boolean {
+    return Boolean(this.configService.get<string>('QWEN_API_KEY'));
   }
 
   private parseRecommendations(payload: any): {

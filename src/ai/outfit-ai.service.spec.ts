@@ -159,4 +159,51 @@ describe('OutfitAiService', () => {
       ],
     });
   });
+
+  it('disables thinking output for Qwen JSON responses', async () => {
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                recommendations: [
+                  {
+                    title: 'Qwen Plan',
+                    garmentIds: [1, 3],
+                    reason: 'Use wearable garments.',
+                    cautions: [],
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new OutfitAiService(
+      {
+        get: jest.fn((key: string) => {
+          if (key === 'QWEN_API_KEY') return 'test-qwen-key';
+          if (key === 'QWEN_API_BASE_URL') {
+            return 'https://dashscope.aliyuncs.com/compatible-mode';
+          }
+          if (key === 'QWEN_TEXT_MODEL') return 'qwen3.5-plus';
+          return undefined;
+        }),
+      } as any,
+      fetchImpl as any,
+    );
+
+    await service.recommend({
+      requestText: 'commute',
+      availableGarments: garments,
+    });
+
+    const requestBody = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(requestBody.model).toBe('qwen3.5-plus');
+    expect(requestBody.enable_thinking).toBe(false);
+    expect(requestBody.response_format).toEqual({ type: 'json_object' });
+  });
 });
