@@ -20,6 +20,7 @@ import { WardrobeAnalyticsService } from './analytics/wardrobe-analytics.service
 import { AnalyticsController } from './analytics.controller';
 import { MiniappOutfitController } from './miniapp-outfit.controller';
 import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
+import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
     AnalyticsController,
     MiniappOutfitController,
     MiniappWardrobeController,
+    MiniappDailyOutfitController,
   ],
   providers: [
     GarmentService,

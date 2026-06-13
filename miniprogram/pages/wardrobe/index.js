@@ -48,6 +48,10 @@ Page({
     wx.navigateTo({ url: '/pages/outfit/index' });
   },
 
+  goToDaily() {
+    wx.navigateTo({ url: '/pages/daily-outfit/index' });
+  },
+
   goToDetail(event) {
     const id = event.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/garment-detail/index?id=${id}` });

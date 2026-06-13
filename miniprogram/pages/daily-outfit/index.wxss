@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
   padding: 32rpx;
-  background: linear-gradient(180deg, #edf4ef 0%, #f7f2e8 100%);
+  background: linear-gradient(180deg, #eef6f3 0%, #f7f2e8 100%);
   box-sizing: border-box;
 }
 
@@ -14,59 +14,39 @@
 
 .secondary {
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   color: #26362d;
   font-size: 28rpx;
 }
 
-.panel,
-.plan,
+.header,
+.entry,
 .notice,
 .empty {
   padding: 28rpx;
   border-radius: 30rpx;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #7a7469;
+  font-size: 24rpx;
 }
 
 .title {
   display: block;
-  margin-bottom: 20rpx;
   color: #26362d;
-  font-size: 42rpx;
+  font-size: 44rpx;
   font-weight: 800;
-}
-
-.prompt {
-  width: 100%;
-  min-height: 160rpx;
-  padding: 20rpx;
-  border-radius: 22rpx;
-  background: #f7f2e8;
-  color: #26362d;
-  font-size: 30rpx;
-  box-sizing: border-box;
-}
-
-.primary {
-  margin-top: 22rpx;
-  border-radius: 999rpx;
-  background: #26362d;
-  color: #fff8e8;
-}
-
-.save {
-  margin-top: 24rpx;
-  border-radius: 999rpx;
-  background: #de6b3d;
-  color: #fff8e8;
-  font-weight: 700;
 }
 
 .notice,
 .empty,
-.plan {
+.entry,
+.loading {
   margin-top: 24rpx;
-  color: #5d685f;
 }
 
 .error {
@@ -74,26 +54,38 @@
   color: #a23e20;
 }
 
-.plan-title {
+.retry,
+.primary {
+  margin-top: 18rpx;
+  border-radius: 999rpx;
+  background: #26362d;
+  color: #fff8e8;
+}
+
+.loading {
+  color: #5d685f;
+  text-align: center;
+}
+
+.empty-title,
+.empty-text,
+.entry-title,
+.entry-notes {
   display: block;
-  margin-bottom: 14rpx;
+}
+
+.empty-title,
+.entry-title {
   color: #26362d;
   font-size: 34rpx;
   font-weight: 800;
 }
 
-.reason {
-  display: block;
+.empty-text,
+.entry-notes {
+  margin-top: 12rpx;
   color: #5d685f;
   line-height: 1.6;
-}
-
-.cautions {
-  display: grid;
-  gap: 8rpx;
-  margin-top: 18rpx;
-  color: #a36a2f;
-  font-size: 24rpx;
 }
 
 .garment-grid {

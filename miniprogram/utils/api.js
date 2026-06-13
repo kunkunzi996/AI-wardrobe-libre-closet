@@ -88,6 +88,18 @@ module.exports = {
       method: 'POST',
       data: { requestText },
     }),
+  saveDailyOutfit: (plan, date) =>
+    request('/api/miniapp/daily-outfits', {
+      method: 'POST',
+      data: {
+        date,
+        title: plan.title,
+        reason: plan.reason,
+        garmentIds: (plan.garments || []).map((garment) => garment.id),
+      },
+    }),
+  getTodayOutfits: (date) =>
+    request(`/api/miniapp/daily-outfits/today${date ? `?date=${date}` : ''}`),
   analyzeGarmentPhoto,
   uploadGarment,
 };

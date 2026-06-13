@@ -7,6 +7,7 @@
 
   <view class="quick-actions">
     <button class="secondary-action" bindtap="goToOutfit">AI 搭配</button>
+    <button class="secondary-action" bindtap="goToDaily">今日穿搭</button>
     <button class="secondary-action" bindtap="retryLoad">重新加载</button>
   </view>
 

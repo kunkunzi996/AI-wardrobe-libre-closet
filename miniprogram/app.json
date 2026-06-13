@@ -2,6 +2,7 @@
   "pages": [
     "pages/wardrobe/index",
     "pages/outfit/index",
+    "pages/daily-outfit/index",
     "pages/garment-form/index",
     "pages/garment-detail/index",
     "pages/webview/index"

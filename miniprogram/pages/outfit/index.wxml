@@ -1,6 +1,7 @@
 <view class="page">
   <view class="toolbar">
     <button class="secondary" bindtap="goToWardrobe">返回衣橱</button>
+    <button class="secondary" bindtap="goToDaily">今日穿搭</button>
   </view>
 
   <view class="panel">
@@ -42,5 +43,13 @@
         <text class="meta">{{garment.categoryLabel}} · {{garment.colorLabel}}</text>
       </view>
     </view>
+    <button
+      class="save"
+      loading="{{savingIndex === index}}"
+      data-index="{{index}}"
+      bindtap="saveDailyOutfit"
+    >
+      {{savedIndex === index ? '已保存到今日穿搭' : '保存为今日穿搭'}}
+    </button>
   </view>
 </view>
