@@ -219,8 +219,7 @@ Page({
     const colorIndex = optionIndex(colorOptions, draft.color);
     const seasonValue = seasonValueMap[(draft.seasons || [])[0]] || '';
     const seasonIndex = optionIndex(seasonOptions, seasonValue);
-    const nextForm = {
-      ...this.data.form,
+    const nextForm = Object.assign({}, this.data.form, {
       name: this.data.form.name || draft.subcategory || '',
       subcategory: draft.subcategory || '',
       styleTags: listText(draft.styleTags),
@@ -228,7 +227,7 @@ Page({
       material: draft.material || '',
       thickness: draft.thickness || '',
       notes: this.data.form.notes || draft.notes || '',
-    };
+    });
 
     if (categoryIndex >= 0) nextForm.category = categoryOptions[categoryIndex].value;
     if (colorIndex >= 0) nextForm.color = colorOptions[colorIndex].value;
