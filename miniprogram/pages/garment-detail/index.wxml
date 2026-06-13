@@ -14,7 +14,7 @@
       <view wx:if="{{garment.subcategory}}" class="row"><text>细分</text><text>{{garment.subcategory}}</text></view>
       <view class="row"><text>颜色</text><text>{{garment.colorLabel}}</text></view>
       <view class="row"><text>状态</text><text>{{garment.statusLabel}}</text></view>
-      <view class="row"><text>季节</text><text>{{garment.season || '-'}}</text></view>
+      <view class="row"><text>季节</text><text>{{garment.seasonDisplay || '-'}}</text></view>
       <view wx:if="{{garment.material}}" class="row"><text>材质</text><text>{{garment.material}}</text></view>
       <view wx:if="{{garment.thickness}}" class="row"><text>厚薄</text><text>{{garment.thickness}}</text></view>
       <view class="row"><text>品牌</text><text>{{garment.brand || '-'}}</text></view>

@@ -1,5 +1,27 @@
 const api = require('../../utils/api');
 
+const seasonLabelMap = {
+  spring: '春天',
+  summer: '夏天',
+  autumn: '秋天',
+  fall: '秋天',
+  winter: '冬天',
+  'all-season': '四季',
+  春: '春天',
+  夏: '夏天',
+  秋: '秋天',
+  冬: '冬天',
+  四季: '四季',
+};
+
+function withDisplayLabels(garment) {
+  if (!garment) return garment;
+  const nextGarment = Object.assign({}, garment);
+  nextGarment.seasonDisplay =
+    seasonLabelMap[garment.season] || seasonLabelMap[garment.seasonLabel] || garment.seasonLabel || garment.season || '-';
+  return nextGarment;
+}
+
 Page({
   data: {
     id: '',
@@ -13,6 +35,12 @@ Page({
     this.loadGarment();
   },
 
+  onShow() {
+    if (this.data.loadedOnce) {
+      this.loadGarment();
+    }
+  },
+
   loadGarment() {
     if (!this.data.id) return;
     const page = this;
@@ -20,7 +48,10 @@ Page({
     return api
       .getGarment(this.data.id)
       .then(function (data) {
-        page.setData({ garment: data.item });
+        page.setData({
+          garment: withDisplayLabels(data.item),
+          loadedOnce: true,
+        });
       })
       .catch(function (error) {
         page.setData({ error: error.message || '服务器连接失败，请稍后重试' });
