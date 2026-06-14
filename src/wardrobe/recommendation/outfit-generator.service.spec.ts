@@ -142,6 +142,9 @@ describe('OutfitGeneratorService', () => {
       shirt,
       shorts,
     ]);
+    expect(outfitAiService.recommend).toHaveBeenCalledWith(
+      expect.objectContaining({ coreGarmentId: 1 }),
+    );
   });
 
   it('keeps the requested core garment in AI recommendations', async () => {
@@ -180,6 +183,47 @@ describe('OutfitGeneratorService', () => {
 
     expect(result.ai?.recommendations[0].garmentIds).toEqual([1, 2]);
     expect(result.ai?.recommendations[0].garments).toEqual([core, pants]);
+  });
+
+  it('uses local core-based plans when the AI service falls back', async () => {
+    const core = makeGarment({
+      id: 1,
+      name: 'Core shirt',
+      category: 'tops',
+      status: GarmentStatus.Wearable,
+    });
+    const pants = makeGarment({
+      id: 2,
+      name: 'Black pants',
+      category: 'bottoms',
+      status: GarmentStatus.Wearable,
+    });
+    const outfitAiService = {
+      recommend: jest.fn().mockResolvedValue({
+        source: 'fallback',
+        recommendations: [
+          {
+            title: 'Generic fallback',
+            garmentIds: [2],
+            reason: 'This should not override the local plans.',
+            cautions: [],
+          },
+        ],
+      }),
+    };
+    const garmentRepository = { find: jest.fn(async () => [core, pants]) };
+    const service = new OutfitGeneratorService(
+      garmentRepository as any,
+      outfitAiService as any,
+    );
+
+    const result = await service.generateWithAi({ coreGarmentId: 1 });
+
+    expect(result.ai).toBeUndefined();
+    expect(result.plans[0].garments.map((garment) => garment.id)).toEqual([
+      1,
+      2,
+    ]);
   });
 
   it('uses complementary categories around a top instead of adding a dress', async () => {

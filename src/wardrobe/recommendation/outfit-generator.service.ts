@@ -87,6 +87,7 @@ export class OutfitGeneratorService {
     const rawAi = this.outfitAiService
       ? await this.outfitAiService.recommend({
           requestText: input.requestText || core.name || '围绕这件衣服搭配',
+          coreGarmentId: core.id,
           availableGarments: garments.map((garment) => ({
             id: garment.id,
             name: garment.name,
@@ -100,7 +101,7 @@ export class OutfitGeneratorService {
         })
       : undefined;
 
-    const ai = rawAi
+    const ai = rawAi?.source === 'ai'
       ? this.attachAiGarments(rawAi, garments, input.requestText, core)
       : undefined;
 

@@ -55,6 +55,21 @@ describe('OutfitAiService', () => {
     ]);
   });
 
+  it('keeps the core garment first in fallback recommendations', async () => {
+    const service = new OutfitAiService({
+      get: jest.fn(() => undefined),
+    } as any);
+
+    const result = await service.recommend({
+      requestText: 'white shirt commute',
+      coreGarmentId: 1,
+      availableGarments: garments,
+    });
+
+    expect(result.source).toBe('fallback');
+    expect(result.recommendations[0].garmentIds[0]).toBe(1);
+  });
+
   it('removes invented, missing, and non-wearable garment ids from AI output', async () => {
     const fetchImpl = jest.fn(async () => ({
       ok: true,
@@ -158,6 +173,54 @@ describe('OutfitAiService', () => {
         },
       ],
     });
+  });
+
+  it('sends the required core garment to the AI request', async () => {
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                recommendations: [
+                  {
+                    title: 'Core Plan',
+                    garmentIds: [3],
+                    reason: 'Use the requested shirt as the core.',
+                    cautions: [],
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new OutfitAiService(
+      {
+        get: jest.fn((key: string) => {
+          if (key === 'OPENAI_API_KEY') return 'test-key';
+          if (key === 'AI_API_BASE_URL') return 'https://api.example.test/';
+          return undefined;
+        }),
+      } as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.recommend({
+      requestText: 'around this item',
+      coreGarmentId: 1,
+      availableGarments: garments,
+    });
+
+    const userMessage = JSON.parse(
+      JSON.parse(fetchImpl.mock.calls[0][1].body).messages[1].content,
+    );
+    expect(userMessage.requiredCoreGarmentId).toBe(1);
+    expect(userMessage.coreGarment).toEqual(expect.objectContaining({ id: 1 }));
+    expect(userMessage.rules.join(' ')).toContain('Every recommendation');
+    expect(result.recommendations[0].garmentIds[0]).toBe(1);
   });
 
   it('disables thinking output for Qwen JSON responses', async () => {

@@ -22,6 +22,7 @@ export interface OutfitAiRecommendation {
 export interface OutfitAiInput {
   requestText: string;
   availableGarments: OutfitAiGarment[];
+  coreGarmentId?: number;
 }
 
 export interface OutfitAiResult {
@@ -71,7 +72,7 @@ export class OutfitAiService {
       const parsed = this.parseRecommendations(payload);
       const recommendations = this.guardRecommendations(
         parsed.recommendations ?? [],
-        input.availableGarments,
+        input,
       );
       if (!recommendations.length) return this.fallback(input);
       return { source: 'ai', recommendations };
@@ -102,6 +103,11 @@ export class OutfitAiService {
   }
 
   private buildRequest(input: OutfitAiInput) {
+    const coreGarment = input.coreGarmentId
+      ? input.availableGarments.find(
+          (garment) => garment.id === input.coreGarmentId,
+        )
+      : undefined;
     return {
       model: this.textModel(),
       messages: [
@@ -114,6 +120,14 @@ export class OutfitAiService {
           role: 'user',
           content: JSON.stringify({
             requestText: input.requestText,
+            requiredCoreGarmentId: input.coreGarmentId,
+            coreGarment,
+            rules: [
+              'Every recommendation must include requiredCoreGarmentId when it is provided.',
+              'Treat coreGarment as the main item. Other garments should complement it.',
+              'Do not replace the core garment with another garment in the same category.',
+              'Mention the core garment by name or category in the reason.',
+            ],
             availableGarments: input.availableGarments,
             requiredShape: {
               recommendations: [
@@ -173,18 +187,29 @@ export class OutfitAiService {
 
   private guardRecommendations(
     recommendations: OutfitAiRecommendation[],
-    garments: OutfitAiGarment[],
+    input: OutfitAiInput,
   ): OutfitAiRecommendation[] {
+    const garments = input.availableGarments;
     const wearableIds = new Set(
       garments
         .filter((garment) => garment.status === 'wearable')
         .map((garment) => garment.id),
     );
+    const requiredCoreGarmentId =
+      input.coreGarmentId && wearableIds.has(input.coreGarmentId)
+        ? input.coreGarmentId
+        : undefined;
 
     return recommendations
       .map((recommendation) => {
         const originalIds = recommendation.garmentIds ?? [];
         const garmentIds = originalIds.filter((id) => wearableIds.has(id));
+        if (
+          requiredCoreGarmentId &&
+          !garmentIds.includes(requiredCoreGarmentId)
+        ) {
+          garmentIds.unshift(requiredCoreGarmentId);
+        }
         const removedCount = originalIds.length - garmentIds.length;
         return {
           title: recommendation.title || 'AI搭配方案',
@@ -214,6 +239,16 @@ export class OutfitAiService {
       .sort((a, b) => b.score - a.score || a.garment.id - b.garment.id)
       .slice(0, 6)
       .map((item) => item.garment.id);
+    if (
+      input.coreGarmentId &&
+      wearable.some((garment) => garment.id === input.coreGarmentId)
+    ) {
+      if (selected.includes(input.coreGarmentId)) {
+        selected.splice(selected.indexOf(input.coreGarmentId), 1);
+      }
+      selected.unshift(input.coreGarmentId);
+      selected.splice(6);
+    }
 
     return {
       source: 'fallback',
