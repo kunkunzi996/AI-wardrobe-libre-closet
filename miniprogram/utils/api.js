@@ -95,10 +95,14 @@ module.exports = {
   deleteGarment: function (id) {
     return request('/api/miniapp/garments/' + id, { method: 'DELETE', data: {} });
   },
-  recommendOutfit: function (requestText) {
+  recommendOutfit: function (requestText, coreGarmentId) {
+    const data = { requestText: requestText };
+    if (coreGarmentId) {
+      data.coreGarmentId = coreGarmentId;
+    }
     return request('/api/miniapp/outfits/recommend', {
       method: 'POST',
-      data: { requestText: requestText },
+      data: data,
     });
   },
   saveDailyOutfit: function (plan, date) {

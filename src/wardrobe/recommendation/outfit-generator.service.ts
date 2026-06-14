@@ -34,6 +34,17 @@ const PLAN_TITLES = [
   '方案C：舒适日常',
 ];
 
+const COMPLEMENTARY_CATEGORIES: Record<string, string[]> = {
+  tops: ['bottoms', 'footwear', 'outerwear', 'bags', 'accessories'],
+  outerwear: ['tops', 'bottoms', 'footwear', 'bags', 'accessories'],
+  bottoms: ['tops', 'footwear', 'outerwear', 'bags', 'accessories'],
+  dresses: ['footwear', 'outerwear', 'bags', 'accessories'],
+  footwear: ['tops', 'bottoms', 'outerwear', 'bags', 'accessories'],
+  bags: ['tops', 'bottoms', 'footwear', 'outerwear', 'accessories'],
+  accessories: ['tops', 'bottoms', 'footwear', 'outerwear', 'bags'],
+  other: ['tops', 'bottoms', 'footwear', 'bags', 'accessories'],
+};
+
 @Injectable()
 export class OutfitGeneratorService {
   constructor(
@@ -104,7 +115,7 @@ export class OutfitGeneratorService {
   ): Garment[] {
     const selected = new Map<number, Garment>();
     selected.set(core.id, core);
-    const categories = ['outerwear', 'tops', 'bottoms', 'dresses', 'footwear', 'bags', 'accessories'];
+    const categories = this.complementaryCategoriesFor(core);
 
     for (const category of categories) {
       if (category === core.category) continue;
@@ -144,8 +155,10 @@ export class OutfitGeneratorService {
   ): number {
     let score = 0;
     if (garment.color === core.color) score += 2;
+    if (this.isEasyColorPair(garment.color, core.color)) score += 1;
     if (this.overlaps(garment.sceneTags, core.sceneTags)) score += 3;
     if (this.overlaps(garment.styleTags, core.styleTags)) score += 2;
+    if (this.overlaps(garment.seasons, core.seasons)) score += 1;
     if (requestText && this.matchesRequest(garment, requestText)) score += 2;
     return score;
   }
@@ -167,6 +180,12 @@ export class OutfitGeneratorService {
             (garment) =>
               !this.isIncompatibleWithRequest(garment, requestText, core),
           );
+        if (
+          core &&
+          !recommendationGarments.some((garment) => garment.id === core.id)
+        ) {
+          recommendationGarments.unshift(core);
+        }
         return {
           ...recommendation,
           garmentIds: recommendationGarments.map((garment) => garment.id),
@@ -238,8 +257,28 @@ export class OutfitGeneratorService {
     );
   }
 
+  private complementaryCategoriesFor(core: Garment): string[] {
+    return (
+      COMPLEMENTARY_CATEGORIES[core.category] ??
+      COMPLEMENTARY_CATEGORIES.other
+    ).filter((category) => category !== core.category);
+  }
+
+  private isEasyColorPair(
+    left: Garment['color'] | undefined,
+    right: Garment['color'] | undefined,
+  ): boolean {
+    if (!left || !right) return false;
+    const easyColors = new Set(['black', 'white', 'grey', 'beige', 'blue']);
+    return easyColors.has(left) || easyColors.has(right);
+  }
+
   private matchesRequest(garment: Garment, requestText: string): boolean {
-    const needle = requestText.trim().toLowerCase();
+    const tokens = requestText
+      .trim()
+      .toLowerCase()
+      .split(/[\s,，.。;；、!！?？]+/)
+      .filter((token) => token.length >= 2);
     const values = [
       garment.name,
       garment.category,
@@ -248,8 +287,11 @@ export class OutfitGeneratorService {
       ...(garment.sceneTags ?? []),
       ...(garment.styleTags ?? []),
       ...(garment.seasons ?? []),
-    ];
-    return values.some((value) => value?.toLowerCase().includes(needle));
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return tokens.some((token) => values.includes(token));
   }
 
   private reasonFor(title: string, core: Garment, requestText?: string): string {

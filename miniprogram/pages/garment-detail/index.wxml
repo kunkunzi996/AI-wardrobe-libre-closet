@@ -25,6 +25,7 @@
       </view>
       <view class="notes">{{garment.notes || '暂无备注'}}</view>
     </view>
+    <button class="recommend" bindtap="goToOutfitRecommendation">围绕这件搭配</button>
     <button class="edit" bindtap="goToEdit">编辑衣物</button>
     <button class="danger" bindtap="deleteGarment">删除衣物</button>
   </view>

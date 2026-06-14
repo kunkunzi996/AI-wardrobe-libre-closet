@@ -102,4 +102,32 @@ describe('MiniappOutfitController', () => {
       userId: undefined,
     });
   });
+
+  it('uses the requested core garment id when miniapp asks from a garment detail page', async () => {
+    const { controller, garmentService, outfitGeneratorService, req } =
+      makeController();
+    const shirt = makeGarment({ id: 1, category: 'tops' });
+    const shoes = makeGarment({ id: 9, category: 'footwear' });
+    garmentService.findAll.mockResolvedValue([shirt, shoes]);
+    outfitGeneratorService.generateWithAi.mockResolvedValue({
+      plans: [
+        {
+          title: 'Around shoes',
+          reason: 'Use selected shoes as the core item.',
+          garments: [shoes, shirt],
+        },
+      ],
+    });
+
+    await controller.recommend(
+      { requestText: 'Around this item', coreGarmentId: '9' },
+      req,
+    );
+
+    expect(outfitGeneratorService.generateWithAi).toHaveBeenCalledWith({
+      coreGarmentId: 9,
+      requestText: 'Around this item',
+      userId: undefined,
+    });
+  });
 });

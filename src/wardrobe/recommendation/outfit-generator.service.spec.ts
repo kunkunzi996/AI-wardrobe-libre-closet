@@ -144,6 +144,76 @@ describe('OutfitGeneratorService', () => {
     ]);
   });
 
+  it('keeps the requested core garment in AI recommendations', async () => {
+    const core = makeGarment({
+      id: 1,
+      name: 'Core jacket',
+      category: 'outerwear',
+      status: GarmentStatus.Wearable,
+    });
+    const pants = makeGarment({
+      id: 2,
+      name: 'Blue pants',
+      category: 'bottoms',
+      status: GarmentStatus.Wearable,
+    });
+    const outfitAiService = {
+      recommend: jest.fn().mockResolvedValue({
+        source: 'ai',
+        recommendations: [
+          {
+            title: 'Work look',
+            garmentIds: [2],
+            reason: 'AI forgot to include the core garment.',
+            cautions: [],
+          },
+        ],
+      }),
+    };
+    const garmentRepository = { find: jest.fn(async () => [core, pants]) };
+    const service = new OutfitGeneratorService(
+      garmentRepository as any,
+      outfitAiService as any,
+    );
+
+    const result = await service.generateWithAi({ coreGarmentId: 1 });
+
+    expect(result.ai?.recommendations[0].garmentIds).toEqual([1, 2]);
+    expect(result.ai?.recommendations[0].garments).toEqual([core, pants]);
+  });
+
+  it('uses complementary categories around a top instead of adding a dress', async () => {
+    const core = makeGarment({
+      id: 1,
+      name: 'White shirt',
+      category: 'tops',
+      status: GarmentStatus.Wearable,
+    });
+    const pants = makeGarment({
+      id: 2,
+      name: 'Black pants',
+      category: 'bottoms',
+      status: GarmentStatus.Wearable,
+    });
+    const shoes = makeGarment({
+      id: 3,
+      name: 'Loafers',
+      category: 'footwear',
+      status: GarmentStatus.Wearable,
+    });
+    const dress = makeGarment({
+      id: 4,
+      name: 'Slip dress',
+      category: 'dresses',
+      status: GarmentStatus.Wearable,
+    });
+    const { service } = makeService([core, pants, shoes, dress]);
+
+    const plans = await service.generate({ coreGarmentId: 1 });
+
+    expect(plans[0].garments.map((garment) => garment.id)).toEqual([1, 2, 3]);
+  });
+
   it('avoids heavy winter pieces for hot weather requests', async () => {
     const core = makeGarment({
       id: 1,

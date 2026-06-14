@@ -9,6 +9,17 @@ Page({
     recommendations: [],
     savingIndex: -1,
     savedIndex: -1,
+    coreGarmentId: '',
+  },
+
+  onLoad(options) {
+    const coreGarmentId = options.coreGarmentId || '';
+    if (!coreGarmentId) return;
+    this.setData({
+      coreGarmentId: coreGarmentId,
+      requestText: '围绕这件衣服，帮我搭一套完整穿搭',
+    });
+    this.generateOutfit();
   },
 
   onInput(event) {
@@ -25,7 +36,7 @@ Page({
     const page = this;
     this.setData({ loading: true, error: '', message: '' });
     api
-      .recommendOutfit(requestText)
+      .recommendOutfit(requestText, this.data.coreGarmentId)
       .then(function (data) {
         page.setData({
           recommendations: data.recommendations || [],

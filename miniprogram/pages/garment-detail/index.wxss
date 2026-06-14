@@ -83,10 +83,16 @@
   line-height: 1.6;
 }
 
+.recommend,
 .edit,
 .danger {
   margin-top: 32rpx;
   border-radius: 999rpx;
+}
+
+.recommend {
+  background: #f4c95d;
+  color: #26362d;
 }
 
 .edit {

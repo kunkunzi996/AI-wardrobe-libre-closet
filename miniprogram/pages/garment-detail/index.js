@@ -74,6 +74,13 @@ Page({
     wx.navigateTo({ url: '/pages/garment-form/index?id=' + this.data.id });
   },
 
+  goToOutfitRecommendation() {
+    if (!this.data.id) return;
+    wx.navigateTo({
+      url: '/pages/outfit/index?coreGarmentId=' + this.data.id,
+    });
+  },
+
   deleteGarment() {
     const page = this;
     wx.showModal({
