@@ -24,9 +24,26 @@
     <button class="primary" bindtap="goToAdd">添加第一件衣物</button>
   </view>
 
-  <view wx:else class="grid">
+  <view wx:else>
+    <view class="filters">
+      <picker mode="selector" range="{{categoryOptions}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="filter-chip">{{categoryOptions[categoryIndex].label}}</view>
+      </picker>
+      <picker mode="selector" range="{{seasonOptions}}" range-key="label" value="{{seasonIndex}}" bindchange="onSeasonChange">
+        <view class="filter-chip">{{seasonOptions[seasonIndex].label}}</view>
+      </picker>
+      <button wx:if="{{activeFilterCount}}" class="clear-filter" bindtap="clearFilters">清空</button>
+    </view>
+
+    <view wx:if="{{filteredGarments.length === 0}}" class="empty filtered-empty">
+      <text class="empty-title">没有符合条件的衣物</text>
+      <text class="empty-text">换一个分类或季节试试。</text>
+      <button class="primary" bindtap="clearFilters">清空筛选</button>
+    </view>
+
+    <view wx:else class="grid">
     <view
-      wx:for="{{garments}}"
+      wx:for="{{filteredGarments}}"
       wx:key="id"
       class="card"
       data-id="{{item.id}}"
@@ -36,6 +53,7 @@
       <view wx:else class="photo placeholder">暂无图片</view>
       <text class="name">{{item.name || item.categoryLabel}}</text>
       <text class="meta">{{item.categoryLabel}} · {{item.colorLabel}}</text>
+    </view>
     </view>
   </view>
 
