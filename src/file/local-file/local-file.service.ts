@@ -11,9 +11,9 @@ import { MultipartFile } from '@fastify/multipart';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
 import { pipeline } from 'node:stream/promises';
 import * as path from 'path';
-import sharp from 'sharp';
 import { File } from '../../dal/entity/file.entity';
 import { FileService } from '../file-service.abstract';
 
@@ -49,21 +49,12 @@ export class LocalFileService extends FileService {
     }
 
     const storedFileName = fileName ?? randomUUID() + '.webp';
-    const transformer = sharp()
-      .autoOrient()
-      .webp({ quality: 100 })
-      .resize(1080, 1080, { fit: sharp.fit.inside });
-    const writeStream = fs.createWriteStream(
+    const inputBuffer = await buffer(upload.file);
+    const outputBuffer = await this.prepareGarmentPhotoForStorage(inputBuffer);
+    await fs.promises.writeFile(
       path.join(this.directory, storedFileName),
+      outputBuffer,
     );
-
-    try {
-      await pipeline(upload.file, transformer, writeStream);
-      writeStream.destroy();
-    } catch (error) {
-      writeStream.destroy();
-      throw error;
-    }
 
     // repository.create => save pattern used to so that the @BeforeInsert decorated method
     // will fire generating a uuid for the shareableId

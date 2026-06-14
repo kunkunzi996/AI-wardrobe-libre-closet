@@ -6,9 +6,8 @@ import { MultipartFile } from '@fastify/multipart';
 import { randomUUID } from 'crypto';
 import { Upload } from '@aws-sdk/lib-storage';
 import { InjectS3, type S3 } from 'nestjs-s3';
-import sharp from 'sharp';
-import Stream, { Readable } from 'stream';
-import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import { buffer } from 'node:stream/consumers';
 import { File } from '../../dal/entity/file.entity';
 import { FileService } from '../file-service.abstract';
 
@@ -43,35 +42,20 @@ export class S3FileService extends FileService {
     }
 
     const storedFileName = fileName ?? randomUUID() + '.webp';
-    const transformer = sharp()
-      .autoOrient()
-      .webp({ quality: 100 })
-      .resize(1080, 1080, { fit: sharp.fit.inside });
-    const passThrough = new Stream.PassThrough();
+    const inputBuffer = await buffer(upload.file);
+    const outputBuffer = await this.prepareGarmentPhotoForStorage(inputBuffer);
 
     const s3Upload = new Upload({
       client: this.s3,
       params: {
         Bucket: this.bucketName,
         Key: storedFileName,
-        Body: passThrough,
+        Body: outputBuffer,
         ContentType: 'image/webp',
       },
     });
 
-    try {
-      // Run the S3 upload and the inbound pipeline concurrently.
-      // pipeline() ends the destination stream when done, which signals Upload
-      // that the body is complete. Both must be awaited together so Upload sees
-      // the end-of-stream before done() resolves.
-      await Promise.all([
-        s3Upload.done(),
-        pipeline(upload.file, transformer, passThrough),
-      ]);
-    } catch (error) {
-      passThrough.destroy();
-      throw error;
-    }
+    await s3Upload.done();
 
     const file = this.fileRepository.create({
       fileName: storedFileName,

@@ -61,6 +61,179 @@ export abstract class FileService implements FileServiceInterface {
   abstract getByShareableId(shareableId: string): Promise<Readable | undefined>;
   protected abstract store(fileName: string, stream: Readable): Promise<void>;
 
+  protected async prepareGarmentPhotoForStorage(
+    imageBuffer: Buffer,
+  ): Promise<Buffer> {
+    try {
+      return await this.cutOutGarmentOnWhite(imageBuffer);
+    } catch (error) {
+      this.logger.warn(
+        `Garment background cleanup failed, storing normalized original: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return this.normalizeOriginalPhoto(imageBuffer);
+    }
+  }
+
+  private async normalizeOriginalPhoto(imageBuffer: Buffer): Promise<Buffer> {
+    return sharp(imageBuffer)
+      .autoOrient()
+      .webp({ quality: 100 })
+      .resize(1080, 1080, { fit: sharp.fit.inside })
+      .toBuffer();
+  }
+
+  private async cutOutGarmentOnWhite(imageBuffer: Buffer): Promise<Buffer> {
+    const image = await sharp(imageBuffer)
+      .autoOrient()
+      .resize(1080, 1080, { fit: sharp.fit.inside })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const { width, height, channels } = image.info;
+    if (channels !== 4 || width < 4 || height < 4) {
+      return this.normalizeOriginalPhoto(imageBuffer);
+    }
+
+    const pixels = image.data;
+    const bg = this.estimateEdgeBackground(pixels, width, height, channels);
+    const background = this.findConnectedBackground(
+      pixels,
+      width,
+      height,
+      channels,
+      bg,
+    );
+
+    const output = Buffer.from(pixels);
+    for (let index = 0; index < background.length; index += 1) {
+      const pixelOffset = index * channels;
+      if (background[index]) {
+        output[pixelOffset] = 255;
+        output[pixelOffset + 1] = 255;
+        output[pixelOffset + 2] = 255;
+        output[pixelOffset + 3] = 0;
+      }
+    }
+
+    const foreground = await sharp(output, {
+      raw: { width, height, channels },
+    })
+      .png()
+      .toBuffer();
+
+    return sharp({
+      create: {
+        width,
+        height,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
+      },
+    })
+      .composite([{ input: foreground }])
+      .webp({ quality: 100 })
+      .toBuffer();
+  }
+
+  private estimateEdgeBackground(
+    pixels: Buffer,
+    width: number,
+    height: number,
+    channels: number,
+  ): [number, number, number] {
+    const sampleStep = Math.max(1, Math.floor(Math.min(width, height) / 80));
+    const totals = [0, 0, 0];
+    let count = 0;
+
+    const add = (x: number, y: number) => {
+      const offset = (y * width + x) * channels;
+      if (pixels[offset + 3] < 10) return;
+      totals[0] += pixels[offset];
+      totals[1] += pixels[offset + 1];
+      totals[2] += pixels[offset + 2];
+      count += 1;
+    };
+
+    for (let x = 0; x < width; x += sampleStep) {
+      add(x, 0);
+      add(x, height - 1);
+    }
+    for (let y = 0; y < height; y += sampleStep) {
+      add(0, y);
+      add(width - 1, y);
+    }
+
+    if (count === 0) return [255, 255, 255];
+    return [
+      Math.round(totals[0] / count),
+      Math.round(totals[1] / count),
+      Math.round(totals[2] / count),
+    ];
+  }
+
+  private findConnectedBackground(
+    pixels: Buffer,
+    width: number,
+    height: number,
+    channels: number,
+    bg: [number, number, number],
+  ): Uint8Array {
+    const visited = new Uint8Array(width * height);
+    const queue = new Int32Array(width * height);
+    let head = 0;
+    let tail = 0;
+    const threshold = 62;
+
+    const enqueue = (x: number, y: number) => {
+      const index = y * width + x;
+      if (visited[index]) return;
+      const offset = index * channels;
+      if (
+        pixels[offset + 3] >= 10 &&
+        this.colorDistance(pixels, offset, bg) > threshold
+      ) {
+        return;
+      }
+      visited[index] = 1;
+      queue[tail] = index;
+      tail += 1;
+    };
+
+    for (let x = 0; x < width; x += 1) {
+      enqueue(x, 0);
+      enqueue(x, height - 1);
+    }
+    for (let y = 0; y < height; y += 1) {
+      enqueue(0, y);
+      enqueue(width - 1, y);
+    }
+
+    while (head < tail) {
+      const index = queue[head];
+      head += 1;
+      const x = index % width;
+      const y = Math.floor(index / width);
+      if (x > 0) enqueue(x - 1, y);
+      if (x < width - 1) enqueue(x + 1, y);
+      if (y > 0) enqueue(x, y - 1);
+      if (y < height - 1) enqueue(x, y + 1);
+    }
+
+    return visited;
+  }
+
+  private colorDistance(
+    pixels: Buffer,
+    offset: number,
+    bg: [number, number, number],
+  ): number {
+    const red = pixels[offset] - bg[0];
+    const green = pixels[offset + 1] - bg[1];
+    const blue = pixels[offset + 2] - bg[2];
+    return Math.sqrt(red * red + green * green + blue * blue);
+  }
+
   async getWatermark() {
     return sharp(
       join(
