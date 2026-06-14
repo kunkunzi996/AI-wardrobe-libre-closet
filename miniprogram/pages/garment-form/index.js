@@ -57,6 +57,8 @@ const seasonValueMap = {
   'all-season': 'all-season',
 };
 
+const maxAnalyzePhotoEdge = 900;
+
 function optionIndex(options, value) {
   const index = options.findIndex((option) => option.value === value);
   return index >= 0 ? index : -1;
@@ -64,6 +66,24 @@ function optionIndex(options, value) {
 
 function listText(value) {
   return Array.isArray(value) ? value.filter(Boolean).join('、') : '';
+}
+
+function limitedPhotoSize(width, height) {
+  if (!width || !height) {
+    return {
+      width: maxAnalyzePhotoEdge,
+      height: maxAnalyzePhotoEdge,
+    };
+  }
+  const maxEdge = Math.max(width, height);
+  if (maxEdge <= maxAnalyzePhotoEdge) {
+    return { width: width, height: height };
+  }
+  const ratio = maxAnalyzePhotoEdge / maxEdge;
+  return {
+    width: Math.round(width * ratio),
+    height: Math.round(height * ratio),
+  };
 }
 
 Page({
@@ -117,6 +137,7 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
+      sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
@@ -136,17 +157,37 @@ Page({
       return;
     }
 
-    wx.compressImage({
+    const page = this;
+    const compressWithSize = function (size) {
+      wx.compressImage({
+        src: filePath,
+        quality: 60,
+        compressedWidth: size.width,
+        compressedHeight: size.height,
+        success: (res) => {
+          const nextPath = res.tempFilePath || filePath;
+          page.setData({ photoPath: nextPath });
+          page.analyzePhoto(nextPath);
+        },
+        fail: () => {
+          page.setData({ photoPath: filePath });
+          page.analyzePhoto(filePath);
+        },
+      });
+    };
+
+    if (!wx.getImageInfo) {
+      compressWithSize(limitedPhotoSize(0, 0));
+      return;
+    }
+
+    wx.getImageInfo({
       src: filePath,
-      quality: 70,
-      success: (res) => {
-        const nextPath = res.tempFilePath || filePath;
-        this.setData({ photoPath: nextPath });
-        this.analyzePhoto(nextPath);
+      success: function (info) {
+        compressWithSize(limitedPhotoSize(info.width, info.height));
       },
-      fail: () => {
-        this.setData({ photoPath: filePath });
-        this.analyzePhoto(filePath);
+      fail: function () {
+        compressWithSize(limitedPhotoSize(0, 0));
       },
     });
   },

@@ -86,7 +86,13 @@ export class GarmentVisionService {
     if (!this.apiKey()) return this.fallback(fileName);
 
     try {
-      return this.analyzeImageBuffer(fileName, await buffer(upload.file));
+      const imageBuffer = await buffer(upload.file);
+      this.logger.log(
+        `AI garment vision upload received: ${fileName}, ${
+          upload.mimetype || 'unknown'
+        }, ${imageBuffer.length} bytes`,
+      );
+      return this.analyzeImageBuffer(fileName, imageBuffer);
     } catch (error) {
       this.logger.warn(
         `AI garment vision failed: ${
