@@ -263,4 +263,61 @@ describe('GarmentVisionService', () => {
       notes: '浅米色羽绒服，适合秋冬季节保暖穿着',
     });
   });
+
+  it('disables thinking for Qwen vision requests', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"category":"tops"}' } }],
+      }),
+    }));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) => {
+          if (key === 'QWEN_API_KEY') return 'test-qwen-key';
+          if (key === 'QWEN_API_BASE_URL') {
+            return 'https://dashscope.aliyuncs.com/compatible-mode/';
+          }
+          if (key === 'QWEN_VISION_MODEL') return 'qwen3.5-plus';
+          return undefined;
+        }),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    await service.analyzeImage('shirt.webp');
+
+    const request = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(request.model).toBe('qwen3.5-plus');
+    expect(request.enable_thinking).toBe(false);
+  });
+
+  it('falls back instead of hanging when the vision request times out', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(() => new Promise<Response>(() => undefined));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) => {
+          if (key === 'OPENAI_API_KEY') return 'test-key';
+          if (key === 'AI_VISION_TIMEOUT_MS') return '5';
+          return undefined;
+        }),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    await expect(service.analyzeImage('slow.webp')).resolves.toMatchObject({
+      fileName: 'slow.webp',
+      category: 'tops',
+      confidence: 0,
+      notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
+    });
+  }, 1000);
 });

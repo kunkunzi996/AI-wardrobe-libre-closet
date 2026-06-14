@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { MultipartFile } from '@fastify/multipart';
 import { ConfigService } from '@nestjs/config';
 import { buffer } from 'node:stream/consumers';
+import sharp from 'sharp';
 import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from '../wardrobe/garment-color.enum';
 import { GarmentVisionResult } from './dto/garment-vision-result.dto';
@@ -104,16 +105,15 @@ export class GarmentVisionService {
     if (!apiKey) return this.fallback(fileName);
 
     try {
-      const response = await this.fetchImpl(
+      const response = await this.fetchWithTimeout(
         `${this.apiBaseUrl()}/v1/chat/completions`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(this.buildRequest(fileName, imageBuffer)),
-        },
+        apiKey,
+        JSON.stringify(
+          this.buildRequest(
+            fileName,
+            await this.prepareVisionImageBuffer(imageBuffer),
+          ),
+        ),
       );
 
       if (!response.ok) {
@@ -137,6 +137,60 @@ export class GarmentVisionService {
     }
   }
 
+  private async fetchWithTimeout(
+    url: string,
+    apiKey: string,
+    body: string,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        this.fetchImpl(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body,
+          signal: controller.signal,
+        }),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            controller.abort();
+            reject(
+              new Error(
+                `AI garment vision timed out after ${this.visionTimeoutMs()}ms`,
+              ),
+            );
+          }, this.visionTimeoutMs());
+        }),
+      ]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  private async prepareVisionImageBuffer(imageBuffer: Buffer): Promise<Buffer> {
+    try {
+      return await sharp(imageBuffer)
+        .autoOrient()
+        .resize(1024, 1024, {
+          fit: sharp.fit.inside,
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 80 })
+        .toBuffer();
+    } catch (error) {
+      this.logger.warn(
+        `AI garment vision image compression skipped: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return imageBuffer;
+    }
+  }
+
   private apiKey(): string | undefined {
     return (
       this.configService.get<string>('QWEN_API_KEY') ??
@@ -145,13 +199,19 @@ export class GarmentVisionService {
   }
 
   private apiBaseUrl(): string {
-    const isQwen = Boolean(this.configService.get<string>('QWEN_API_KEY'));
-    const url = isQwen
+    const url = this.usesQwen()
       ? (this.configService.get<string>('QWEN_API_BASE_URL') ??
         'https://dashscope.aliyuncs.com/compatible-mode')
       : (this.configService.get<string>('AI_API_BASE_URL') ??
         'https://api.openai.com');
     return url.replace(/\/+$/, '');
+  }
+
+  private visionTimeoutMs(): number {
+    const configured = Number(
+      this.configService.get<string>('AI_VISION_TIMEOUT_MS'),
+    );
+    return Number.isFinite(configured) && configured > 0 ? configured : 25000;
   }
 
   private buildRequest(fileName: string, imageBuffer: Buffer) {
@@ -200,16 +260,21 @@ export class GarmentVisionService {
       response_format: { type: 'json_object' },
       temperature: 0,
       max_tokens: 700,
+      ...(this.usesQwen() ? { enable_thinking: false } : {}),
     };
   }
 
   private visionModel(): string {
-    if (this.configService.get<string>('QWEN_API_KEY')) {
+    if (this.usesQwen()) {
       return (
         this.configService.get<string>('QWEN_VISION_MODEL') ?? 'qwen3.5-plus'
       );
     }
     return this.configService.get<string>('AI_VISION_MODEL') ?? 'gpt-4.1-mini';
+  }
+
+  private usesQwen(): boolean {
+    return Boolean(this.configService.get<string>('QWEN_API_KEY'));
   }
 
   private parseDraft(payload: any): Partial<GarmentVisionResult> {
