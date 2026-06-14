@@ -138,6 +138,19 @@ import { AiModule } from './ai/ai.module';
           .default('https://api.openai.com'),
         AI_TEXT_MODEL: Joi.string().default('gpt-4.1-mini'),
         AI_VISION_MODEL: Joi.string().default('gpt-4.1-mini'),
+        BG_REMOVAL_PROVIDER: Joi.string().valid('aliyun').optional(),
+        ALIBABA_CLOUD_ACCESS_KEY_ID: Joi.string().optional(),
+        ALIBABA_CLOUD_ACCESS_KEY_SECRET: Joi.string().optional(),
+        ALIYUN_ACCESS_KEY_ID: Joi.string().optional(),
+        ALIYUN_ACCESS_KEY_SECRET: Joi.string().optional(),
+        ALIYUN_IMAGE_SEG_ENDPOINT: Joi.string().default(
+          'imageseg.cn-shanghai.aliyuncs.com',
+        ),
+        ALIYUN_IMAGE_SEG_REGION: Joi.string().default('cn-shanghai'),
+        ALIYUN_IMAGE_SEG_RETURN_FORM: Joi.string()
+          .valid('whiteBK', 'crop', 'mask')
+          .default('whiteBK'),
+        ALIYUN_IMAGE_SEG_TIMEOUT_MS: Joi.number().default(30000),
         OBJECT_STORAGE_BUCKET_NAME: Joi.string().when('FILE_STORAGE_TYPE', {
           is: 'object',
           then: Joi.string().required(),

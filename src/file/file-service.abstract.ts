@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { MultipartFile } from '@fastify/multipart';
 import { join } from 'path';
 import sharp from 'sharp';
+import ImagesegClient, {
+  SegmentCommonImageAdvanceRequest,
+} from '@alicloud/imageseg20191230';
+import { Config as AliyunOpenApiConfig } from '@alicloud/openapi-client';
+import { RuntimeOptions } from '@alicloud/tea-util';
 import { File } from 'src/dal/entity/file.entity';
 import Stream, { Readable } from 'stream';
 import { FileServiceInterface } from './file-service.interface';
@@ -64,6 +69,9 @@ export abstract class FileService implements FileServiceInterface {
   protected async prepareGarmentPhotoForStorage(
     imageBuffer: Buffer,
   ): Promise<Buffer> {
+    const aliyunResult = await this.removeBackgroundWithAliyun(imageBuffer);
+    if (aliyunResult) return aliyunResult;
+
     try {
       return await this.cutOutGarmentOnWhite(imageBuffer);
     } catch (error) {
@@ -73,6 +81,103 @@ export abstract class FileService implements FileServiceInterface {
         }`,
       );
       return this.normalizeOriginalPhoto(imageBuffer);
+    }
+  }
+
+  protected async removeBackgroundWithAliyun(
+    imageBuffer: Buffer,
+  ): Promise<Buffer | null> {
+    if (!this.hasAliyunBackgroundRemovalConfig()) return null;
+
+    try {
+      const client = this.createAliyunImagesegClient();
+      const request = new SegmentCommonImageAdvanceRequest({
+        imageURLObject: Readable.from(imageBuffer),
+        returnForm:
+          this.configService.get<string>('ALIYUN_IMAGE_SEG_RETURN_FORM') ??
+          'whiteBK',
+      });
+      const response = await client.segmentCommonImageAdvance(
+        request,
+        new RuntimeOptions({}),
+      );
+      const imageURL = response.body?.data?.imageURL;
+      if (!imageURL) {
+        throw new Error('Aliyun image segmentation returned empty imageURL');
+      }
+
+      const imageResponse = await this.fetchWithTimeout(
+        imageURL,
+        this.aliyunImageSegTimeoutMs(),
+      );
+      if (!imageResponse.ok) {
+        throw new Error(
+          `Aliyun image segmentation result download failed: HTTP ${imageResponse.status}`,
+        );
+      }
+      const resultBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      return this.normalizeOriginalPhoto(resultBuffer);
+    } catch (error) {
+      this.logger.warn(
+        `Aliyun garment background cleanup failed, falling back locally: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
+  }
+
+  private createAliyunImagesegClient(): ImagesegClient {
+    const config = new AliyunOpenApiConfig({
+      accessKeyId: this.aliyunAccessKeyId(),
+      accessKeySecret: this.aliyunAccessKeySecret(),
+    });
+    config.endpoint =
+      this.configService.get<string>('ALIYUN_IMAGE_SEG_ENDPOINT') ??
+      'imageseg.cn-shanghai.aliyuncs.com';
+    config.regionId =
+      this.configService.get<string>('ALIYUN_IMAGE_SEG_REGION') ??
+      'cn-shanghai';
+    return new ImagesegClient(config);
+  }
+
+  private hasAliyunBackgroundRemovalConfig(): boolean {
+    const provider = this.configService.get<string>('BG_REMOVAL_PROVIDER');
+    if (provider && provider !== 'aliyun') return false;
+    return Boolean(this.aliyunAccessKeyId() && this.aliyunAccessKeySecret());
+  }
+
+  private aliyunAccessKeyId(): string | undefined {
+    return (
+      this.configService.get<string>('ALIBABA_CLOUD_ACCESS_KEY_ID') ??
+      this.configService.get<string>('ALIYUN_ACCESS_KEY_ID')
+    );
+  }
+
+  private aliyunAccessKeySecret(): string | undefined {
+    return (
+      this.configService.get<string>('ALIBABA_CLOUD_ACCESS_KEY_SECRET') ??
+      this.configService.get<string>('ALIYUN_ACCESS_KEY_SECRET')
+    );
+  }
+
+  private aliyunImageSegTimeoutMs(): number {
+    const configured = Number(
+      this.configService.get<string>('ALIYUN_IMAGE_SEG_TIMEOUT_MS'),
+    );
+    return Number.isFinite(configured) && configured > 0 ? configured : 30000;
+  }
+
+  private async fetchWithTimeout(
+    url: string,
+    timeoutMs: number,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
