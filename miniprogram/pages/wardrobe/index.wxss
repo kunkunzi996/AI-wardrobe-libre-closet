@@ -67,6 +67,15 @@
   line-height: 1.5;
 }
 
+.delete-hint {
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 22rpx;
+  background: #fff2ec;
+  color: #9d3f22;
+  font-size: 26rpx;
+}
+
 .error-title,
 .error-text {
   display: block;
@@ -153,10 +162,38 @@
 }
 
 .card {
+  position: relative;
   overflow: hidden;
   border-radius: 28rpx;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 12rpx 30rpx rgba(54, 66, 58, 0.12);
+}
+
+.selected-card {
+  box-shadow: 0 0 0 5rpx rgba(157, 63, 34, 0.24), 0 12rpx 30rpx rgba(54, 66, 58, 0.12);
+}
+
+.select-mark {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  z-index: 2;
+  width: 48rpx;
+  height: 48rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  background: rgba(38, 54, 45, 0.42);
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 48rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.select-mark.checked {
+  border-color: #fff8e8;
+  background: #9d3f22;
 }
 
 .photo {
@@ -202,4 +239,37 @@
   font-size: 56rpx;
   line-height: 108rpx;
   box-shadow: 0 14rpx 34rpx rgba(217, 108, 63, 0.34);
+}
+
+.delete-bar {
+  position: fixed;
+  left: 32rpx;
+  right: 32rpx;
+  bottom: 44rpx;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 18rpx;
+  padding: 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14rpx 34rpx rgba(54, 66, 58, 0.18);
+}
+
+.cancel-delete,
+.confirm-delete {
+  height: 78rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  line-height: 78rpx;
+}
+
+.cancel-delete {
+  background: #edf4ef;
+  color: #26362d;
+}
+
+.confirm-delete {
+  background: #9d3f22;
+  color: #fff;
 }

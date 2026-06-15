@@ -88,6 +88,10 @@ Page({
     importingBackup: false,
     importProgress: '',
     exporting: false,
+    bulkDeleting: false,
+    deleteMode: false,
+    selectedGarmentIds: [],
+    selectedGarmentMap: {},
     error: '',
   },
 
@@ -138,6 +142,7 @@ Page({
   },
 
   goToAdd() {
+    if (this.data.deleteMode) return;
     wx.navigateTo({ url: '/pages/garment-form/index' });
   },
 
@@ -477,8 +482,114 @@ Page({
     });
   },
 
+  enterDeleteMode(event) {
+    const id = Number(event.currentTarget.dataset.id);
+    if (!id || this.data.bulkDeleting) return;
+    const selectedGarmentMap = {};
+    selectedGarmentMap[id] = true;
+    this.setData({
+      deleteMode: true,
+      selectedGarmentIds: [id],
+      selectedGarmentMap: selectedGarmentMap,
+    });
+    wx.vibrateShort({ type: 'light' });
+  },
+
+  toggleDeleteSelection(event) {
+    const id = Number(event.currentTarget.dataset.id);
+    if (!id || this.data.bulkDeleting) return;
+    const selectedGarmentMap = Object.assign({}, this.data.selectedGarmentMap);
+    if (selectedGarmentMap[id]) {
+      delete selectedGarmentMap[id];
+    } else {
+      selectedGarmentMap[id] = true;
+    }
+    const selectedGarmentIds = Object.keys(selectedGarmentMap).map(function (key) {
+      return Number(key);
+    });
+    this.setData({
+      selectedGarmentIds: selectedGarmentIds,
+      selectedGarmentMap: selectedGarmentMap,
+      deleteMode: selectedGarmentIds.length > 0,
+    });
+  },
+
+  cancelDeleteMode() {
+    if (this.data.bulkDeleting) return;
+    this.setData({
+      deleteMode: false,
+      selectedGarmentIds: [],
+      selectedGarmentMap: {},
+    });
+  },
+
+  confirmBulkDelete() {
+    const page = this;
+    const ids = this.data.selectedGarmentIds;
+    if (!ids.length || this.data.bulkDeleting) return;
+    wx.showModal({
+      title: '删除衣物',
+      content: '确定删除选中的 ' + ids.length + ' 件衣物吗？删除后无法在衣橱中恢复。',
+      confirmText: '删除',
+      confirmColor: '#9d3f22',
+      success: function (res) {
+        if (!res.confirm) return;
+        page.deleteSelectedGarments(ids);
+      },
+    });
+  },
+
+  deleteSelectedGarments(ids) {
+    const page = this;
+    let chain = Promise.resolve();
+    let success = 0;
+    let failed = 0;
+    this.setData({ bulkDeleting: true });
+
+    ids.forEach(function (id) {
+      chain = chain
+        .then(function () {
+          return api.deleteGarment(id);
+        })
+        .then(function () {
+          success += 1;
+        })
+        .catch(function () {
+          failed += 1;
+        });
+    });
+
+    chain
+      .then(function () {
+        wx.showToast({
+          title: failed ? '部分删除失败' : '已删除',
+          icon: failed ? 'none' : 'success',
+        });
+        page.setData({
+          deleteMode: false,
+          selectedGarmentIds: [],
+          selectedGarmentMap: {},
+        });
+        return page.loadGarments();
+      })
+      .finally(function () {
+        page.setData({ bulkDeleting: false });
+        if (failed) {
+          wx.showModal({
+            title: '删除完成',
+            content: '成功 ' + success + ' 件，失败 ' + failed + ' 件。',
+            showCancel: false,
+          });
+        }
+      });
+  },
+
   goToDetail(event) {
     const id = event.currentTarget.dataset.id;
+    if (this.data.deleteMode) {
+      this.toggleDeleteSelection(event);
+      return;
+    }
     wx.navigateTo({ url: '/pages/garment-detail/index?id=' + id });
   },
 });

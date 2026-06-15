@@ -15,6 +15,7 @@
   </view>
 
   <view wx:if="{{importProgress}}" class="notice progress-card">{{importProgress}}</view>
+  <view wx:if="{{deleteMode}}" class="delete-hint">已选择 {{selectedGarmentIds.length}} 件，继续点选卡片可多选。</view>
 
   <view wx:if="{{error}}" class="notice error-card">
     <text class="error-title">服务器连接失败</text>
@@ -50,10 +51,14 @@
     <view
       wx:for="{{filteredGarments}}"
       wx:key="id"
-      class="card"
+      class="card {{selectedGarmentMap[item.id] ? 'selected-card' : ''}}"
       data-id="{{item.id}}"
       bindtap="goToDetail"
+      bindlongpress="enterDeleteMode"
     >
+      <view wx:if="{{deleteMode}}" class="select-mark {{selectedGarmentMap[item.id] ? 'checked' : ''}}">
+        {{selectedGarmentMap[item.id] ? '✓' : ''}}
+      </view>
       <image wx:if="{{item.photoUrl}}" class="photo" src="{{item.photoUrl}}" mode="aspectFill" />
       <view wx:else class="photo placeholder">暂无图片</view>
       <text class="name">{{item.name || item.categoryLabel}}</text>
@@ -62,5 +67,16 @@
     </view>
   </view>
 
-  <button class="fab" bindtap="goToAdd">+</button>
+  <button wx:if="{{!deleteMode}}" class="fab" bindtap="goToAdd">+</button>
+  <view wx:else class="delete-bar">
+    <button class="cancel-delete" disabled="{{bulkDeleting}}" bindtap="cancelDeleteMode">取消</button>
+    <button
+      class="confirm-delete"
+      loading="{{bulkDeleting}}"
+      disabled="{{selectedGarmentIds.length === 0}}"
+      bindtap="confirmBulkDelete"
+    >
+      删除 {{selectedGarmentIds.length}} 件
+    </button>
+  </view>
 </view>
