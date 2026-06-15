@@ -53,6 +53,25 @@ function garmentMatchesSeason(garment, season) {
 
 const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 const bulkImportConcurrency = 2;
+const maxAnalyzePhotoEdge = 900;
+
+function limitedPhotoSize(width, height) {
+  if (!width || !height) {
+    return {
+      width: maxAnalyzePhotoEdge,
+      height: maxAnalyzePhotoEdge,
+    };
+  }
+  const maxEdge = Math.max(width, height);
+  if (maxEdge <= maxAnalyzePhotoEdge) {
+    return { width: width, height: height };
+  }
+  const ratio = maxAnalyzePhotoEdge / maxEdge;
+  return {
+    width: Math.round(width * ratio),
+    height: Math.round(height * ratio),
+  };
+}
 
 Page({
   data: {
@@ -189,8 +208,8 @@ Page({
         nextIndex += 1;
         running += 1;
         page.markBulkAnalyzeStatus(index, 'running');
-        api
-          .analyzeGarmentPhoto(files[index])
+        page
+          .analyzeBulkPhoto(index, files[index])
           .then(function (data) {
             page.saveBulkDraft(index, data.draft || {});
           })
@@ -214,6 +233,61 @@ Page({
     };
 
     runNext();
+  },
+
+  analyzeBulkPhoto(index, filePath) {
+    const page = this;
+    return this.compressBulkAnalyzePhoto(filePath).then(function (analyzePath) {
+      page.saveBulkAnalyzePath(index, analyzePath);
+      return api.analyzeGarmentPhoto(analyzePath).catch(function (error) {
+        return new Promise(function (resolve, reject) {
+          setTimeout(function () {
+            api.analyzeGarmentPhoto(analyzePath).then(resolve).catch(function () {
+              reject(error);
+            });
+          }, 800);
+        });
+      });
+    });
+  },
+
+  compressBulkAnalyzePhoto(filePath) {
+    return new Promise(function (resolve) {
+      if (!wx.compressImage) {
+        resolve(filePath);
+        return;
+      }
+
+      const compressWithSize = function (size) {
+        wx.compressImage({
+          src: filePath,
+          quality: 60,
+          compressedWidth: size.width,
+          compressedHeight: size.height,
+          success: function (res) {
+            resolve(res.tempFilePath || filePath);
+          },
+          fail: function () {
+            resolve(filePath);
+          },
+        });
+      };
+
+      if (!wx.getImageInfo) {
+        compressWithSize(limitedPhotoSize(0, 0));
+        return;
+      }
+
+      wx.getImageInfo({
+        src: filePath,
+        success: function (info) {
+          compressWithSize(limitedPhotoSize(info.width, info.height));
+        },
+        fail: function () {
+          compressWithSize(limitedPhotoSize(0, 0));
+        },
+      });
+    });
   },
 
   updateBulkQueue(updater) {
@@ -240,6 +314,14 @@ Page({
         drafts: drafts,
         analyzeStatus: analyzeStatus,
       });
+    });
+  },
+
+  saveBulkAnalyzePath(index, filePath) {
+    this.updateBulkQueue(function (queue) {
+      const analyzeFiles = Object.assign({}, queue.analyzeFiles || {});
+      analyzeFiles[index] = filePath;
+      return Object.assign({}, queue, { analyzeFiles: analyzeFiles });
     });
   },
 

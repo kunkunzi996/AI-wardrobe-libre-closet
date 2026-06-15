@@ -390,20 +390,13 @@ Page({
     const queue = wx.getStorageSync(bulkImportStorageKey) || {};
     const status = queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
     const draft = queue.drafts && queue.drafts[this.data.bulkIndex];
-    const error = queue.analyzeErrors && queue.analyzeErrors[this.data.bulkIndex];
 
     if (status === 'done' && draft) {
       this.setData({ recognizing: false, aiError: '', error: '' });
       this.applyAiDraft(draft);
       return true;
     }
-    if (status === 'failed') {
-      this.setData({
-        recognizing: false,
-        aiError: error || 'AI识别失败，请手动填写',
-      });
-      return true;
-    }
+    if (status === 'failed') return false;
     return false;
   },
 
