@@ -9,14 +9,17 @@ import {
   ParseIntPipe,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import type { MultipartFile } from '@fastify/multipart';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { buffer } from 'node:stream/consumers';
 import { GarmentVisionService } from '../ai/garment-vision.service';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
+import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
 import { GarmentService } from './garment.service';
@@ -41,12 +44,26 @@ type MiniappCreateBody = {
   thickness?: string;
 };
 
+type ZipEntry = {
+  name: string;
+  data: Buffer;
+};
+
+const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+  return value >>> 0;
+});
+
 @UseGuards(ConditionalAuthGuard)
 @Controller('api/miniapp/garments')
 export class MiniappWardrobeController {
   constructor(
     private readonly garmentService: GarmentService,
     private readonly garmentVisionService: GarmentVisionService,
+    private readonly fileService: FileService,
   ) {}
 
   @Get()
@@ -69,6 +86,67 @@ export class MiniappWardrobeController {
     const photo = await this.readImageUpload(req);
     const draft = await this.garmentVisionService.analyzeUpload(photo);
     return { draft };
+  }
+
+  @Get('backup/export')
+  async exportBackup(
+    @Req() req: MiniappRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    const garments = await this.garmentService.findAll(this.userId(req), {});
+    const entries: ZipEntry[] = [];
+    const exportedAt = new Date().toISOString();
+    const photoEntries = new Map<number, string>();
+
+    for (const garment of garments) {
+      const fileName = garment.photo?.fileName;
+      if (!fileName) continue;
+      const photo = await this.fileService.get(fileName).catch(() => undefined);
+      if (!photo) continue;
+      const photoPath = `photos/${garment.id}-${fileName}`;
+      entries.push({ name: photoPath, data: await buffer(photo) });
+      photoEntries.set(garment.id, photoPath);
+    }
+
+    entries.unshift({
+      name: 'manifest.json',
+      data: Buffer.from(
+        JSON.stringify(
+          {
+            backupVersion: 1,
+            exportedAt,
+            garmentCount: garments.length,
+            photoCount: photoEntries.size,
+            garments: garments.map((garment) => ({
+              id: garment.id,
+              name: garment.name ?? '',
+              category: garment.category,
+              color: garment.color ?? '',
+              status: garment.status,
+              seasons: garment.seasons ?? [],
+              subcategory: garment.subcategory ?? '',
+              styleTags: garment.styleTags ?? [],
+              sceneTags: garment.sceneTags ?? [],
+              material: garment.material ?? '',
+              thickness: garment.thickness ?? '',
+              brand: garment.brand ?? '',
+              size: garment.size ?? '',
+              notes: garment.notes ?? '',
+              photo: photoEntries.get(garment.id) ?? '',
+            })),
+          },
+          null,
+          2,
+        ),
+        'utf8',
+      ),
+    });
+
+    const zip = this.buildZip(entries);
+    const fileName = `wardrobe-backup-${exportedAt.slice(0, 10)}.zip`;
+    reply.header('Content-Type', 'application/zip');
+    reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+    return reply.send(zip);
   }
 
   @Post()
@@ -275,5 +353,72 @@ export class MiniappWardrobeController {
       archived: '已归档',
     };
     return status ? labels[status] ?? status : '';
+  }
+
+  private buildZip(entries: ZipEntry[]): Buffer {
+    const localParts: Buffer[] = [];
+    const centralParts: Buffer[] = [];
+    let offset = 0;
+
+    for (const entry of entries) {
+      const name = Buffer.from(entry.name, 'utf8');
+      const crc = this.crc32(entry.data);
+      const localHeader = Buffer.alloc(30);
+      localHeader.writeUInt32LE(0x04034b50, 0);
+      localHeader.writeUInt16LE(20, 4);
+      localHeader.writeUInt16LE(0x0800, 6);
+      localHeader.writeUInt16LE(0, 8);
+      localHeader.writeUInt16LE(0, 10);
+      localHeader.writeUInt16LE(0, 12);
+      localHeader.writeUInt32LE(crc, 14);
+      localHeader.writeUInt32LE(entry.data.length, 18);
+      localHeader.writeUInt32LE(entry.data.length, 22);
+      localHeader.writeUInt16LE(name.length, 26);
+      localHeader.writeUInt16LE(0, 28);
+      localParts.push(localHeader, name, entry.data);
+
+      const centralHeader = Buffer.alloc(46);
+      centralHeader.writeUInt32LE(0x02014b50, 0);
+      centralHeader.writeUInt16LE(20, 4);
+      centralHeader.writeUInt16LE(20, 6);
+      centralHeader.writeUInt16LE(0x0800, 8);
+      centralHeader.writeUInt16LE(0, 10);
+      centralHeader.writeUInt16LE(0, 12);
+      centralHeader.writeUInt16LE(0, 14);
+      centralHeader.writeUInt32LE(crc, 16);
+      centralHeader.writeUInt32LE(entry.data.length, 20);
+      centralHeader.writeUInt32LE(entry.data.length, 24);
+      centralHeader.writeUInt16LE(name.length, 28);
+      centralHeader.writeUInt16LE(0, 30);
+      centralHeader.writeUInt16LE(0, 32);
+      centralHeader.writeUInt16LE(0, 34);
+      centralHeader.writeUInt16LE(0, 36);
+      centralHeader.writeUInt32LE(0, 38);
+      centralHeader.writeUInt32LE(offset, 42);
+      centralParts.push(centralHeader, name);
+
+      offset += localHeader.length + name.length + entry.data.length;
+    }
+
+    const centralDirectory = Buffer.concat(centralParts);
+    const end = Buffer.alloc(22);
+    end.writeUInt32LE(0x06054b50, 0);
+    end.writeUInt16LE(0, 4);
+    end.writeUInt16LE(0, 6);
+    end.writeUInt16LE(entries.length, 8);
+    end.writeUInt16LE(entries.length, 10);
+    end.writeUInt32LE(centralDirectory.length, 12);
+    end.writeUInt32LE(offset, 16);
+    end.writeUInt16LE(0, 20);
+
+    return Buffer.concat([...localParts, centralDirectory, end]);
+  }
+
+  private crc32(data: Buffer): number {
+    let crc = 0xffffffff;
+    for (const byte of data) {
+      crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
   }
 }

@@ -123,4 +123,7 @@ module.exports = {
   },
   analyzeGarmentPhoto: analyzeGarmentPhoto,
   uploadGarment: uploadGarment,
+  wardrobeBackupUrl: function () {
+    return API_BASE_URL + '/api/miniapp/garments/backup/export';
+  },
 };

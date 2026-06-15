@@ -6,10 +6,14 @@
   </view>
 
   <view class="quick-actions">
+    <button class="secondary-action" loading="{{importing}}" bindtap="chooseBulkImport">批量导入</button>
+    <button class="secondary-action" loading="{{exporting}}" bindtap="exportWardrobeBackup">导出备份</button>
     <button class="secondary-action" bindtap="goToOutfit">AI 搭配</button>
     <button class="secondary-action" bindtap="goToDaily">今日穿搭</button>
     <button class="secondary-action" bindtap="retryLoad">重新加载</button>
   </view>
+
+  <view wx:if="{{importProgress}}" class="notice progress-card">{{importProgress}}</view>
 
   <view wx:if="{{error}}" class="notice error-card">
     <text class="error-title">服务器连接失败</text>

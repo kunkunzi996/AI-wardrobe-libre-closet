@@ -61,6 +61,12 @@
   background: #fff7f2;
 }
 
+.progress-card {
+  color: #26362d;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
 .error-title,
 .error-text {
   display: block;

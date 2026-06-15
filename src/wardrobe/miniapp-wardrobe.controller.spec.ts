@@ -2,6 +2,7 @@ import { Garment } from '../dal/entity/garment.entity';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
 import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
+import { Readable } from 'node:stream';
 
 describe('MiniappWardrobeController', () => {
   const makeController = () => {
@@ -16,6 +17,9 @@ describe('MiniappWardrobeController', () => {
       analyzeImage: jest.fn(),
       analyzeUpload: jest.fn(),
     };
+    const fileService = {
+      get: jest.fn(),
+    };
     garmentVisionService.analyzeImage.mockResolvedValue({
       fileName: 'coat.webp',
       category: 'tops',
@@ -28,10 +32,11 @@ describe('MiniappWardrobeController', () => {
     const controller = new MiniappWardrobeController(
       garmentService as any,
       garmentVisionService as any,
+      fileService as any,
     );
     const req = { protocol: 'https', host: 'aimatchwear.asia' } as any;
 
-    return { controller, garmentService, garmentVisionService, req };
+    return { controller, garmentService, garmentVisionService, fileService, req };
   };
 
   const makeGarment = (overrides: Partial<Garment> = {}) =>
@@ -73,6 +78,28 @@ describe('MiniappWardrobeController', () => {
       ],
     });
     expect(garmentService.findAll).toHaveBeenCalledWith(undefined, {});
+  });
+
+  it('exports wardrobe backup as a zip buffer', async () => {
+    const { controller, garmentService, fileService, req } = makeController();
+    garmentService.findAll.mockResolvedValue([makeGarment()]);
+    fileService.get.mockResolvedValue(Readable.from(Buffer.from('photo-bytes')));
+    const reply = {
+      header: jest.fn().mockReturnThis(),
+      send: jest.fn((payload) => payload),
+    };
+
+    const zip = await controller.exportBackup(req, reply as any);
+
+    expect(reply.header).toHaveBeenCalledWith('Content-Type', 'application/zip');
+    expect(reply.header).toHaveBeenCalledWith(
+      'Content-Disposition',
+      expect.stringContaining('wardrobe-backup-'),
+    );
+    expect(Buffer.isBuffer(zip)).toBe(true);
+    expect(zip.subarray(0, 2).toString()).toBe('PK');
+    expect(zip.toString('utf8')).toContain('manifest.json');
+    expect(zip.toString('utf8')).toContain('photos/7-coat.webp');
   });
 
   it('creates a garment from miniapp multipart upload data', async () => {
