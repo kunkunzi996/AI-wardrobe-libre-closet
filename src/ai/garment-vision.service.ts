@@ -52,6 +52,46 @@ const CHINESE_LABELS: Record<string, string> = {
   thick: '偏厚',
 };
 
+const CATEGORY_ALIASES: Record<string, string> = {
+  top: 'tops',
+  shirt: 'tops',
+  tshirt: 'tops',
+  't shirt': 'tops',
+  tee: 'tops',
+  pants: 'bottoms',
+  trousers: 'bottoms',
+  jeans: 'bottoms',
+  shorts: 'bottoms',
+  skirt: 'bottoms',
+  coat: 'outerwear',
+  jacket: 'outerwear',
+  blazer: 'outerwear',
+  dress: 'dresses',
+  sneaker: 'footwear',
+  sneakers: 'footwear',
+  shoe: 'footwear',
+  shoes: 'footwear',
+  footwear: 'footwear',
+  bag: 'bags',
+  handbag: 'bags',
+  backpack: 'bags',
+  accessory: 'accessories',
+  accessories: 'accessories',
+  hat: 'accessories',
+  cap: 'accessories',
+};
+
+const VALID_CATEGORIES = new Set([
+  'tops',
+  'bottoms',
+  'outerwear',
+  'dresses',
+  'footwear',
+  'bags',
+  'accessories',
+  'other',
+]);
+
 @Injectable()
 export class GarmentVisionService {
   private readonly logger = new Logger(GarmentVisionService.name);
@@ -236,6 +276,14 @@ export class GarmentVisionService {
               type: 'text',
               text: JSON.stringify({
                 task: '识别这件衣物，生成用户可编辑的入库草稿。',
+                targetItemTypes: ['clothes', 'shoes', 'bags', 'accessories'],
+                categoryRules: {
+                  footwear:
+                    'Use footwear for shoes, sneakers, canvas shoes, boots, sandals, and slippers.',
+                  bags: 'Use bags for handbags, backpacks, totes, and shoulder bags.',
+                  accessories:
+                    'Use accessories for hats, caps, scarves, jewelry, belts, and small wearable items.',
+                },
                 allowedColors: Object.values(GarmentColor),
                 requiredJson: {
                   category:
@@ -311,7 +359,7 @@ export class GarmentVisionService {
   ): GarmentVisionResult {
     return {
       fileName,
-      category: this.stringOrDefault(draft.category, 'tops'),
+      category: this.normalizeCategory(draft.category),
       subcategory: this.localizedString(draft.subcategory),
       color: this.normalizeColor(draft.color),
       seasons: this.localizedArray(draft.seasons),
@@ -330,6 +378,14 @@ export class GarmentVisionService {
     return Object.values(GarmentColor).includes(normalized as GarmentColor)
       ? (normalized as GarmentColor)
       : undefined;
+  }
+
+  private normalizeCategory(category: unknown): string {
+    if (typeof category !== 'string') return 'tops';
+    const normalized = category.trim().toLowerCase().replace(/[_-]+/g, ' ');
+    if (!normalized) return 'tops';
+    const aliased = CATEGORY_ALIASES[normalized] ?? normalized;
+    return VALID_CATEGORIES.has(aliased) ? aliased : 'other';
   }
 
   private stringArray(value: unknown): string[] {

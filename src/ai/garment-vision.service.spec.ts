@@ -211,6 +211,52 @@ describe('GarmentVisionService', () => {
     });
   });
 
+  it('normalizes shoe category aliases to footwear', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                category: 'sneakers',
+                subcategory: 'white sneakers',
+                color: 'white',
+                seasons: ['summer'],
+                styleTags: ['casual'],
+                sceneTags: ['daily', 'weekend'],
+                material: 'leather',
+                thickness: 'medium',
+                confidence: 0.91,
+                notes: 'White sneakers with blue details.',
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) =>
+          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+        ),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.analyzeImage('shoes.webp');
+
+    expect(result.fileName).toBe('shoes.webp');
+    expect(result.category).toBe('footwear');
+    expect(result.subcategory).toBe('white sneakers');
+    expect(result.color).toBe('white');
+    expect(result.confidence).toBe(0.91);
+  });
+
   it('splits and localizes comma-separated English labels from the AI', async () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
