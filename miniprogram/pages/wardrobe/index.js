@@ -51,25 +51,7 @@ function garmentMatchesSeason(garment, season) {
   });
 }
 
-function listFormValue(value) {
-  return Array.isArray(value) ? value.filter(Boolean).join('、') : '';
-}
-
-function formFromDraft(draft) {
-  draft = draft || {};
-  return {
-    name: draft.subcategory || '',
-    category: draft.category || 'tops',
-    color: draft.color || '',
-    season: (draft.seasons && draft.seasons[0]) || '',
-    subcategory: draft.subcategory || '',
-    styleTags: listFormValue(draft.styleTags),
-    sceneTags: listFormValue(draft.sceneTags),
-    material: draft.material || '',
-    thickness: draft.thickness || '',
-    notes: draft.notes || '',
-  };
-}
+const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 
 Page({
   data: {
@@ -93,6 +75,10 @@ Page({
   },
 
   onShow() {
+    const queue = wx.getStorageSync(bulkImportStorageKey);
+    if (!queue || !queue.files || !queue.files.length) {
+      this.setData({ importProgress: '' });
+    }
     if (this.data.loadedOnce) {
       this.loadGarments();
     }
@@ -149,82 +135,72 @@ Page({
           })
           .filter(Boolean);
         if (!files.length) return;
-        page.uploadBulkPhotos(files);
+        page.startBulkImport(files);
       },
     });
   },
 
-  uploadBulkPhotos(files) {
-    const page = this;
-    const result = { success: 0, failed: 0 };
-    let chain = Promise.resolve();
-    this.setData({ importing: true, importProgress: '准备导入 ' + files.length + ' 张照片' });
-
-    files.forEach(function (filePath, index) {
-      chain = chain
-        .then(function () {
-          page.setData({
-            importProgress: '正在导入第 ' + (index + 1) + ' / ' + files.length + ' 张',
-          });
-          return page.uploadOneBulkPhoto(filePath);
-        })
-        .then(function () {
-          result.success += 1;
-        })
-        .catch(function () {
-          result.failed += 1;
-        });
+  startBulkImport(files) {
+    const queue = {
+      files: files,
+      index: 0,
+      success: 0,
+      skipped: 0,
+      createdAt: Date.now(),
+    };
+    wx.setStorageSync(bulkImportStorageKey, queue);
+    this.setData({
+      importProgress: '已选择 ' + files.length + ' 张照片，请逐张确认后保存。',
     });
-
-    chain
-      .then(function () {
-        wx.showModal({
-          title: '批量导入完成',
-          content: '成功 ' + result.success + ' 张，失败 ' + result.failed + ' 张。',
-          showCancel: false,
-        });
-        return page.loadGarments();
-      })
-      .finally(function () {
-        page.setData({ importing: false, importProgress: '' });
-      });
+    this.openBulkImportItem(queue);
   },
 
-  uploadOneBulkPhoto(filePath) {
-    return api
-      .analyzeGarmentPhoto(filePath)
-      .catch(function () {
-        return { draft: { category: 'tops', notes: 'AI识别失败，请稍后手动编辑。' } };
-      })
-      .then(function (data) {
-        return api.uploadGarment(filePath, formFromDraft(data.draft));
-      });
+  openBulkImportItem(queue) {
+    const filePath = queue.files[queue.index];
+    if (!filePath) return;
+    wx.navigateTo({
+      url:
+        '/pages/garment-form/index?bulk=1&bulkIndex=' +
+        queue.index +
+        '&bulkTotal=' +
+        queue.files.length +
+        '&photoPath=' +
+        encodeURIComponent(filePath),
+    });
   },
 
   exportWardrobeBackup() {
     if (this.data.exporting) return;
     const page = this;
+    const backupUrl = api.wardrobeBackupUrl();
     this.setData({ exporting: true });
+    wx.setClipboardData({
+      data: backupUrl,
+      success: function () {
+        wx.showToast({ title: '下载链接已复制', icon: 'none' });
+      },
+    });
     wx.downloadFile({
-      url: api.wardrobeBackupUrl(),
+      url: backupUrl,
       success: function (res) {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           wx.showToast({ title: '导出失败', icon: 'none' });
           return;
         }
-        wx.saveFile({
-          tempFilePath: res.tempFilePath,
-          success: function (saveRes) {
+        wx.openDocument({
+          filePath: res.tempFilePath,
+          showMenu: true,
+          success: function () {
             wx.showModal({
               title: '导出完成',
-              content: '备份包已保存：' + saveRes.savedFilePath,
+              content: '备份包已打开，可用右上角菜单转发或保存。下载链接也已复制，可粘贴到浏览器下载。',
               showCancel: false,
             });
           },
           fail: function () {
             wx.showModal({
               title: '导出完成',
-              content: '备份包已下载到临时文件，可在本次会话中使用。',
+              content: '下载链接已复制，可粘贴到浏览器下载备份包。',
               showCancel: false,
             });
           },

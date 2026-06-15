@@ -1,5 +1,8 @@
 <view class="page">
   <view wx:if="{{isEdit}}" class="edit-banner">正在编辑衣物信息，第一版暂不支持更换图片。</view>
+  <view wx:if="{{isBulkImport}}" class="edit-banner bulk-banner">
+    批量导入第 {{bulkIndex + 1}} / {{bulkTotal}} 张，请确认或修改后保存。
+  </view>
 
   <view class="photo-picker {{isEdit ? 'readonly-photo' : ''}}" bindtap="choosePhoto">
     <image wx:if="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="preview" />
@@ -79,5 +82,8 @@
 
   <button class="submit" loading="{{submitting}}" bindtap="submitGarment">
     {{isEdit ? '保存修改' : '保存衣物'}}
+  </button>
+  <button wx:if="{{isBulkImport}}" class="skip" disabled="{{submitting}}" bindtap="skipBulkImportItem">
+    跳过这张
   </button>
 </view>

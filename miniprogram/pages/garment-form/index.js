@@ -58,6 +58,7 @@ const seasonValueMap = {
 };
 
 const maxAnalyzePhotoEdge = 900;
+const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 
 function optionIndex(options, value) {
   const index = options.findIndex((option) => option.value === value);
@@ -119,10 +120,30 @@ Page({
     aiError: '',
     submitting: false,
     error: '',
+    isBulkImport: false,
+    bulkIndex: 0,
+    bulkTotal: 0,
   },
 
   onLoad(options) {
     const id = options.id || '';
+    const photoPath = options.photoPath ? decodeURIComponent(options.photoPath) : '';
+    if (options.bulk === '1') {
+      const bulkIndex = Number(options.bulkIndex || 0);
+      const bulkTotal = Number(options.bulkTotal || 0);
+      this.setData({
+        isBulkImport: true,
+        bulkIndex: bulkIndex,
+        bulkTotal: bulkTotal,
+      });
+      wx.setNavigationBarTitle({
+        title: '确认导入 ' + (bulkIndex + 1) + '/' + bulkTotal,
+      });
+    }
+    if (photoPath && !id) {
+      this.compressPhoto(photoPath);
+      return;
+    }
     if (!id) return;
     this.setData({ id, isEdit: true });
     wx.setNavigationBarTitle({ title: '编辑衣物' });
@@ -349,6 +370,10 @@ Page({
     saveTask
       .then(function () {
         wx.showToast({ title: '已保存' });
+        if (page.data.isBulkImport) {
+          page.openNextBulkImportItem();
+          return;
+        }
         wx.navigateBack();
       })
       .catch(function (error) {
@@ -357,5 +382,59 @@ Page({
       .finally(function () {
         page.setData({ submitting: false });
       });
+  },
+
+  openNextBulkImportItem() {
+    const queue = wx.getStorageSync(bulkImportStorageKey) || {};
+    const files = queue.files || [];
+    const nextIndex = this.data.bulkIndex + 1;
+    const nextQueue = Object.assign({}, queue, {
+      index: nextIndex,
+      success: (queue.success || 0) + 1,
+    });
+    this.goToBulkImportIndex(nextQueue);
+  },
+
+  skipBulkImportItem() {
+    const queue = wx.getStorageSync(bulkImportStorageKey) || {};
+    const nextQueue = Object.assign({}, queue, {
+      index: this.data.bulkIndex + 1,
+      skipped: (queue.skipped || 0) + 1,
+    });
+    this.goToBulkImportIndex(nextQueue);
+  },
+
+  goToBulkImportIndex(nextQueue) {
+    const files = nextQueue.files || [];
+    const nextIndex = nextQueue.index || 0;
+    wx.setStorageSync(bulkImportStorageKey, nextQueue);
+
+    if (nextIndex >= files.length) {
+      wx.removeStorageSync(bulkImportStorageKey);
+      wx.showModal({
+        title: '批量导入完成',
+        content:
+          '已保存 ' +
+          (nextQueue.success || 0) +
+          ' 张，跳过 ' +
+          (nextQueue.skipped || 0) +
+          ' 张。',
+        showCancel: false,
+        complete: function () {
+          wx.navigateBack();
+        },
+      });
+      return;
+    }
+
+    wx.redirectTo({
+      url:
+        '/pages/garment-form/index?bulk=1&bulkIndex=' +
+        nextIndex +
+        '&bulkTotal=' +
+        files.length +
+        '&photoPath=' +
+        encodeURIComponent(files[nextIndex]),
+    });
   },
 });
