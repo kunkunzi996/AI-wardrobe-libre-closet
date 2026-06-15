@@ -7,6 +7,7 @@
 
   <view class="quick-actions">
     <button class="secondary-action" loading="{{importing}}" bindtap="chooseBulkImport">批量导入</button>
+    <button class="secondary-action" loading="{{importingBackup}}" bindtap="chooseBackupImport">导入备份</button>
     <button class="secondary-action" loading="{{exporting}}" bindtap="exportWardrobeBackup">导出备份</button>
     <button class="secondary-action" bindtap="goToOutfit">AI 搭配</button>
     <button class="secondary-action" bindtap="goToDaily">今日穿搭</button>

@@ -15,6 +15,8 @@ import {
 import type { MultipartFile } from '@fastify/multipart';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { buffer } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
+import { extname, basename } from 'node:path';
 import { GarmentVisionService } from '../ai/garment-vision.service';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
@@ -47,6 +49,28 @@ type MiniappCreateBody = {
 type ZipEntry = {
   name: string;
   data: Buffer;
+};
+
+type BackupManifestGarment = {
+  name?: string;
+  category?: string;
+  color?: GarmentColor | string;
+  status?: GarmentStatus | string;
+  seasons?: string[];
+  subcategory?: string;
+  styleTags?: string[];
+  sceneTags?: string[];
+  material?: string;
+  thickness?: string;
+  brand?: string;
+  size?: string;
+  notes?: string;
+  photo?: string;
+};
+
+type BackupManifest = {
+  backupVersion?: number;
+  garments?: BackupManifestGarment[];
 };
 
 const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
@@ -149,6 +173,66 @@ export class MiniappWardrobeController {
     return reply.send(zip);
   }
 
+  @Post('backup/import')
+  async importBackup(@Req() req: MiniappRequest) {
+    const backup = await this.readBackupUpload(req);
+    const entries = this.readZip(backup);
+    const manifestEntry = entries.find((entry) => entry.name === 'manifest.json');
+    if (!manifestEntry) {
+      throw new BadRequestException('备份包缺少 manifest.json');
+    }
+
+    let manifest: BackupManifest;
+    try {
+      manifest = JSON.parse(manifestEntry.data.toString('utf8')) as BackupManifest;
+    } catch {
+      throw new BadRequestException('备份包清单格式不正确');
+    }
+
+    if (!Array.isArray(manifest.garments)) {
+      throw new BadRequestException('备份包没有衣物数据');
+    }
+
+    const photoEntries = new Map(entries.map((entry) => [entry.name, entry]));
+    let imported = 0;
+    let skipped = 0;
+
+    for (const item of manifest.garments) {
+      if (!item.category) {
+        skipped += 1;
+        continue;
+      }
+
+      const photoEntry = item.photo ? photoEntries.get(item.photo) : undefined;
+      const photo = photoEntry
+        ? this.zipEntryToUpload(photoEntry)
+        : undefined;
+
+      await this.garmentService.create(
+        {
+          name: item.name,
+          category: item.category,
+          color: item.color as GarmentColor | undefined,
+          status: item.status as GarmentStatus | undefined,
+          seasons: item.seasons,
+          subcategory: item.subcategory,
+          styleTags: item.styleTags,
+          sceneTags: item.sceneTags,
+          material: item.material,
+          thickness: item.thickness,
+          brand: item.brand,
+          size: item.size,
+          notes: item.notes,
+          photo,
+        },
+        this.userId(req),
+      );
+      imported += 1;
+    }
+
+    return { imported, skipped };
+  }
+
   @Post()
   async create(@Body() body: MiniappCreateBody = {}, @Req() req: MiniappRequest) {
     const photo = await this.readImageUpload(req);
@@ -235,6 +319,40 @@ export class MiniappWardrobeController {
       throw new BadRequestException('上传文件必须是图片');
     }
     return file;
+  }
+
+  private async readBackupUpload(req: MiniappRequest): Promise<Buffer> {
+    const file = await req.file?.();
+    if (!file) {
+      throw new BadRequestException('请先选择备份文件');
+    }
+    const fileName = file.filename ?? '';
+    const isZip =
+      file.mimetype === 'application/zip' ||
+      file.mimetype === 'application/x-zip-compressed' ||
+      file.mimetype === 'application/octet-stream' ||
+      fileName.toLowerCase().endsWith('.zip');
+    if (!isZip) {
+      file.file.resume();
+      throw new BadRequestException('请上传 .zip 备份包');
+    }
+    return buffer(file.file);
+  }
+
+  private zipEntryToUpload(entry: ZipEntry): MultipartFile {
+    const extension = extname(entry.name).toLowerCase();
+    const mimetype =
+      extension === '.png'
+        ? 'image/png'
+        : extension === '.jpg' || extension === '.jpeg'
+          ? 'image/jpeg'
+          : 'image/webp';
+    return {
+      file: Readable.from(entry.data),
+      filename: basename(entry.name),
+      mimetype,
+      fields: {},
+    } as MultipartFile;
   }
 
   private mergeMultipartFields(
@@ -420,5 +538,58 @@ export class MiniappWardrobeController {
       crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
     }
     return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  private readZip(zip: Buffer): ZipEntry[] {
+    const endOffset = this.findEndOfCentralDirectory(zip);
+    const entryCount = zip.readUInt16LE(endOffset + 10);
+    const centralOffset = zip.readUInt32LE(endOffset + 16);
+    const entries: ZipEntry[] = [];
+    let offset = centralOffset;
+
+    for (let index = 0; index < entryCount; index += 1) {
+      if (zip.readUInt32LE(offset) !== 0x02014b50) {
+        throw new BadRequestException('备份包目录格式不正确');
+      }
+      const method = zip.readUInt16LE(offset + 10);
+      if (method !== 0) {
+        throw new BadRequestException('备份包压缩格式暂不支持');
+      }
+      const compressedSize = zip.readUInt32LE(offset + 20);
+      const nameLength = zip.readUInt16LE(offset + 28);
+      const extraLength = zip.readUInt16LE(offset + 30);
+      const commentLength = zip.readUInt16LE(offset + 32);
+      const localOffset = zip.readUInt32LE(offset + 42);
+      const name = zip
+        .subarray(offset + 46, offset + 46 + nameLength)
+        .toString('utf8');
+      const data = this.readZipLocalEntry(zip, localOffset, compressedSize);
+      entries.push({ name, data });
+      offset += 46 + nameLength + extraLength + commentLength;
+    }
+
+    return entries;
+  }
+
+  private readZipLocalEntry(
+    zip: Buffer,
+    localOffset: number,
+    size: number,
+  ): Buffer {
+    if (zip.readUInt32LE(localOffset) !== 0x04034b50) {
+      throw new BadRequestException('备份包文件格式不正确');
+    }
+    const nameLength = zip.readUInt16LE(localOffset + 26);
+    const extraLength = zip.readUInt16LE(localOffset + 28);
+    const dataOffset = localOffset + 30 + nameLength + extraLength;
+    return zip.subarray(dataOffset, dataOffset + size);
+  }
+
+  private findEndOfCentralDirectory(zip: Buffer): number {
+    const minOffset = Math.max(0, zip.length - 65557);
+    for (let offset = zip.length - 22; offset >= minOffset; offset -= 1) {
+      if (zip.readUInt32LE(offset) === 0x06054b50) return offset;
+    }
+    throw new BadRequestException('备份包不是有效 ZIP 文件');
   }
 }

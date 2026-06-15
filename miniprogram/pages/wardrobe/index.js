@@ -52,6 +52,7 @@ function garmentMatchesSeason(garment, season) {
 }
 
 const bulkImportStorageKey = 'wardrobeBulkImportQueue';
+const bulkImportConcurrency = 2;
 
 Page({
   data: {
@@ -65,6 +66,7 @@ Page({
     activeFilterCount: 0,
     loading: false,
     importing: false,
+    importingBackup: false,
     importProgress: '',
     exporting: false,
     error: '',
@@ -141,17 +143,24 @@ Page({
   },
 
   startBulkImport(files) {
+    const analyzeStatus = {};
+    files.forEach(function (_file, index) {
+      analyzeStatus[index] = 'queued';
+    });
     const queue = {
       files: files,
       index: 0,
       success: 0,
       skipped: 0,
+      drafts: {},
+      analyzeStatus: analyzeStatus,
       createdAt: Date.now(),
     };
     wx.setStorageSync(bulkImportStorageKey, queue);
     this.setData({
-      importProgress: '已选择 ' + files.length + ' 张照片，请逐张确认后保存。',
+      importProgress: '已选择 ' + files.length + ' 张照片，AI 正在后台识别。',
     });
+    this.preAnalyzeBulkPhotos(files);
     this.openBulkImportItem(queue);
   },
 
@@ -167,6 +176,136 @@ Page({
         '&photoPath=' +
         encodeURIComponent(filePath),
     });
+  },
+
+  preAnalyzeBulkPhotos(files) {
+    const page = this;
+    let nextIndex = 0;
+    let running = 0;
+
+    const runNext = function () {
+      while (running < bulkImportConcurrency && nextIndex < files.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        running += 1;
+        page.markBulkAnalyzeStatus(index, 'running');
+        api
+          .analyzeGarmentPhoto(files[index])
+          .then(function (data) {
+            page.saveBulkDraft(index, data.draft || {});
+          })
+          .catch(function (error) {
+            page.saveBulkAnalyzeError(index, error.message || 'AI识别失败，请手动填写');
+          })
+          .finally(function () {
+            running -= 1;
+            const latestQueue = wx.getStorageSync(bulkImportStorageKey) || {};
+            const status = latestQueue.analyzeStatus || {};
+            const doneCount = Object.keys(status).filter(function (key) {
+              return status[key] === 'done' || status[key] === 'failed';
+            }).length;
+            page.setData({
+              importProgress:
+                'AI 后台识别 ' + doneCount + ' / ' + files.length + '，请逐张确认保存。',
+            });
+            runNext();
+          });
+      }
+    };
+
+    runNext();
+  },
+
+  updateBulkQueue(updater) {
+    const queue = wx.getStorageSync(bulkImportStorageKey);
+    if (!queue || !queue.files || !queue.files.length) return;
+    wx.setStorageSync(bulkImportStorageKey, updater(queue));
+  },
+
+  markBulkAnalyzeStatus(index, status) {
+    this.updateBulkQueue(function (queue) {
+      const analyzeStatus = Object.assign({}, queue.analyzeStatus || {});
+      analyzeStatus[index] = status;
+      return Object.assign({}, queue, { analyzeStatus: analyzeStatus });
+    });
+  },
+
+  saveBulkDraft(index, draft) {
+    this.updateBulkQueue(function (queue) {
+      const drafts = Object.assign({}, queue.drafts || {});
+      const analyzeStatus = Object.assign({}, queue.analyzeStatus || {});
+      drafts[index] = draft;
+      analyzeStatus[index] = 'done';
+      return Object.assign({}, queue, {
+        drafts: drafts,
+        analyzeStatus: analyzeStatus,
+      });
+    });
+  },
+
+  saveBulkAnalyzeError(index, message) {
+    this.updateBulkQueue(function (queue) {
+      const analyzeErrors = Object.assign({}, queue.analyzeErrors || {});
+      const analyzeStatus = Object.assign({}, queue.analyzeStatus || {});
+      analyzeErrors[index] = message;
+      analyzeStatus[index] = 'failed';
+      return Object.assign({}, queue, {
+        analyzeErrors: analyzeErrors,
+        analyzeStatus: analyzeStatus,
+      });
+    });
+  },
+
+  chooseBackupImport() {
+    if (this.data.importingBackup) return;
+    const page = this;
+    if (!wx.chooseMessageFile) {
+      wx.showToast({ title: '当前微信版本不支持选择文件', icon: 'none' });
+      return;
+    }
+    wx.chooseMessageFile({
+      count: 1,
+      type: 'file',
+      extension: ['zip'],
+      success: function (res) {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file || !file.path) return;
+        page.importBackupFile(file.path);
+      },
+    });
+  },
+
+  importBackupFile(filePath) {
+    const page = this;
+    this.setData({
+      importingBackup: true,
+      importProgress: '正在导入备份包，请稍候。',
+    });
+    api
+      .importWardrobeBackup(filePath)
+      .then(function (data) {
+        wx.showModal({
+          title: '导入完成',
+          content:
+            '已恢复 ' +
+            (data.imported || 0) +
+            ' 件衣物，跳过 ' +
+            (data.skipped || 0) +
+            ' 件。',
+          showCancel: false,
+        });
+        return page.loadGarments();
+      })
+      .catch(function (error) {
+        wx.showModal({
+          title: '导入失败',
+          content: error.message || '备份导入失败，请确认文件是否正确。',
+          showCancel: false,
+        });
+      })
+      .finally(function () {
+        page.setData({ importingBackup: false, importProgress: '' });
+      });
   },
 
   exportWardrobeBackup() {

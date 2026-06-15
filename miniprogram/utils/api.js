@@ -78,6 +78,33 @@ function analyzeGarmentPhoto(filePath) {
   });
 }
 
+function importWardrobeBackup(filePath) {
+  return new Promise(function (resolve, reject) {
+    wx.uploadFile({
+      url: API_BASE_URL + '/api/miniapp/garments/backup/import',
+      filePath: filePath,
+      name: 'backup',
+      timeout: 180000,
+      success(res) {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(res.data));
+          } catch (error) {
+            reject(new Error('服务器返回格式不正确'));
+          }
+          return;
+        }
+        console.warn('importWardrobeBackup bad status', res.statusCode, res.data);
+        reject(new Error('备份导入失败，请确认文件是否正确'));
+      },
+      fail(error) {
+        console.warn('importWardrobeBackup failed', error);
+        reject(new Error('备份导入失败，请重新选择文件'));
+      },
+    });
+  });
+}
+
 module.exports = {
   API_BASE_URL: API_BASE_URL,
   listGarments: function () {
@@ -123,6 +150,7 @@ module.exports = {
   },
   analyzeGarmentPhoto: analyzeGarmentPhoto,
   uploadGarment: uploadGarment,
+  importWardrobeBackup: importWardrobeBackup,
   wardrobeBackupUrl: function () {
     return API_BASE_URL + '/api/miniapp/garments/backup/export';
   },

@@ -215,8 +215,10 @@ Page({
 
   analyzePhoto(filePath) {
     if (this.data.isEdit) return;
+    if (this.data.isBulkImport && this.applyBulkAiDraftIfReady()) return;
     const page = this;
     this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
+    if (this.data.isBulkImport && this.waitForBulkAiDraft(filePath, 0)) return;
     api
       .analyzeGarmentPhoto(filePath)
       .then(function (data) {
@@ -381,6 +383,71 @@ Page({
       })
       .finally(function () {
         page.setData({ submitting: false });
+      });
+  },
+
+  applyBulkAiDraftIfReady() {
+    const queue = wx.getStorageSync(bulkImportStorageKey) || {};
+    const status = queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
+    const draft = queue.drafts && queue.drafts[this.data.bulkIndex];
+    const error = queue.analyzeErrors && queue.analyzeErrors[this.data.bulkIndex];
+
+    if (status === 'done' && draft) {
+      this.setData({ recognizing: false, aiError: '', error: '' });
+      this.applyAiDraft(draft);
+      return true;
+    }
+    if (status === 'failed') {
+      this.setData({
+        recognizing: false,
+        aiError: error || 'AI识别失败，请手动填写',
+      });
+      return true;
+    }
+    return false;
+  },
+
+  waitForBulkAiDraft(filePath, attempt) {
+    const queue = wx.getStorageSync(bulkImportStorageKey) || {};
+    const status = queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
+    if (status !== 'running' && status !== 'queued') return false;
+
+    const page = this;
+    this.setData({
+      recognizing: true,
+      aiDraft: null,
+      aiError: '',
+      error: '',
+    });
+    setTimeout(function () {
+      if (page.data.photoPath !== filePath) return;
+      if (page.applyBulkAiDraftIfReady()) return;
+      if (attempt >= 90) {
+        page.analyzePhotoWithoutBulkCache(filePath);
+        return;
+      }
+      page.waitForBulkAiDraft(filePath, attempt + 1);
+    }, 500);
+    return true;
+  },
+
+  analyzePhotoWithoutBulkCache(filePath) {
+    const page = this;
+    this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
+    api
+      .analyzeGarmentPhoto(filePath)
+      .then(function (data) {
+        if (page.data.photoPath !== filePath) return;
+        page.applyAiDraft(data.draft || {});
+      })
+      .catch(function (error) {
+        if (page.data.photoPath !== filePath) return;
+        page.setData({ aiError: error.message || 'AI识别失败，请手动填写' });
+      })
+      .finally(function () {
+        if (page.data.photoPath === filePath) {
+          page.setData({ recognizing: false });
+        }
       });
   },
 

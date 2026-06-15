@@ -102,6 +102,44 @@ describe('MiniappWardrobeController', () => {
     expect(zip.toString('utf8')).toContain('photos/7-coat.webp');
   });
 
+  it('imports wardrobe backup zip files', async () => {
+    const { controller, garmentService, fileService, req } = makeController();
+    garmentService.findAll.mockResolvedValue([makeGarment()]);
+    garmentService.create.mockResolvedValue(makeGarment({ id: 18 }));
+    fileService.get.mockResolvedValue(Readable.from(Buffer.from('photo-bytes')));
+    const reply = {
+      header: jest.fn().mockReturnThis(),
+      send: jest.fn((payload) => payload),
+    };
+    const zip = (await controller.exportBackup(req, reply as any)) as Buffer;
+    req.file = jest.fn(async () => ({
+      filename: 'wardrobe-backup.zip',
+      mimetype: 'application/zip',
+      file: Readable.from(zip),
+    }));
+
+    await expect(controller.importBackup(req)).resolves.toEqual({
+      imported: 1,
+      skipped: 0,
+    });
+    expect(garmentService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Black Coat',
+        category: 'outerwear',
+        color: GarmentColor.BLACK,
+        seasons: ['winter'],
+        brand: 'Sample',
+        size: 'M',
+        notes: 'Warm',
+        photo: expect.objectContaining({
+          filename: '7-coat.webp',
+          mimetype: 'image/webp',
+        }),
+      }),
+      undefined,
+    );
+  });
+
   it('creates a garment from miniapp multipart upload data', async () => {
     const { controller, garmentService, req } = makeController();
     const upload = { mimetype: 'image/jpeg' };
