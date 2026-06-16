@@ -400,45 +400,48 @@ Page({
     const page = this;
     const backupUrl = api.wardrobeBackupUrl();
     this.setData({ exporting: true });
-    wx.setClipboardData({
-      data: backupUrl,
-      success: function () {
-        wx.showToast({ title: '下载链接已复制', icon: 'none' });
-      },
-    });
-    wx.downloadFile({
-      url: backupUrl,
-      success: function (res) {
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          wx.showToast({ title: '导出失败', icon: 'none' });
-          return;
-        }
-        wx.openDocument({
-          filePath: res.tempFilePath,
-          showMenu: true,
-          success: function () {
-            wx.showModal({
-              title: '导出完成',
-              content: '备份包已打开，可用右上角菜单转发或保存。下载链接也已复制，可粘贴到浏览器下载。',
-              showCancel: false,
+    api
+      .wardrobeBackupHeaders()
+      .then(function (headers) {
+        wx.downloadFile({
+          url: backupUrl,
+          header: headers,
+          success: function (res) {
+            if (res.statusCode < 200 || res.statusCode >= 300) {
+              wx.showToast({ title: '导出失败', icon: 'none' });
+              return;
+            }
+            wx.openDocument({
+              filePath: res.tempFilePath,
+              showMenu: true,
+              success: function () {
+                wx.showModal({
+                  title: '导出完成',
+                  content: '备份包已打开，可用右上角菜单转发或保存。',
+                  showCancel: false,
+                });
+              },
+              fail: function () {
+                wx.showModal({
+                  title: '导出完成',
+                  content: '备份包已下载，可从微信文件里转发或保存。',
+                  showCancel: false,
+                });
+              },
             });
           },
           fail: function () {
-            wx.showModal({
-              title: '导出完成',
-              content: '下载链接已复制，可粘贴到浏览器下载备份包。',
-              showCancel: false,
-            });
+            wx.showToast({ title: '导出失败', icon: 'none' });
+          },
+          complete: function () {
+            page.setData({ exporting: false });
           },
         });
-      },
-      fail: function () {
-        wx.showToast({ title: '导出失败', icon: 'none' });
-      },
-      complete: function () {
+      })
+      .catch(function () {
         page.setData({ exporting: false });
-      },
-    });
+        wx.showToast({ title: '导出失败', icon: 'none' });
+      });
   },
 
   goToOutfit() {

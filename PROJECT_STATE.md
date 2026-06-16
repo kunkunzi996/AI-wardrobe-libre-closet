@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main` 已包含本阶段全部已验收功能，最新功能提交为：
+AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main` 已包含本阶段全部已验收功能。本轮已接入小程序微信登录，衣橱、AI 搭配、今日穿搭开始按微信用户隔离。上一轮已验收功能提交为：
 
 ```text
 0cf7e05 feat: add wardrobe bulk delete mode
@@ -32,6 +32,8 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 - 衣橱备份导出：ZIP 包含 `manifest.json` 和 `photos/`
 - 衣橱备份导入：独立 `.zip` 入口，恢复衣物信息和照片
 - 首页长按衣物卡片进入批量删除模式，可多选删除
+- 小程序微信登录：`wx.login` 换后端 JWT，按微信 `openid` 绑定用户
+- 小程序数据隔离：衣橱、备份导入导出、搭配推荐、今日穿搭均按当前微信用户读取/保存
 
 ## 关键入口
 
@@ -42,10 +44,16 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 - `miniprogram/pages/garment-detail/index.*`：衣物详情
 - `miniprogram/pages/outfit/index.*`：AI 搭配
 - `miniprogram/pages/daily-outfit/index.*`：今日穿搭
+- `miniprogram/utils/api.js`：小程序登录、token 保存、所有 API 请求头
 
 后端入口：
 
+- `src/auth/miniapp-auth.controller.ts`：小程序微信登录接口 `/api/miniapp/auth/login`
+- `src/auth/miniapp-auth.service.ts`：微信 `code2Session`、按 `openid` 找到/创建用户、签发 JWT
+- `src/auth/conditional-auth.guard.ts`：读取小程序 `Authorization: Bearer ...` token
 - `src/wardrobe/miniapp-wardrobe.controller.ts`：小程序衣物 API、AI 分析、备份导入导出
+- `src/wardrobe/miniapp-outfit.controller.ts`：小程序搭配推荐 API
+- `src/wardrobe/miniapp-daily-outfit.controller.ts`：小程序今日穿搭 API
 - `src/wardrobe/recommendation/outfit-generator.service.ts`：穿搭推荐生成
 - `src/ai/outfit-ai.service.ts`：AI 搭配提示词与返回结果规范
 - `src/ai/garment-vision.service.ts`：衣物图片识别
@@ -91,6 +99,9 @@ QWEN_API_BASE_URL
 QWEN_VISION_MODEL
 QWEN_TEXT_MODEL
 AI_VISION_TIMEOUT_MS
+ACCESS_TOKEN_SECRET
+WECHAT_MINIAPP_APP_ID
+WECHAT_MINIAPP_APP_SECRET
 BG_REMOVAL_PROVIDER
 ALIBABA_CLOUD_ACCESS_KEY_ID
 ALIBABA_CLOUD_ACCESS_KEY_SECRET
@@ -104,6 +115,8 @@ ALIYUN_IMAGE_SEG_TIMEOUT_MS
 
 ```bash
 docker exec ai-wardrobe sh -c 'test -n "$QWEN_API_KEY" && echo "QWEN_API_KEY OK" || echo "QWEN_API_KEY MISSING"'
+docker exec ai-wardrobe sh -c 'test -n "$WECHAT_MINIAPP_APP_ID" && echo "WECHAT_MINIAPP_APP_ID OK" || echo "WECHAT_MINIAPP_APP_ID MISSING"'
+docker exec ai-wardrobe sh -c 'test -n "$WECHAT_MINIAPP_APP_SECRET" && echo "WECHAT_MINIAPP_APP_SECRET OK" || echo "WECHAT_MINIAPP_APP_SECRET MISSING"'
 docker exec ai-wardrobe sh -c 'test -n "$ALIBABA_CLOUD_ACCESS_KEY_ID" && echo "AK_ID OK" || echo "AK_ID MISSING"'
 docker exec ai-wardrobe sh -c 'test -n "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" && echo "AK_SECRET OK" || echo "AK_SECRET MISSING"'
 ```
@@ -155,6 +168,16 @@ Failed to connect to github.com port 443
 
 否则体验版用户看不到新的小程序页面交互。
 
+本轮微信登录改动上线前还必须在服务器 `.env` 增加：
+
+```text
+WECHAT_MINIAPP_APP_ID=你的小程序AppID
+WECHAT_MINIAPP_APP_SECRET=你的小程序AppSecret
+ACCESS_TOKEN_SECRET=生产强随机字符串
+```
+
+否则体验版进入原生页面时会登录失败，衣橱接口拿不到当前微信用户。
+
 ## 本地工作区注意事项
 
 本地经常存在微信开发者工具配置变更：
@@ -172,13 +195,13 @@ M project.config.json
 
 ```bash
 npm run test:miniapp
-npm test -- miniapp-wardrobe.controller.spec.ts --runInBand
+npm test -- miniapp-auth.service.spec.ts conditional-auth.guard.spec.ts miniapp-wardrobe.controller.spec.ts --runInBand
 npm run build
 ```
 
 ## 下一轮建议从这里开始
 
-- 当前状态：MVP 完成，`main` 已包含批量导入导出、核心衣物搭配、批量删除等能力。
-- 建议任务：体验版真实用户反馈收集、关键 Bug 修复、发布前数据备份流程演练。
-- 继续文件：优先看 `PROJECT_STATE.md`、`docs/MVP_COMPLETION_SUMMARY.md`、`docs/ARCHITECTURE_HANDOFF.md`。
-- 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；服务器 GitHub 连接不稳定时不要误判为分支不存在。
+- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，等待部署到服务器并上传微信体验版验证。
+- 建议任务：部署前先在服务器 `.env` 补齐微信 AppID/AppSecret 和强 `ACCESS_TOKEN_SECRET`，再重新构建容器、上传体验版，让两个微信号分别添加衣服验证互相不可见。
+- 继续文件：优先看 `PROJECT_STATE.md`、`docs/ARCHITECTURE_HANDOFF.md`、`miniprogram/utils/api.js`、`src/auth/miniapp-auth.service.ts`。
+- 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在。

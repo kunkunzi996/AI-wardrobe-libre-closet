@@ -31,6 +31,10 @@ export class User extends ShareableId {
   @Property({ nullable: true })
   public email?: string;
 
+  @Unique()
+  @Property({ nullable: true })
+  public wechatOpenId?: string;
+
   @Property()
   public password!: string;
 

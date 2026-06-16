@@ -55,7 +55,9 @@ flowchart TD
   UserWeb["手机/电脑浏览器或 PWA"] --> Nest["NestJS + Fastify"]
   MiniWebView["微信小程序 web-view"] --> WebDomain["https://aimatchwear.asia"]
   WebDomain --> Nest
-  MiniNative["微信小程序原生页面"] --> MiniApi["/api/miniapp/garments"]
+  MiniNative["微信小程序原生页面"] --> MiniAuth["/api/miniapp/auth/login"]
+  MiniNative --> MiniApi["/api/miniapp/garments / outfits / daily-outfits"]
+  MiniAuth --> Nest
   MiniApi --> Nest
 
   Nest --> Views["views/*.hbs 服务端页面"]
@@ -105,6 +107,9 @@ flowchart TD
   WardrobeModule --> CalendarController["CalendarController /calendar"]
   WardrobeModule --> AnalyticsController["AnalyticsController /analytics"]
   WardrobeModule --> MiniappController["MiniappWardrobeController /api/miniapp/garments"]
+  WardrobeModule --> MiniappOutfit["MiniappOutfitController /api/miniapp/outfits"]
+  WardrobeModule --> MiniappDaily["MiniappDailyOutfitController /api/miniapp/daily-outfits"]
+  Auth --> MiniappAuth["MiniappAuthController /api/miniapp/auth/login"]
 
   WardrobeController --> GarmentService
   MiniappController --> GarmentService
@@ -128,10 +133,14 @@ flowchart TD
 | `/outfits` | Web 搭配列表、新增、编辑、推荐 |
 | `/calendar` | Web 穿搭日历、标记已穿、删除日历记录 |
 | `/analytics` | Web 衣橱统计 |
+| `/api/miniapp/auth/login` | 小程序用 `wx.login` code 换后端 JWT，后端按微信 `openid` 绑定 User |
 | `/api/miniapp/garments` | 小程序原生页面用的衣物列表、详情、上传、删除 API |
 | `/api/miniapp/garments/analyze` | 小程序上传图片后获取 AI 可编辑草稿，不直接保存 |
 | `/api/miniapp/garments/backup/export` | 导出衣橱 ZIP 备份包，包含 `manifest.json` 与照片 |
 | `/api/miniapp/garments/backup/import` | 导入本项目导出的 ZIP 备份包，恢复衣物信息和照片 |
+| `/api/miniapp/outfits/recommend` | 小程序 AI 搭配推荐，按当前微信用户的衣橱生成 |
+| `/api/miniapp/daily-outfits` | 小程序保存今日穿搭，按当前微信用户隔离 |
+| `/api/miniapp/daily-outfits/today` | 小程序读取今日穿搭，按当前微信用户隔离 |
 
 ## 7. 数据模型
 
@@ -146,6 +155,13 @@ erDiagram
   Garment ||--o| File : photo
   Garment }o--o{ Outfit : included_in
   Outfit ||--o{ OutfitCalendar : scheduled_as
+
+  User {
+    number id
+    string email
+    string wechatOpenId
+    string password
+  }
 
   Garment {
     number id
@@ -193,7 +209,8 @@ erDiagram
 - `Outfit` 表示一套搭配，可以包含多件衣服。
 - `OutfitCalendar` 表示某天计划穿哪套搭配，以及是否已经穿过、评价如何。
 - `File` 存图片文件元信息，真实图片在本地磁盘或 S3。
-- 多用户隔离依赖 `owner` 字段；如果 `AUTH_ENABLED=false`，很多数据会按单用户自托管模式开放使用。
+- 多用户隔离依赖 `owner` 字段；小程序原生页通过微信 `openid` 绑定到 `User.wechatOpenId`，再把 JWT 放到 `Authorization: Bearer ...` 请求头里。
+- 如果没有 token 且 `AUTH_ENABLED=false`，后端仍兼容单用户自托管模式，会访问 `owner=null` 的旧数据。
 
 ## 8. 小程序现状
 
@@ -227,22 +244,26 @@ https://aimatchwear.asia
 - 衣物列表：`pages/wardrobe/index`
 - 新增衣物：`pages/garment-form/index`
 - 衣物详情：`pages/garment-detail/index`
+- AI 搭配：`pages/outfit/index`
+- 今日穿搭：`pages/daily-outfit/index`
 
 它们通过 `miniprogram/utils/api.js` 请求线上后端：
 
 ```text
+POST   /api/miniapp/auth/login
 GET    /api/miniapp/garments
 GET    /api/miniapp/garments/:id
 POST   /api/miniapp/garments
 DELETE /api/miniapp/garments/:id
+POST   /api/miniapp/outfits/recommend
+POST   /api/miniapp/daily-outfits
+GET    /api/miniapp/daily-outfits/today
 ```
 
 当前原生小程序尚未覆盖：
 
-- 登录/注册原生化
 - 搭配管理原生化
-- 穿搭日历原生化
-- AI 推荐原生化
+- 完整穿搭日历原生化
 - 统计页原生化
 
 ## 9. 关键请求链路
@@ -308,6 +329,9 @@ flowchart LR
 | `PORT` | 服务端口，默认 3000 |
 | `APP_NAME` | 应用显示名称，当前默认偏中文 |
 | `AUTH_ENABLED` | 是否开启登录和用户隔离 |
+| `ACCESS_TOKEN_SECRET` | JWT 签名密钥，生产必须改成强随机字符串 |
+| `WECHAT_MINIAPP_APP_ID` | 微信小程序 AppID，用于小程序登录 |
+| `WECHAT_MINIAPP_APP_SECRET` | 微信小程序 AppSecret，用于 `code2Session` 换 `openid` |
 | `DATA_PATH` | SQLite 数据库和本地文件的存放目录 |
 | `DATABASE_TYPE` | `sqlite` 或 `postgres` |
 | `FILE_STORAGE_TYPE` | `local` 或 `object` |
@@ -338,13 +362,13 @@ npm.cmd run build
 
 ### 11.2 登录态和用户体系
 
-Web 端已有 JWT/条件鉴权，但小程序原生页目前没有完整微信登录链路。
+Web 端已有 JWT/条件鉴权；小程序原生页现在通过 `wx.login` -> `/api/miniapp/auth/login` -> 微信 `code2Session` 拿到 `openid`，再绑定或创建 `User.wechatOpenId`。后续小程序请求统一带 `Authorization: Bearer ...`，衣橱、搭配推荐、今日穿搭继续复用现有 `owner` 隔离。
 
 建议评审：
 
-- 小程序是否要接微信 `code2Session`？
-- 后端是否需要新增 `MiniappAuthModule` 或在 `AuthModule` 内扩展微信身份绑定？
-- Web JWT、微信 session、自托管无登录模式三者如何共存？
+- 小程序 token 过期后的刷新体验是否需要更细的提示。
+- Web JWT、微信 JWT、自托管无登录模式三者是否继续共用 `ConditionalAuthGuard`。
+- 微信用户是否未来需要绑定邮箱账号或迁移旧 `owner=null` 数据。
 
 ### 11.3 API 分层
 
@@ -392,7 +416,7 @@ AI 模块已经拆出来，但业务入口主要在衣物识别和搭配推荐�
 | --- | --- | --- |
 | 小程序有 web-view 和原生页面两条路线 | 产品体验和技术路线容易摇摆 | 先决定“小程序长期是否原生化” |
 | 原生小程序 API 覆盖不完整 | 原生化会卡在登录、搭配、日历、AI | 先补 API 设计文档，再逐步迁移 |
-| 小程序登录体系未完整接入微信 | 不能形成稳定用户身份闭环 | 设计微信登录和现有 User 的映射 |
+| 小程序 token 依赖微信 AppID/AppSecret | 服务器缺少环境变量时，原生小程序登录会失败 | 部署前确认 `.env` 含 `WECHAT_MINIAPP_APP_ID` 和 `WECHAT_MINIAPP_APP_SECRET` |
 | 默认 SQLite + 本地文件 | 部署简单，但扩容和备份要提前想 | 生产环境明确备份、对象存储、迁移策略 |
 | 启动自动跑 migration | 简单方便，但生产发布可控性弱 | 评估是否改为 CI/CD 或运维手动迁移 |
 | AI 同步调用可能慢 | 上传/推荐体验可能等待较久 | 评估异步任务、状态轮询、超时降级 |
@@ -401,7 +425,7 @@ AI 模块已经拆出来，但业务入口主要在衣物识别和搭配推荐�
 
 1. 小程序未来应该是 web-view 为主，还是原生为主？
 2. 如果原生为主，后端 API 应该如何分层和版本化？
-3. 微信登录和现有 JWT 用户体系怎么合并最稳？
+3. 微信用户是否需要绑定 Web 邮箱账号，旧公共衣橱数据是否要迁移到指定微信用户？
 4. 图片上传、压缩、去背景，哪些放小程序端，哪些放后端？
 5. SQLite 是否满足当前上线阶段？什么时候需要 PostgreSQL？
 6. 文件是继续本地存，还是尽早切对象存储？

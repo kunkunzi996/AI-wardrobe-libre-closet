@@ -4,6 +4,8 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { ConditionalAuthGuard } from './conditional-auth.guard';
 import { DisableRegistrationGuard } from './disable-registration.guard';
+import { MiniappAuthController } from './miniapp-auth.controller';
+import { MiniappAuthService } from './miniapp-auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
@@ -25,9 +27,10 @@ import { ViewContextModule } from '../view-context/view-context.module';
     MikroOrmModule.forFeature([PasswordReset, User]),
     EmailModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, MiniappAuthController],
   providers: [
     AuthService,
+    MiniappAuthService,
     AuthGuard,
     ConditionalAuthGuard,
     DisableRegistrationGuard,

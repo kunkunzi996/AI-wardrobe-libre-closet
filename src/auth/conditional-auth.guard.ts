@@ -20,12 +20,8 @@ export class ConditionalAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (!this.configService.get<boolean>('AUTH_ENABLED')) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest<FastifyRequest>();
-    const token = (request.cookies as Record<string, string>)?.['access_token'];
+    const token = this.readToken(request);
     if (token) {
       try {
         const payload = await this.jwtService.verifyAsync(token, {
@@ -39,8 +35,25 @@ export class ConditionalAuthGuard implements CanActivate {
       }
     }
 
+    if (!this.configService.get<boolean>('AUTH_ENABLED')) {
+      return true;
+    }
+
     const response = context.switchToHttp().getResponse();
     response.redirect('/auth/login', 302);
     return false;
+  }
+
+  private readToken(request: FastifyRequest): string | undefined {
+    const authorization = request.headers.authorization;
+    const headerValue = Array.isArray(authorization)
+      ? authorization[0]
+      : authorization;
+    if (headerValue?.startsWith('Bearer ')) {
+      return headerValue.slice('Bearer '.length).trim();
+    }
+    return (request.cookies as Record<string, string> | undefined)?.[
+      'access_token'
+    ];
   }
 }

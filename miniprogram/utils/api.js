@@ -1,112 +1,199 @@
 const API_BASE_URL = 'https://aimatchwear.asia';
+const TOKEN_KEY = 'miniapp_access_token';
+let loginPromise = null;
+
+function tokenHeader() {
+  const token = wx.getStorageSync(TOKEN_KEY);
+  return token ? { Authorization: 'Bearer ' + token } : {};
+}
+
+function loginMiniapp(force) {
+  if (!force && wx.getStorageSync(TOKEN_KEY)) {
+    return Promise.resolve(wx.getStorageSync(TOKEN_KEY));
+  }
+  if (loginPromise) return loginPromise;
+
+  loginPromise = new Promise(function (resolve, reject) {
+    wx.login({
+      success(loginRes) {
+        if (!loginRes.code) {
+          reject(new Error('微信登录失败，请重新进入小程序'));
+          return;
+        }
+        wx.request({
+          url: API_BASE_URL + '/api/miniapp/auth/login',
+          method: 'POST',
+          data: { code: loginRes.code },
+          success(res) {
+            if (
+              res.statusCode >= 200 &&
+              res.statusCode < 300 &&
+              res.data &&
+              res.data.accessToken
+            ) {
+              wx.setStorageSync(TOKEN_KEY, res.data.accessToken);
+              resolve(res.data.accessToken);
+              return;
+            }
+            reject(
+              new Error(
+                res.data && res.data.message
+                  ? res.data.message
+                  : '微信登录失败，请稍后重试',
+              ),
+            );
+          },
+          fail(error) {
+            console.warn('miniapp login request failed', error);
+            reject(new Error('微信登录失败，请稍后重试'));
+          },
+        });
+      },
+      fail(error) {
+        console.warn('wx.login failed', error);
+        reject(new Error('微信登录失败，请重新进入小程序'));
+      },
+    });
+  });
+
+  return loginPromise.then(
+    function (token) {
+      loginPromise = null;
+      return token;
+    },
+    function (error) {
+      loginPromise = null;
+      throw error;
+    },
+  );
+}
 
 function request(path, options) {
   options = options || {};
-  return new Promise(function (resolve, reject) {
-    wx.request({
-      url: API_BASE_URL + path,
-      method: options.method || 'GET',
-      data: options.data,
-      success(res) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data);
-          return;
-        }
-        console.warn('api request bad status', path, res.statusCode, res.data);
-        reject(new Error(res.data && res.data.message ? res.data.message : '服务器连接失败，请稍后重试'));
-      },
-      fail(error) {
-        console.warn('api request failed', path, error);
-        reject(new Error('服务器连接失败，请稍后重试'));
-      },
+  return loginMiniapp().then(function () {
+    return new Promise(function (resolve, reject) {
+      wx.request({
+        url: API_BASE_URL + path,
+        method: options.method || 'GET',
+        data: options.data,
+        header: Object.assign({}, tokenHeader(), options.header || {}),
+        success(res) {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(res.data);
+            return;
+          }
+          console.warn('api request bad status', path, res.statusCode, res.data);
+          reject(
+            new Error(
+              res.data && res.data.message
+                ? res.data.message
+                : '服务器连接失败，请稍后重试',
+            ),
+          );
+        },
+        fail(error) {
+          console.warn('api request failed', path, error);
+          reject(new Error('服务器连接失败，请稍后重试'));
+        },
+      });
     });
   });
 }
 
 function uploadGarment(filePath, formData) {
-  return new Promise(function (resolve, reject) {
-    wx.uploadFile({
-      url: API_BASE_URL + '/api/miniapp/garments',
-      filePath: filePath,
-      name: 'photo',
-      formData: formData,
-      timeout: 180000,
-      success(res) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve(JSON.parse(res.data));
-          } catch (error) {
-            reject(new Error('服务器返回格式不正确'));
+  return loginMiniapp().then(function () {
+    return new Promise(function (resolve, reject) {
+      wx.uploadFile({
+        url: API_BASE_URL + '/api/miniapp/garments',
+        filePath: filePath,
+        name: 'photo',
+        formData: formData,
+        header: tokenHeader(),
+        timeout: 180000,
+        success(res) {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(res.data));
+            } catch (error) {
+              reject(new Error('服务器返回格式不正确'));
+            }
+            return;
           }
-          return;
-        }
-        console.warn('uploadGarment bad status', res.statusCode, res.data);
-        reject(new Error('上传失败，请重新选择图片'));
-      },
-      fail(error) {
-        console.warn('uploadGarment failed', error);
-        reject(new Error('上传失败，请重新选择图片'));
-      },
+          console.warn('uploadGarment bad status', res.statusCode, res.data);
+          reject(new Error('上传失败，请重新选择图片'));
+        },
+        fail(error) {
+          console.warn('uploadGarment failed', error);
+          reject(new Error('上传失败，请重新选择图片'));
+        },
+      });
     });
   });
 }
 
 function analyzeGarmentPhoto(filePath) {
-  return new Promise(function (resolve, reject) {
-    wx.uploadFile({
-      url: API_BASE_URL + '/api/miniapp/garments/analyze',
-      filePath: filePath,
-      name: 'photo',
-      timeout: 180000,
-      success(res) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve(JSON.parse(res.data));
-          } catch (error) {
-            reject(new Error('服务器返回格式不正确'));
+  return loginMiniapp().then(function () {
+    return new Promise(function (resolve, reject) {
+      wx.uploadFile({
+        url: API_BASE_URL + '/api/miniapp/garments/analyze',
+        filePath: filePath,
+        name: 'photo',
+        header: tokenHeader(),
+        timeout: 180000,
+        success(res) {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(res.data));
+            } catch (error) {
+              reject(new Error('服务器返回格式不正确'));
+            }
+            return;
           }
-          return;
-        }
-        console.warn('analyzeGarmentPhoto bad status', res.statusCode, res.data);
-        reject(new Error('AI识别失败，请手动填写'));
-      },
-      fail(error) {
-        console.warn('analyzeGarmentPhoto failed', error);
-        reject(new Error('AI识别失败，请手动填写'));
-      },
+          console.warn('analyzeGarmentPhoto bad status', res.statusCode, res.data);
+          reject(new Error('AI识别失败，请手动填写'));
+        },
+        fail(error) {
+          console.warn('analyzeGarmentPhoto failed', error);
+          reject(new Error('AI识别失败，请手动填写'));
+        },
+      });
     });
   });
 }
 
 function importWardrobeBackup(filePath) {
-  return new Promise(function (resolve, reject) {
-    wx.uploadFile({
-      url: API_BASE_URL + '/api/miniapp/garments/backup/import',
-      filePath: filePath,
-      name: 'backup',
-      timeout: 180000,
-      success(res) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve(JSON.parse(res.data));
-          } catch (error) {
-            reject(new Error('服务器返回格式不正确'));
+  return loginMiniapp().then(function () {
+    return new Promise(function (resolve, reject) {
+      wx.uploadFile({
+        url: API_BASE_URL + '/api/miniapp/garments/backup/import',
+        filePath: filePath,
+        name: 'backup',
+        header: tokenHeader(),
+        timeout: 180000,
+        success(res) {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(res.data));
+            } catch (error) {
+              reject(new Error('服务器返回格式不正确'));
+            }
+            return;
           }
-          return;
-        }
-        console.warn('importWardrobeBackup bad status', res.statusCode, res.data);
-        reject(new Error('备份导入失败，请确认文件是否正确'));
-      },
-      fail(error) {
-        console.warn('importWardrobeBackup failed', error);
-        reject(new Error('备份导入失败，请重新选择文件'));
-      },
+          console.warn('importWardrobeBackup bad status', res.statusCode, res.data);
+          reject(new Error('备份导入失败，请确认文件是否正确'));
+        },
+        fail(error) {
+          console.warn('importWardrobeBackup failed', error);
+          reject(new Error('备份导入失败，请重新选择文件'));
+        },
+      });
     });
   });
 }
 
 module.exports = {
   API_BASE_URL: API_BASE_URL,
+  loginMiniapp: loginMiniapp,
   listGarments: function () {
     return request('/api/miniapp/garments');
   },
@@ -153,5 +240,10 @@ module.exports = {
   importWardrobeBackup: importWardrobeBackup,
   wardrobeBackupUrl: function () {
     return API_BASE_URL + '/api/miniapp/garments/backup/export';
+  },
+  wardrobeBackupHeaders: function () {
+    return loginMiniapp().then(function () {
+      return tokenHeader();
+    });
   },
 };

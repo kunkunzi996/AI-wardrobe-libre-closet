@@ -80,6 +80,16 @@ describe('MiniappWardrobeController', () => {
     expect(garmentService.findAll).toHaveBeenCalledWith(undefined, {});
   });
 
+  it('passes authenticated miniapp user id into wardrobe queries', async () => {
+    const { controller, garmentService, req } = makeController();
+    req.user = { userId: 42 };
+    garmentService.findAll.mockResolvedValue([makeGarment()]);
+
+    await controller.index(req);
+
+    expect(garmentService.findAll).toHaveBeenCalledWith(42, {});
+  });
+
   it('exports wardrobe backup as a zip buffer', async () => {
     const { controller, garmentService, fileService, req } = makeController();
     garmentService.findAll.mockResolvedValue([makeGarment()]);
@@ -179,6 +189,25 @@ describe('MiniappWardrobeController', () => {
       undefined,
     );
     expect(garmentService.update).not.toHaveBeenCalled();
+  });
+
+  it('saves authenticated miniapp garments under the current user id', async () => {
+    const { controller, garmentService, req } = makeController();
+    req.user = { userId: 42 };
+    const upload = { mimetype: 'image/jpeg' };
+    req.file = jest.fn(async () => upload);
+    garmentService.create.mockResolvedValue(makeGarment({ id: 9 }));
+
+    await controller.create({ name: 'White Shirt', category: 'tops' }, req);
+
+    expect(garmentService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'White Shirt',
+        category: 'tops',
+        photo: upload,
+      }),
+      42,
+    );
   });
 
   it('returns an AI editable draft without saving a garment', async () => {

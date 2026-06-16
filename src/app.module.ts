@@ -75,6 +75,8 @@ import { AiModule } from './ai/ai.module';
         DISABLE_REGISTRATION: Joi.boolean().default(false),
         PWA_ENABLED: Joi.boolean().default(false),
         ACCESS_TOKEN_SECRET: Joi.string().default('ChangeMe!'),
+        WECHAT_MINIAPP_APP_ID: Joi.string().optional(),
+        WECHAT_MINIAPP_APP_SECRET: Joi.string().optional(),
         PUBLIC_VAPID_KEY: Joi.optional().default(
           'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
         ),
