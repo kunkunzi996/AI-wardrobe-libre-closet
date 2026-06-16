@@ -1,7 +1,7 @@
 # AI 穿搭衣橱架构 Handoff 手册
 
 > 给小程序架构工程师看的架构交接文档。  
-> 更新时间：2026-06-11  
+> 更新时间：2026-06-16  
 > 代码目录：`C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`
 
 ## 1. 一句话概览
@@ -29,7 +29,8 @@
 | 数据库 | SQLite 默认，可切 PostgreSQL |
 | 文件存储 | 本地磁盘默认，可切 S3 兼容对象存储 |
 | 图片处理 | sharp、@imgly/background-removal |
-| AI 接入 | OpenAI 兼容接口，配置项为 `OPENAI_API_KEY`、`AI_API_BASE_URL`、`AI_TEXT_MODEL`、`AI_VISION_MODEL` |
+| AI 接入 | Qwen/OpenAI 兼容接口。生产环境当前使用 `QWEN_API_KEY`、`QWEN_API_BASE_URL`、`QWEN_TEXT_MODEL`、`QWEN_VISION_MODEL`；旧 OpenAI 兼容配置仍可能在部分代码路径中保留 |
+| 图片分割 | 阿里云图片分割，生产环境依赖 `BG_REMOVAL_PROVIDER=aliyun`、`ALIBABA_CLOUD_ACCESS_KEY_ID`、`ALIBABA_CLOUD_ACCESS_KEY_SECRET`、`ALIYUN_IMAGE_SEG_*` |
 | 小程序 | 微信小程序原生页面 + web-view |
 | 测试 | Jest、Playwright、miniapp shell 校验脚本、Lighthouse |
 
@@ -128,6 +129,9 @@ flowchart TD
 | `/calendar` | Web 穿搭日历、标记已穿、删除日历记录 |
 | `/analytics` | Web 衣橱统计 |
 | `/api/miniapp/garments` | 小程序原生页面用的衣物列表、详情、上传、删除 API |
+| `/api/miniapp/garments/analyze` | 小程序上传图片后获取 AI 可编辑草稿，不直接保存 |
+| `/api/miniapp/garments/backup/export` | 导出衣橱 ZIP 备份包，包含 `manifest.json` 与照片 |
+| `/api/miniapp/garments/backup/import` | 导入本项目导出的 ZIP 备份包，恢复衣物信息和照片 |
 
 ## 7. 数据模型
 
