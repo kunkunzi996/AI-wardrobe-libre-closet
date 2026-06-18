@@ -16,3 +16,23 @@ AI 衣橱 MVP 阶段完成并进入体验版验证期。当前 `main` 已包含�
 - `docs/MVP_COMPLETION_SUMMARY.md`
 
 后续开发应优先从体验版用户反馈和关键稳定性问题开始，不建议在未收集反馈前继续扩展大功能。
+
+## 2026-06-18
+
+小程序微信登录和按用户隔离已完成并通过体验版验收。最新已验收提交：
+
+```text
+8425f50 feat: add WeChat miniapp login isolation
+```
+
+验收结论：
+
+- 小程序原生页通过 `wx.login` 登录，后端按微信 `openid` 绑定 `User`。
+- 衣橱、备份导入导出、AI 搭配推荐、今日穿搭按当前微信用户隔离。
+- 双微信号体验版验证通过：你和你老婆可以分别管理各自衣橱，数据不混用。
+
+后续重点：
+
+- 保持 `.env` 中 `WECHAT_MINIAPP_APP_ID`、`WECHAT_MINIAPP_APP_SECRET`、`ACCESS_TOKEN_SECRET` 不丢失、不提交。
+- 继续收集真实试用反馈，优先处理关键 Bug 和体验阻塞。
+- 旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户，如需迁移应单独做数据迁移任务。
