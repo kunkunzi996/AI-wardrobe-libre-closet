@@ -1,20 +1,20 @@
 # PROJECT_STATE
 
-更新时间：2026-06-18
+更新时间：2026-06-19
 
 ## 当前状态
 
-AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main` 已包含本阶段全部已验收功能。小程序微信登录和按微信用户隔离已完成部署后体验版验收：你和你老婆两个微信号可以管理各自衣橱，互相不混数据。
+AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main` 已包含本阶段全部已验收功能。小程序微信登录和按微信用户隔离已完成部署后体验版验收：你和你老婆两个微信号可以管理各自衣橱，互相不混数据。Qwen 3.7 衣物图片识别升级已完成服务器部署和微信开发者工具验收。
 
 最新已验收功能提交为：
 
 ```text
-8425f50 feat: add WeChat miniapp login isolation
+7078492 feat: use qwen 3.7 for garment vision
 ```
 
 ## 当前阶段
 
-阶段：MVP 完成 / 体验版微信登录隔离已验收
+阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收
 
 当前重点不是继续堆新功能，而是：
 
@@ -38,6 +38,7 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 - 小程序微信登录：`wx.login` 换后端 JWT，按微信 `openid` 绑定用户
 - 小程序数据隔离：衣橱、备份导入导出、搭配推荐、今日穿搭均按当前微信用户读取/保存
 - 双微信号体验版验收通过：你和你老婆可分别管理各自衣橱
+- Qwen 3.7 衣物图片识别：服务器已部署 `7078492`，容器环境已切到 `QWEN_VISION_MODEL=qwen3.7-plus`，微信开发者工具验收成功
 
 ## 关键入口
 
@@ -115,12 +116,13 @@ ALIYUN_IMAGE_SEG_RETURN_FORM
 ALIYUN_IMAGE_SEG_TIMEOUT_MS
 ```
 
-当前衣物图片识别只走 Qwen 配置；`QWEN_VISION_MODEL` 默认值为 `qwen3.7-plus`。旧的 `AI_VISION_MODEL=gpt-4.1-mini` 识图兜底已不再使用。
+当前衣物图片识别只走 Qwen 配置；`QWEN_VISION_MODEL` 默认值为 `qwen3.7-plus`。旧的 `AI_VISION_MODEL=gpt-4.1-mini` 识图兜底已不再使用。生产服务器 `.env` 如果写了 `QWEN_VISION_MODEL=qwen-vl-plus` 会覆盖代码默认值，必须改成 `QWEN_VISION_MODEL=qwen3.7-plus` 后重启容器。
 
 验证容器环境：
 
 ```bash
 docker exec ai-wardrobe sh -c 'test -n "$QWEN_API_KEY" && echo "QWEN_API_KEY OK" || echo "QWEN_API_KEY MISSING"'
+docker exec ai-wardrobe sh -c 'echo "QWEN_VISION_MODEL=$QWEN_VISION_MODEL"'
 docker exec ai-wardrobe sh -c 'test -n "$WECHAT_MINIAPP_APP_ID" && echo "WECHAT_MINIAPP_APP_ID OK" || echo "WECHAT_MINIAPP_APP_ID MISSING"'
 docker exec ai-wardrobe sh -c 'test -n "$WECHAT_MINIAPP_APP_SECRET" && echo "WECHAT_MINIAPP_APP_SECRET OK" || echo "WECHAT_MINIAPP_APP_SECRET MISSING"'
 docker exec ai-wardrobe sh -c 'test -n "$ALIBABA_CLOUD_ACCESS_KEY_ID" && echo "AK_ID OK" || echo "AK_ID MISSING"'
@@ -207,7 +209,7 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过。
+- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级已通过微信开发者工具验收。
 - 建议任务：继续收集你老婆真实试用反馈；优先修关键 Bug 和体验阻塞，不急着扩展大功能。
 - 继续文件：优先看 `PROJECT_STATE.md`、`docs/ARCHITECTURE_HANDOFF.md`、`miniprogram/utils/api.js`、`src/auth/miniapp-auth.service.ts`。
 - 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在。
