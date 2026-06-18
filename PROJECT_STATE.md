@@ -16,6 +16,8 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 
 阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收
 
+后端骨架验收状态：已验收（2026-06-19，后端验收官通过）
+
 当前重点不是继续堆新功能，而是：
 
 - 稳定体验版
@@ -39,6 +41,7 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 - 小程序数据隔离：衣橱、备份导入导出、搭配推荐、今日穿搭均按当前微信用户读取/保存
 - 双微信号体验版验收通过：你和你老婆可分别管理各自衣橱
 - Qwen 3.7 衣物图片识别：服务器已部署 `7078492`，容器环境已切到 `QWEN_VISION_MODEL=qwen3.7-plus`，微信开发者工具验收成功
+- 后端架构基线：已补齐 `docs/backend-architecture-source-of-truth.md`，后续业务开发必须遵守 Controller / Service / Entity / Guard / Config 分层规则
 
 ## 关键入口
 
@@ -212,4 +215,5 @@ npm run build
 - 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级已通过微信开发者工具验收。
 - 建议任务：继续收集你老婆真实试用反馈；优先修关键 Bug 和体验阻塞，不急着扩展大功能。
 - 继续文件：优先看 `PROJECT_STATE.md`、`docs/ARCHITECTURE_HANDOFF.md`、`miniprogram/utils/api.js`、`src/auth/miniapp-auth.service.ts`。
+- 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在。
