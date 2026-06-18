@@ -134,12 +134,11 @@ import { AiModule } from './ai/ai.module';
           .uri({ scheme: ['http', 'https'] })
           .default('https://dashscope.aliyuncs.com/compatible-mode'),
         QWEN_TEXT_MODEL: Joi.string().default('qwen3.5-plus'),
-        QWEN_VISION_MODEL: Joi.string().default('qwen3.5-plus'),
+        QWEN_VISION_MODEL: Joi.string().default('qwen3.7-plus'),
         AI_API_BASE_URL: Joi.string()
           .uri({ scheme: ['http', 'https'] })
           .default('https://api.openai.com'),
         AI_TEXT_MODEL: Joi.string().default('gpt-4.1-mini'),
-        AI_VISION_MODEL: Joi.string().default('gpt-4.1-mini'),
         BG_REMOVAL_PROVIDER: Joi.string().valid('aliyun').optional(),
         ALIBABA_CLOUD_ACCESS_KEY_ID: Joi.string().optional(),
         ALIBABA_CLOUD_ACCESS_KEY_SECRET: Joi.string().optional(),

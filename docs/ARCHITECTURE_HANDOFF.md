@@ -29,7 +29,7 @@
 | 数据库 | SQLite 默认，可切 PostgreSQL |
 | 文件存储 | 本地磁盘默认，可切 S3 兼容对象存储 |
 | 图片处理 | sharp、@imgly/background-removal |
-| AI 接入 | Qwen/OpenAI 兼容接口。生产环境当前使用 `QWEN_API_KEY`、`QWEN_API_BASE_URL`、`QWEN_TEXT_MODEL`、`QWEN_VISION_MODEL`；旧 OpenAI 兼容配置仍可能在部分代码路径中保留 |
+| AI 接入 | 衣物图片识别固定使用 Qwen 兼容接口，生产环境使用 `QWEN_API_KEY`、`QWEN_API_BASE_URL`、`QWEN_VISION_MODEL`，默认识图模型为 `qwen3.7-plus`；文本搭配仍保留 `QWEN_TEXT_MODEL` / OpenAI 兼容文本配置 |
 | 图片分割 | 阿里云图片分割，生产环境依赖 `BG_REMOVAL_PROVIDER=aliyun`、`ALIBABA_CLOUD_ACCESS_KEY_ID`、`ALIBABA_CLOUD_ACCESS_KEY_SECRET`、`ALIYUN_IMAGE_SEG_*` |
 | 小程序 | 微信小程序原生页面 + web-view |
 | 测试 | Jest、Playwright、miniapp shell 校验脚本、Lighthouse |
@@ -313,8 +313,8 @@ flowchart LR
   Upload["用户上传衣物图"] --> Wardrobe["WardrobeController"]
   Wardrobe --> Vision["GarmentVisionService"]
   Vision --> File["FileModule 读取图片"]
-  Vision --> OpenAI["OpenAI 兼容 Vision 模型"]
-  OpenAI --> Confirm["AI 识别结果确认页"]
+  Vision --> Qwen["Qwen 视觉模型"]
+  Qwen --> Confirm["AI 识别结果确认页"]
   Confirm --> Garment["GarmentService 保存衣物"]
 ```
 
@@ -335,10 +335,12 @@ flowchart LR
 | `DATA_PATH` | SQLite 数据库和本地文件的存放目录 |
 | `DATABASE_TYPE` | `sqlite` 或 `postgres` |
 | `FILE_STORAGE_TYPE` | `local` 或 `object` |
-| `OPENAI_API_KEY` | AI 能力需要 |
-| `AI_API_BASE_URL` | OpenAI 兼容接口地址 |
+| `QWEN_API_KEY` | 衣物图片识别需要 |
+| `QWEN_API_BASE_URL` | Qwen 兼容接口地址，默认 `https://dashscope.aliyuncs.com/compatible-mode` |
+| `QWEN_VISION_MODEL` | 图片识别模型，默认 `qwen3.7-plus` |
+| `OPENAI_API_KEY` | 文本搭配推荐在非 Qwen 配置下可用 |
+| `AI_API_BASE_URL` | 文本搭配推荐的 OpenAI 兼容接口地址 |
 | `AI_TEXT_MODEL` | 文本推荐模型 |
-| `AI_VISION_MODEL` | 图片识别模型 |
 
 开发常用命令：
 

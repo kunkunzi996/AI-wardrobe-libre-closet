@@ -238,18 +238,13 @@ export class GarmentVisionService {
   }
 
   private apiKey(): string | undefined {
-    return (
-      this.configService.get<string>('QWEN_API_KEY') ??
-      this.configService.get<string>('OPENAI_API_KEY')
-    );
+    return this.configService.get<string>('QWEN_API_KEY');
   }
 
   private apiBaseUrl(): string {
-    const url = this.usesQwen()
-      ? (this.configService.get<string>('QWEN_API_BASE_URL') ??
-        'https://dashscope.aliyuncs.com/compatible-mode')
-      : (this.configService.get<string>('AI_API_BASE_URL') ??
-        'https://api.openai.com');
+    const url =
+      this.configService.get<string>('QWEN_API_BASE_URL') ??
+      'https://dashscope.aliyuncs.com/compatible-mode';
     return url.replace(/\/+$/, '');
   }
 
@@ -314,21 +309,12 @@ export class GarmentVisionService {
       response_format: { type: 'json_object' },
       temperature: 0,
       max_tokens: 700,
-      ...(this.usesQwen() ? { enable_thinking: false } : {}),
+      enable_thinking: false,
     };
   }
 
   private visionModel(): string {
-    if (this.usesQwen()) {
-      return (
-        this.configService.get<string>('QWEN_VISION_MODEL') ?? 'qwen3.5-plus'
-      );
-    }
-    return this.configService.get<string>('AI_VISION_MODEL') ?? 'gpt-4.1-mini';
-  }
-
-  private usesQwen(): boolean {
-    return Boolean(this.configService.get<string>('QWEN_API_KEY'));
+    return this.configService.get<string>('QWEN_VISION_MODEL') ?? 'qwen3.7-plus';
   }
 
   private parseDraft(payload: any): Partial<GarmentVisionResult> {

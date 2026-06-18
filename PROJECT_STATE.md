@@ -115,6 +115,8 @@ ALIYUN_IMAGE_SEG_RETURN_FORM
 ALIYUN_IMAGE_SEG_TIMEOUT_MS
 ```
 
+当前衣物图片识别只走 Qwen 配置；`QWEN_VISION_MODEL` 默认值为 `qwen3.7-plus`。旧的 `AI_VISION_MODEL=gpt-4.1-mini` 识图兜底已不再使用。
+
 验证容器环境：
 
 ```bash

@@ -36,7 +36,7 @@ describe('GarmentVisionService', () => {
     });
   });
 
-  it('calls the configured OpenAI-compatible vision endpoint with base64 image data', async () => {
+  it('calls the configured Qwen vision endpoint with base64 image data', async () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
@@ -66,9 +66,9 @@ describe('GarmentVisionService', () => {
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) => {
-          if (key === 'OPENAI_API_KEY') return 'test-key';
-          if (key === 'AI_API_BASE_URL') return 'https://api.example.test/';
-          if (key === 'AI_VISION_MODEL') return 'gpt-image-2';
+          if (key === 'QWEN_API_KEY') return 'test-qwen-key';
+          if (key === 'QWEN_API_BASE_URL') return 'https://api.example.test/';
+          if (key === 'QWEN_VISION_MODEL') return 'qwen3.7-plus';
           return undefined;
         }),
       } as any,
@@ -83,12 +83,13 @@ describe('GarmentVisionService', () => {
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          Authorization: 'Bearer test-key',
+          Authorization: 'Bearer test-qwen-key',
         }),
       }),
     );
     const request = JSON.parse(fetchImpl.mock.calls[0][1].body);
-    expect(request.model).toBe('gpt-image-2');
+    expect(request.model).toBe('qwen3.7-plus');
+    expect(request.enable_thinking).toBe(false);
     expect(request.messages[1].content[1].image_url.url).toContain(
       'data:image/webp;base64,',
     );
@@ -133,7 +134,7 @@ describe('GarmentVisionService', () => {
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
-          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+          key === 'QWEN_API_KEY' ? 'test-qwen-key' : undefined,
         ),
       } as any,
       fileService as any,
@@ -187,7 +188,7 @@ describe('GarmentVisionService', () => {
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
-          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+          key === 'QWEN_API_KEY' ? 'test-qwen-key' : undefined,
         ),
       } as any,
       fileService as any,
@@ -241,7 +242,7 @@ describe('GarmentVisionService', () => {
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
-          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+          key === 'QWEN_API_KEY' ? 'test-qwen-key' : undefined,
         ),
       } as any,
       fileService as any,
@@ -287,7 +288,7 @@ describe('GarmentVisionService', () => {
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
-          key === 'OPENAI_API_KEY' ? 'test-key' : undefined,
+          key === 'QWEN_API_KEY' ? 'test-qwen-key' : undefined,
         ),
       } as any,
       fileService as any,
@@ -310,7 +311,7 @@ describe('GarmentVisionService', () => {
     });
   });
 
-  it('disables thinking for Qwen vision requests', async () => {
+  it('uses qwen3.7-plus by default and disables thinking for Qwen vision requests', async () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
@@ -327,7 +328,6 @@ describe('GarmentVisionService', () => {
           if (key === 'QWEN_API_BASE_URL') {
             return 'https://dashscope.aliyuncs.com/compatible-mode/';
           }
-          if (key === 'QWEN_VISION_MODEL') return 'qwen3.5-plus';
           return undefined;
         }),
       } as any,
@@ -338,7 +338,7 @@ describe('GarmentVisionService', () => {
     await service.analyzeImage('shirt.webp');
 
     const request = JSON.parse(fetchImpl.mock.calls[0][1].body);
-    expect(request.model).toBe('qwen3.5-plus');
+    expect(request.model).toBe('qwen3.7-plus');
     expect(request.enable_thinking).toBe(false);
   });
 
@@ -350,7 +350,7 @@ describe('GarmentVisionService', () => {
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) => {
-          if (key === 'OPENAI_API_KEY') return 'test-key';
+          if (key === 'QWEN_API_KEY') return 'test-qwen-key';
           if (key === 'AI_VISION_TIMEOUT_MS') return '5';
           return undefined;
         }),
