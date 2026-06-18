@@ -18,6 +18,7 @@ import { SearchGarmentDto } from './dto/search-garment.dto';
 import { GarmentCategory } from './garment-category.enum';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
+import type { GarmentVisionResult } from '../ai/dto/garment-vision-result.dto';
 
 const CANONICAL_SIZES = [
   'XX-Small',
@@ -31,6 +32,12 @@ const CANONICAL_SIZES = [
   '4X-Large',
   '5X-Large',
 ];
+
+export interface SimilarGarmentCandidate {
+  garment: Garment;
+  score: number;
+  reasons: string[];
+}
 
 @Injectable()
 export class GarmentService {
@@ -121,6 +128,18 @@ export class GarmentService {
       options,
     );
     return filterInMemory(garments);
+  }
+
+  async findSimilarToDraft(
+    draft: Partial<GarmentVisionResult>,
+    userId?: number,
+  ): Promise<SimilarGarmentCandidate[]> {
+    const garments = await this.findAll(userId, {});
+    return garments
+      .map((garment) => this.scoreSimilarity(garment, draft))
+      .filter((candidate) => candidate.score >= 60)
+      .sort((a, b) => b.score - a.score || b.garment.id - a.garment.id)
+      .slice(0, 3);
   }
 
   async findOne(id: number, userId?: number): Promise<Garment> {
@@ -407,5 +426,95 @@ export class GarmentService {
       ...(garment.sceneTags ?? []),
     ];
     return values.some((value) => value?.toLowerCase().includes(needle));
+  }
+
+  private scoreSimilarity(
+    garment: Garment,
+    draft: Partial<GarmentVisionResult>,
+  ): SimilarGarmentCandidate {
+    let score = 0;
+    const reasons: string[] = [];
+
+    if (draft.category && garment.category === draft.category) {
+      score += 35;
+      reasons.push('分类相同');
+    }
+    if (draft.color && garment.color === draft.color) {
+      score += 20;
+      reasons.push('颜色相同');
+    }
+    if (this.sameText(garment.subcategory, draft.subcategory)) {
+      score += 25;
+      reasons.push('细分相同');
+    } else if (this.containsText(garment.subcategory, draft.subcategory)) {
+      score += 15;
+      reasons.push('细分相近');
+    }
+    if (this.sameText(garment.material, draft.material)) {
+      score += 10;
+      reasons.push('材质相同');
+    }
+    if (this.sameText(garment.thickness, draft.thickness)) {
+      score += 5;
+      reasons.push('厚薄相同');
+    }
+
+    const seasonOverlap = this.overlapCount(garment.seasons, draft.seasons);
+    if (seasonOverlap > 0) {
+      score += Math.min(10, seasonOverlap * 5);
+      reasons.push('季节相近');
+    }
+
+    const styleOverlap = this.overlapCount(garment.styleTags, draft.styleTags);
+    if (styleOverlap > 0) {
+      score += Math.min(10, styleOverlap * 5);
+      reasons.push('风格相近');
+    }
+
+    const sceneOverlap = this.overlapCount(garment.sceneTags, draft.sceneTags);
+    if (sceneOverlap > 0) {
+      score += Math.min(5, sceneOverlap * 3);
+      reasons.push('场景相近');
+    }
+
+    if (this.containsText(garment.name, draft.subcategory)) {
+      score += 10;
+      reasons.push('名称相近');
+    }
+
+    return { garment, score, reasons };
+  }
+
+  private sameText(left?: string, right?: string): boolean {
+    const normalizedLeft = this.normalizeComparisonText(left);
+    const normalizedRight = this.normalizeComparisonText(right);
+    return Boolean(normalizedLeft && normalizedLeft === normalizedRight);
+  }
+
+  private containsText(left?: string, right?: string): boolean {
+    const normalizedLeft = this.normalizeComparisonText(left);
+    const normalizedRight = this.normalizeComparisonText(right);
+    return Boolean(
+      normalizedLeft &&
+        normalizedRight &&
+        (normalizedLeft.includes(normalizedRight) ||
+          normalizedRight.includes(normalizedLeft)),
+    );
+  }
+
+  private overlapCount(left?: string[], right?: string[]): number {
+    const leftValues = new Set(
+      (left ?? []).map((value) => this.normalizeComparisonText(value)),
+    );
+    return (right ?? []).filter((value) =>
+      leftValues.has(this.normalizeComparisonText(value)),
+    ).length;
+  }
+
+  private normalizeComparisonText(value?: string): string {
+    return (value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s,，、。._-]+/g, '');
   }
 }

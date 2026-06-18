@@ -131,4 +131,47 @@ describe('GarmentService', () => {
 
     expect(garments.map((garment) => garment.id)).toEqual([1]);
   });
+
+  it('finds similar garments from an AI recognition draft', async () => {
+    const { service, garmentRepository } = makeService();
+    garmentRepository.find.mockResolvedValue([
+      Object.assign(new Garment(), {
+        id: 1,
+        name: '黑色西装外套',
+        category: 'outerwear',
+        color: GarmentColor.BLACK,
+        subcategory: '西装外套',
+        seasons: ['秋', '冬'],
+        styleTags: ['通勤'],
+        sceneTags: ['上班'],
+        material: '羊毛',
+        thickness: '中等',
+      }),
+      Object.assign(new Garment(), {
+        id: 2,
+        name: '白色帆布鞋',
+        category: 'footwear',
+        color: GarmentColor.WHITE,
+        subcategory: '帆布鞋',
+      }),
+    ]);
+
+    const candidates = await service.findSimilarToDraft({
+      category: 'outerwear',
+      color: GarmentColor.BLACK,
+      subcategory: '西装外套',
+      seasons: ['冬'],
+      styleTags: ['通勤'],
+      sceneTags: ['上班'],
+      material: '羊毛',
+      thickness: '中等',
+    });
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({
+      garment: expect.objectContaining({ id: 1 }),
+      score: expect.any(Number),
+      reasons: expect.arrayContaining(['分类相同', '颜色相同', '细分相同']),
+    });
+  });
 });

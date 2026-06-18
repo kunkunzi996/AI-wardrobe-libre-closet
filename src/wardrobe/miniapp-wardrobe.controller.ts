@@ -24,7 +24,10 @@ import type { Garment } from '../dal/entity/garment.entity';
 import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
-import { GarmentService } from './garment.service';
+import {
+  GarmentService,
+  type SimilarGarmentCandidate,
+} from './garment.service';
 
 type MiniappRequest = FastifyRequest & {
   protocol?: string;
@@ -109,14 +112,20 @@ export class MiniappWardrobeController {
   async analyze(@Req() req: MiniappRequest) {
     const photo = await this.readImageUpload(req);
     const draft = await this.garmentVisionService.analyzeUpload(photo);
-    return { draft };
+    const duplicateCandidates = await this.garmentService.findSimilarToDraft(
+      draft,
+      this.userId(req),
+    );
+    return {
+      draft,
+      duplicateCandidates: duplicateCandidates.map((candidate) =>
+        this.toDuplicateCandidateViewModel(candidate, req),
+      ),
+    };
   }
 
   @Get('backup/export')
-  async exportBackup(
-    @Req() req: MiniappRequest,
-    @Res() reply: FastifyReply,
-  ) {
+  async exportBackup(@Req() req: MiniappRequest, @Res() reply: FastifyReply) {
     const garments = await this.garmentService.findAll(this.userId(req), {});
     const entries: ZipEntry[] = [];
     const exportedAt = new Date().toISOString();
@@ -177,14 +186,18 @@ export class MiniappWardrobeController {
   async importBackup(@Req() req: MiniappRequest) {
     const backup = await this.readBackupUpload(req);
     const entries = this.readZip(backup);
-    const manifestEntry = entries.find((entry) => entry.name === 'manifest.json');
+    const manifestEntry = entries.find(
+      (entry) => entry.name === 'manifest.json',
+    );
     if (!manifestEntry) {
       throw new BadRequestException('备份包缺少 manifest.json');
     }
 
     let manifest: BackupManifest;
     try {
-      manifest = JSON.parse(manifestEntry.data.toString('utf8')) as BackupManifest;
+      manifest = JSON.parse(
+        manifestEntry.data.toString('utf8'),
+      ) as BackupManifest;
     } catch {
       throw new BadRequestException('备份包清单格式不正确');
     }
@@ -204,9 +217,7 @@ export class MiniappWardrobeController {
       }
 
       const photoEntry = item.photo ? photoEntries.get(item.photo) : undefined;
-      const photo = photoEntry
-        ? this.zipEntryToUpload(photoEntry)
-        : undefined;
+      const photo = photoEntry ? this.zipEntryToUpload(photoEntry) : undefined;
 
       await this.garmentService.create(
         {
@@ -234,7 +245,10 @@ export class MiniappWardrobeController {
   }
 
   @Post()
-  async create(@Body() body: MiniappCreateBody = {}, @Req() req: MiniappRequest) {
+  async create(
+    @Body() body: MiniappCreateBody = {},
+    @Req() req: MiniappRequest,
+  ) {
     const photo = await this.readImageUpload(req);
     const form = this.mergeMultipartFields(body, photo);
 
@@ -308,9 +322,7 @@ export class MiniappWardrobeController {
     return (req['user'] as Payload | undefined)?.userId;
   }
 
-  private async readImageUpload(
-    req: MiniappRequest,
-  ): Promise<MultipartFile> {
+  private async readImageUpload(req: MiniappRequest): Promise<MultipartFile> {
     const file = await req.file?.();
     if (!file) {
       throw new BadRequestException('请先选择图片');
@@ -411,8 +423,35 @@ export class MiniappWardrobeController {
       brand: garment.brand ?? '',
       size: garment.size ?? '',
       notes: garment.notes ?? '',
-      photoUrl: photoFileName ? `${this.origin(req)}/file/${photoFileName}` : '',
+      photoUrl: photoFileName
+        ? `${this.origin(req)}/file/${photoFileName}`
+        : '',
       detailUrl: `/api/miniapp/garments/${garment.id}`,
+    };
+  }
+
+  private toDuplicateCandidateViewModel(
+    candidate: SimilarGarmentCandidate,
+    req: MiniappRequest,
+  ) {
+    const garment = candidate.garment;
+    const photoFileName = garment.photo?.fileName;
+    return {
+      id: garment.id,
+      name:
+        garment.name ??
+        garment.subcategory ??
+        this.categoryLabel(garment.category),
+      category: garment.category,
+      categoryLabel: this.categoryLabel(garment.category),
+      color: garment.color ?? '',
+      colorLabel: this.colorLabel(garment.color),
+      subcategory: garment.subcategory ?? '',
+      photoUrl: photoFileName
+        ? `${this.origin(req)}/file/${photoFileName}`
+        : '',
+      matchScore: candidate.score,
+      matchReason: candidate.reasons.join('、'),
     };
   }
 
@@ -459,7 +498,7 @@ export class MiniappWardrobeController {
       pattern: '图案',
       other: '其他',
     };
-    return color ? labels[color] ?? color : '';
+    return color ? (labels[color] ?? color) : '';
   }
 
   private statusLabel(status?: string): string {
@@ -470,7 +509,7 @@ export class MiniappWardrobeController {
       damaged: '需修补',
       archived: '已归档',
     };
-    return status ? labels[status] ?? status : '';
+    return status ? (labels[status] ?? status) : '';
   }
 
   private buildZip(entries: ZipEntry[]): Buffer {

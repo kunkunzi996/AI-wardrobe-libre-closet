@@ -9,6 +9,7 @@ describe('MiniappWardrobeController', () => {
     const garmentService = {
       findAll: jest.fn(),
       findOne: jest.fn(),
+      findSimilarToDraft: jest.fn(async () => []),
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -36,7 +37,13 @@ describe('MiniappWardrobeController', () => {
     );
     const req = { protocol: 'https', host: 'aimatchwear.asia' } as any;
 
-    return { controller, garmentService, garmentVisionService, fileService, req };
+    return {
+      controller,
+      garmentService,
+      garmentVisionService,
+      fileService,
+      req,
+    };
   };
 
   const makeGarment = (overrides: Partial<Garment> = {}) =>
@@ -93,7 +100,9 @@ describe('MiniappWardrobeController', () => {
   it('exports wardrobe backup as a zip buffer', async () => {
     const { controller, garmentService, fileService, req } = makeController();
     garmentService.findAll.mockResolvedValue([makeGarment()]);
-    fileService.get.mockResolvedValue(Readable.from(Buffer.from('photo-bytes')));
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('photo-bytes')),
+    );
     const reply = {
       header: jest.fn().mockReturnThis(),
       send: jest.fn((payload) => payload),
@@ -101,7 +110,10 @@ describe('MiniappWardrobeController', () => {
 
     const zip = await controller.exportBackup(req, reply as any);
 
-    expect(reply.header).toHaveBeenCalledWith('Content-Type', 'application/zip');
+    expect(reply.header).toHaveBeenCalledWith(
+      'Content-Type',
+      'application/zip',
+    );
     expect(reply.header).toHaveBeenCalledWith(
       'Content-Disposition',
       expect.stringContaining('wardrobe-backup-'),
@@ -116,7 +128,9 @@ describe('MiniappWardrobeController', () => {
     const { controller, garmentService, fileService, req } = makeController();
     garmentService.findAll.mockResolvedValue([makeGarment()]);
     garmentService.create.mockResolvedValue(makeGarment({ id: 18 }));
-    fileService.get.mockResolvedValue(Readable.from(Buffer.from('photo-bytes')));
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('photo-bytes')),
+    );
     const reply = {
       header: jest.fn().mockReturnThis(),
       send: jest.fn((payload) => payload),
@@ -251,10 +265,63 @@ describe('MiniappWardrobeController', () => {
         sceneTags: ['日常'],
         material: '牛仔',
       }),
+      duplicateCandidates: [],
     });
     expect(garmentVisionService.analyzeUpload).toHaveBeenCalledWith(upload);
     expect(garmentService.create).not.toHaveBeenCalled();
     expect(garmentService.update).not.toHaveBeenCalled();
+  });
+
+  it('returns possible duplicate garments with the AI editable draft', async () => {
+    const { controller, garmentService, garmentVisionService, req } =
+      makeController();
+    req.user = { userId: 42 };
+    const upload = { mimetype: 'image/jpeg' };
+    req.file = jest.fn(async () => upload);
+    const draft = {
+      fileName: 'miniapp-upload.webp',
+      category: 'outerwear',
+      subcategory: '西装外套',
+      color: GarmentColor.BLACK,
+      seasons: ['秋'],
+      styleTags: ['通勤'],
+      sceneTags: ['上班'],
+      material: '羊毛',
+      thickness: '中等',
+      confidence: 0.88,
+      notes: '黑色西装外套。',
+    };
+    garmentVisionService.analyzeUpload.mockResolvedValue(draft);
+    garmentService.findSimilarToDraft.mockResolvedValue([
+      {
+        garment: makeGarment({
+          id: 21,
+          name: '黑色西装外套',
+          category: 'outerwear',
+          color: GarmentColor.BLACK,
+          subcategory: '西装外套',
+          photo: { fileName: 'black-blazer.webp' } as any,
+        }),
+        score: 90,
+        reasons: ['分类相同', '颜色相同', '细分相同'],
+      },
+    ]);
+
+    await expect(controller.analyze(req)).resolves.toEqual({
+      draft,
+      duplicateCandidates: [
+        expect.objectContaining({
+          id: 21,
+          name: '黑色西装外套',
+          categoryLabel: '外套',
+          colorLabel: '黑色',
+          matchScore: 90,
+          matchReason: '分类相同、颜色相同、细分相同',
+          photoUrl: 'https://aimatchwear.asia/file/black-blazer.webp',
+        }),
+      ],
+    });
+    expect(garmentService.findSimilarToDraft).toHaveBeenCalledWith(draft, 42);
   });
 
   it('saves user-confirmed AI draft fields from miniapp upload data', async () => {

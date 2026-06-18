@@ -69,6 +69,18 @@ function listText(value) {
   return Array.isArray(value) ? value.filter(Boolean).join('、') : '';
 }
 
+function duplicateSummary(candidates) {
+  return (candidates || [])
+    .slice(0, 3)
+    .map(function (item) {
+      const name =
+        item.name || item.subcategory || item.categoryLabel || '相似衣物';
+      const reason = item.matchReason ? '（' + item.matchReason + '）' : '';
+      return name + reason;
+    })
+    .join('\n');
+}
+
 function limitedPhotoSize(width, height) {
   if (!width || !height) {
     return {
@@ -118,6 +130,8 @@ Page({
     recognizing: false,
     aiDraft: null,
     aiError: '',
+    duplicateCandidates: [],
+    duplicateWarningAcknowledged: false,
     submitting: false,
     error: '',
     isBulkImport: false,
@@ -127,7 +141,9 @@ Page({
 
   onLoad(options) {
     const id = options.id || '';
-    const photoPath = options.photoPath ? decodeURIComponent(options.photoPath) : '';
+    const photoPath = options.photoPath
+      ? decodeURIComponent(options.photoPath)
+      : '';
     if (options.bulk === '1') {
       const bulkIndex = Number(options.bulkIndex || 0);
       const bulkTotal = Number(options.bulkTotal || 0);
@@ -223,7 +239,7 @@ Page({
       .analyzeGarmentPhoto(filePath)
       .then(function (data) {
         if (page.data.photoPath !== filePath) return;
-        page.applyAiDraft(data.draft || {});
+        page.applyAiDraft(data.draft || {}, data.duplicateCandidates || []);
       })
       .catch(function (error) {
         if (page.data.photoPath !== filePath) return;
@@ -275,18 +291,24 @@ Page({
     this.setData({
       photoPath: garment.photoUrl || '',
       form: nextForm,
-      categoryIndex: categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
+      categoryIndex:
+        categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
       categoryLabel:
-        categoryIndex >= 0 ? categoryOptions[categoryIndex].label : this.data.categoryLabel,
+        categoryIndex >= 0
+          ? categoryOptions[categoryIndex].label
+          : this.data.categoryLabel,
       colorIndex: colorIndex >= 0 ? colorIndex : this.data.colorIndex,
-      colorLabel: colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
+      colorLabel:
+        colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
       seasonIndex: seasonIndex >= 0 ? seasonIndex : this.data.seasonIndex,
       seasonLabel:
-        seasonIndex >= 0 ? seasonOptions[seasonIndex].label : this.data.seasonLabel,
+        seasonIndex >= 0
+          ? seasonOptions[seasonIndex].label
+          : this.data.seasonLabel,
     });
   },
 
-  applyAiDraft(draft) {
+  applyAiDraft(draft, duplicateCandidates) {
     const categoryIndex = optionIndex(categoryOptions, draft.category);
     const colorIndex = optionIndex(colorOptions, draft.color);
     const seasonValue = seasonValueMap[(draft.seasons || [])[0]] || '';
@@ -301,21 +323,51 @@ Page({
       notes: this.data.form.notes || draft.notes || '',
     });
 
-    if (categoryIndex >= 0) nextForm.category = categoryOptions[categoryIndex].value;
+    if (categoryIndex >= 0)
+      nextForm.category = categoryOptions[categoryIndex].value;
     if (colorIndex >= 0) nextForm.color = colorOptions[colorIndex].value;
     if (seasonIndex >= 0) nextForm.season = seasonOptions[seasonIndex].value;
 
     this.setData({
       aiDraft: draft,
+      duplicateCandidates: duplicateCandidates || [],
+      duplicateWarningAcknowledged: false,
       form: nextForm,
-      categoryIndex: categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
+      categoryIndex:
+        categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
       categoryLabel:
-        categoryIndex >= 0 ? categoryOptions[categoryIndex].label : this.data.categoryLabel,
+        categoryIndex >= 0
+          ? categoryOptions[categoryIndex].label
+          : this.data.categoryLabel,
       colorIndex: colorIndex >= 0 ? colorIndex : this.data.colorIndex,
-      colorLabel: colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
+      colorLabel:
+        colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
       seasonIndex: seasonIndex >= 0 ? seasonIndex : this.data.seasonIndex,
       seasonLabel:
-        seasonIndex >= 0 ? seasonOptions[seasonIndex].label : this.data.seasonLabel,
+        seasonIndex >= 0
+          ? seasonOptions[seasonIndex].label
+          : this.data.seasonLabel,
+    });
+    this.showDuplicateWarningIfNeeded();
+  },
+
+  showDuplicateWarningIfNeeded() {
+    const candidates = this.data.duplicateCandidates || [];
+    if (!candidates.length || this.data.duplicateWarningAcknowledged) return;
+    const page = this;
+    wx.showModal({
+      title: '可能已经入库',
+      content:
+        '这张照片识别出来的衣物，和库存里这些衣物比较相似：\n' +
+        duplicateSummary(candidates) +
+        '\n\n请确认不是重复衣物后再保存。',
+      cancelText: '先看看',
+      confirmText: '继续录入',
+      success: function (res) {
+        if (res.confirm) {
+          page.setData({ duplicateWarningAcknowledged: true });
+        }
+      },
     });
   },
 
@@ -362,6 +414,14 @@ Page({
       this.setData({ error: '请选择分类' });
       return;
     }
+    if (
+      !this.data.isEdit &&
+      (this.data.duplicateCandidates || []).length &&
+      !this.data.duplicateWarningAcknowledged
+    ) {
+      this.showDuplicateWarningIfNeeded();
+      return;
+    }
 
     const page = this;
     const saveTask = this.data.isEdit
@@ -388,12 +448,16 @@ Page({
 
   applyBulkAiDraftIfReady() {
     const queue = wx.getStorageSync(bulkImportStorageKey) || {};
-    const status = queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
+    const status =
+      queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
     const draft = queue.drafts && queue.drafts[this.data.bulkIndex];
+    const duplicateCandidates =
+      queue.duplicateCandidates &&
+      queue.duplicateCandidates[this.data.bulkIndex];
 
     if (status === 'done' && draft) {
       this.setData({ recognizing: false, aiError: '', error: '' });
-      this.applyAiDraft(draft);
+      this.applyAiDraft(draft, duplicateCandidates || []);
       return true;
     }
     if (status === 'failed') return false;
@@ -402,7 +466,8 @@ Page({
 
   waitForBulkAiDraft(filePath, attempt) {
     const queue = wx.getStorageSync(bulkImportStorageKey) || {};
-    const status = queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
+    const status =
+      queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
     if (status !== 'running' && status !== 'queued') return false;
 
     const page = this;
@@ -431,7 +496,7 @@ Page({
       .analyzeGarmentPhoto(filePath)
       .then(function (data) {
         if (page.data.photoPath !== filePath) return;
-        page.applyAiDraft(data.draft || {});
+        page.applyAiDraft(data.draft || {}, data.duplicateCandidates || []);
       })
       .catch(function (error) {
         if (page.data.photoPath !== filePath) return;

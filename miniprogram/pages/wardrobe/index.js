@@ -45,7 +45,10 @@ function normalizeSeason(value) {
 
 function garmentMatchesSeason(garment, season) {
   if (!season) return true;
-  const seasons = garment.seasons && garment.seasons.length ? garment.seasons : [garment.season];
+  const seasons =
+    garment.seasons && garment.seasons.length
+      ? garment.seasons
+      : [garment.season];
   return seasons.some(function (item) {
     return normalizeSeason(item) === season;
   });
@@ -177,6 +180,7 @@ Page({
       success: 0,
       skipped: 0,
       drafts: {},
+      duplicateCandidates: {},
       analyzeStatus: analyzeStatus,
       createdAt: Date.now(),
     };
@@ -216,10 +220,17 @@ Page({
         page
           .analyzeBulkPhoto(index, files[index])
           .then(function (data) {
-            page.saveBulkDraft(index, data.draft || {});
+            page.saveBulkDraft(
+              index,
+              data.draft || {},
+              data.duplicateCandidates || [],
+            );
           })
           .catch(function (error) {
-            page.saveBulkAnalyzeError(index, error.message || 'AI识别失败，请手动填写');
+            page.saveBulkAnalyzeError(
+              index,
+              error.message || 'AI识别失败，请手动填写',
+            );
           })
           .finally(function () {
             running -= 1;
@@ -230,7 +241,11 @@ Page({
             }).length;
             page.setData({
               importProgress:
-                'AI 后台识别 ' + doneCount + ' / ' + files.length + '，请逐张确认保存。',
+                'AI 后台识别 ' +
+                doneCount +
+                ' / ' +
+                files.length +
+                '，请逐张确认保存。',
             });
             runNext();
           });
@@ -247,9 +262,12 @@ Page({
       return api.analyzeGarmentPhoto(analyzePath).catch(function (error) {
         return new Promise(function (resolve, reject) {
           setTimeout(function () {
-            api.analyzeGarmentPhoto(analyzePath).then(resolve).catch(function () {
-              reject(error);
-            });
+            api
+              .analyzeGarmentPhoto(analyzePath)
+              .then(resolve)
+              .catch(function () {
+                reject(error);
+              });
           }, 800);
         });
       });
@@ -309,14 +327,20 @@ Page({
     });
   },
 
-  saveBulkDraft(index, draft) {
+  saveBulkDraft(index, draft, duplicateCandidates) {
     this.updateBulkQueue(function (queue) {
       const drafts = Object.assign({}, queue.drafts || {});
+      const duplicateCandidateMap = Object.assign(
+        {},
+        queue.duplicateCandidates || {},
+      );
       const analyzeStatus = Object.assign({}, queue.analyzeStatus || {});
       drafts[index] = draft;
+      duplicateCandidateMap[index] = duplicateCandidates || [];
       analyzeStatus[index] = 'done';
       return Object.assign({}, queue, {
         drafts: drafts,
+        duplicateCandidates: duplicateCandidateMap,
         analyzeStatus: analyzeStatus,
       });
     });
@@ -507,9 +531,11 @@ Page({
     } else {
       selectedGarmentMap[id] = true;
     }
-    const selectedGarmentIds = Object.keys(selectedGarmentMap).map(function (key) {
-      return Number(key);
-    });
+    const selectedGarmentIds = Object.keys(selectedGarmentMap).map(
+      function (key) {
+        return Number(key);
+      },
+    );
     this.setData({
       selectedGarmentIds: selectedGarmentIds,
       selectedGarmentMap: selectedGarmentMap,
@@ -532,7 +558,8 @@ Page({
     if (!ids.length || this.data.bulkDeleting) return;
     wx.showModal({
       title: '删除衣物',
-      content: '确定删除选中的 ' + ids.length + ' 件衣物吗？删除后无法在衣橱中恢复。',
+      content:
+        '确定删除选中的 ' + ids.length + ' 件衣物吗？删除后无法在衣橱中恢复。',
       confirmText: '删除',
       confirmColor: '#9d3f22',
       success: function (res) {
