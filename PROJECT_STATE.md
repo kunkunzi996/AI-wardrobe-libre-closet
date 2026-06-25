@@ -147,6 +147,8 @@ docker exec ai-wardrobe sh -c 'test -n "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" && ech
 
 用户是服务器新手。以后每次需要上线或测试新代码，都必须给完整命令，不要只说“拉代码”。
 
+项目级规则：每次功能研发、Bug 修复或配置调整完成后，如果后续涉及服务器拉取代码、切换/合并分支、重建 Docker 容器、修改 `.env`、恢复配置或验证生产环境，完成报告里必须给用户一整段可直接复制执行的服务器命令，并明确说明本次是拉 `main` 还是拉某个功能分支。
+
 从 GitHub 同步 `main`：
 
 ```bash
