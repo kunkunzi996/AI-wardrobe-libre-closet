@@ -565,7 +565,12 @@ export class GarmentService {
       score += 5;
       reasons.push('厚薄相同');
     }
-    if (this.sameFeaturePresence(garment.pocketPresence, draft.pocketPresence)) {
+    if (
+      this.samePositiveFeaturePresence(
+        garment.pocketPresence,
+        draft.pocketPresence,
+      )
+    ) {
       score += 10;
       reasons.push('口袋结构相同');
     }
@@ -580,7 +585,7 @@ export class GarmentService {
       reasons.push('口袋位置相同');
     }
     if (
-      this.sameFeaturePresence(
+      this.samePositiveFeaturePresence(
         garment.chestMarkPresence,
         draft.chestMarkPresence,
       )
@@ -875,10 +880,13 @@ export class GarmentService {
     return normalized === 'yes' || normalized === 'no' ? normalized : undefined;
   }
 
-  private sameFeaturePresence(left?: string | null, right?: string | null): boolean {
+  private samePositiveFeaturePresence(
+    left?: string | null,
+    right?: string | null,
+  ): boolean {
     const normalizedLeft = this.compareFeaturePresence(left);
     const normalizedRight = this.compareFeaturePresence(right);
-    return Boolean(normalizedLeft && normalizedLeft === normalizedRight);
+    return normalizedLeft === 'yes' && normalizedRight === 'yes';
   }
 
   private sameStructuredValue(

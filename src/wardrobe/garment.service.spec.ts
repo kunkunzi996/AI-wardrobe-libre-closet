@@ -300,4 +300,36 @@ describe('GarmentService', () => {
       ]),
     });
   });
+
+  it('does not treat shared absence of pocket and chest mark as strong duplicate evidence', async () => {
+    const { service, garmentRepository } = makeService();
+    garmentRepository.find.mockResolvedValue([
+      Object.assign(new Garment(), {
+        id: 3,
+        name: '黑色夹克 A',
+        category: 'outerwear',
+        color: GarmentColor.BLACK,
+        subcategory: '工装夹克',
+        pocketPresence: 'no',
+        pocketPosition: 'unknown',
+        chestMarkPresence: 'no',
+        chestMarkType: 'unknown',
+        chestMarkPosition: 'unknown',
+      }),
+    ]);
+
+    const candidates = await service.findSimilarToDraft({
+      category: 'outerwear',
+      color: GarmentColor.BLACK,
+      subcategory: '飞行夹克',
+      pocketPresence: 'no',
+      pocketPosition: 'unknown',
+      chestMarkPresence: 'no',
+      chestMarkType: 'unknown',
+      chestMarkPosition: 'unknown',
+      notes: '黑色夹克，没有明显胸前细节。',
+    });
+
+    expect(candidates).toEqual([]);
+  });
 });

@@ -481,6 +481,8 @@ export class GarmentVisionService {
   }
 
   private normalizePresence(value: unknown): GarmentFeaturePresence {
+    if (value === true) return 'yes';
+    if (value === false) return 'no';
     const normalized = this.normalizeAlias(value, PRESENCE_ALIASES);
     return GARMENT_FEATURE_PRESENCE_VALUES.includes(
       normalized as GarmentFeaturePresence,

@@ -388,6 +388,58 @@ describe('GarmentVisionService', () => {
     });
   });
 
+  it('normalizes boolean structured presence fields from the AI response', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                category: 'tops',
+                color: 'black',
+                pocketPresence: true,
+                pocketPosition: 'chest pocket',
+                chestMarkPresence: false,
+                chestMarkType: 'letters',
+                chestMarkPosition: 'left chest',
+                chestMarkText: 'R',
+                confidence: 0.77,
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) =>
+          key === 'QWEN_API_KEY' ? 'test-qwen-key' : undefined,
+        ),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.analyzeImage('bool-tee.webp');
+
+    expect(result).toMatchObject({
+      fileName: 'bool-tee.webp',
+      category: 'tops',
+      color: 'black',
+      pocketPresence: 'yes',
+      pocketPosition: 'chest',
+      chestMarkPresence: 'no',
+      chestMarkType: 'unknown',
+      chestMarkPosition: 'unknown',
+      chestMarkText: null,
+      confidence: 0.77,
+    });
+  });
+
   it('uses qwen3.7-plus by default and disables thinking for Qwen vision requests', async () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
