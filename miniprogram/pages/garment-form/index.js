@@ -65,6 +65,13 @@ function optionIndex(options, value) {
   return index >= 0 ? index : -1;
 }
 
+function optionLabel(options, value, fallback) {
+  const option = options.find(function (item) {
+    return item.value === value;
+  });
+  return option ? option.label : fallback || value || '';
+}
+
 function listText(value) {
   return Array.isArray(value) ? value.filter(Boolean).join('、') : '';
 }
@@ -78,18 +85,6 @@ function defaultVisionFields() {
     chestMarkPosition: 'unknown',
     chestMarkText: '',
   };
-}
-
-function duplicateSummary(candidates) {
-  return (candidates || [])
-    .slice(0, 3)
-    .map(function (item) {
-      const name =
-        item.name || item.subcategory || item.categoryLabel || '相似衣物';
-      const reason = item.matchReason ? '（' + item.matchReason + '）' : '';
-      return name + reason;
-    })
-    .join('\n');
 }
 
 function limitedPhotoSize(width, height) {
@@ -144,6 +139,9 @@ Page({
     aiError: '',
     duplicateCandidates: [],
     duplicateWarningAcknowledged: false,
+    duplicateCompareVisible: false,
+    duplicateCompareSubmitOnConfirm: false,
+    duplicateCurrentItem: null,
     submitting: false,
     error: '',
     isBulkImport: false,
@@ -357,6 +355,9 @@ Page({
       aiDraft: draft,
       duplicateCandidates: duplicateCandidates || [],
       duplicateWarningAcknowledged: false,
+      duplicateCompareVisible: false,
+      duplicateCompareSubmitOnConfirm: false,
+      duplicateCurrentItem: null,
       form: nextForm,
       categoryIndex:
         categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
@@ -373,27 +374,73 @@ Page({
           ? seasonOptions[seasonIndex].label
           : this.data.seasonLabel,
     });
-    this.showDuplicateWarningIfNeeded();
   },
 
-  showDuplicateWarningIfNeeded() {
+  buildCurrentCompareItem() {
+    const form = this.data.form || {};
+    const categoryLabel =
+      this.data.categoryLabel ||
+      optionLabel(categoryOptions, form.category, '本次新增衣物');
+    const colorLabel =
+      this.data.colorLabel || optionLabel(colorOptions, form.color, '');
+    const seasonLabel =
+      this.data.seasonLabel || optionLabel(seasonOptions, form.season, '');
+    const detailText = [form.material, form.thickness]
+      .concat(
+        seasonLabel && seasonLabel !== '不限定' ? ['适合' + seasonLabel] : [],
+      )
+      .filter(Boolean)
+      .join(' · ');
+
+    return {
+      name: form.name || form.subcategory || categoryLabel || '本次新增衣物',
+      subcategory: form.subcategory || '',
+      categoryLabel: categoryLabel,
+      colorLabel: colorLabel,
+      detailText: detailText,
+      notes: form.notes || '',
+      photoUrl: this.data.photoPath || '',
+    };
+  },
+
+  openDuplicateCompare(submitOnConfirm) {
     const candidates = this.data.duplicateCandidates || [];
-    if (!candidates.length || this.data.duplicateWarningAcknowledged) return;
-    const page = this;
-    wx.showModal({
-      title: '可能已经入库',
-      content:
-        '这张照片识别出来的衣物，和库存里这些衣物比较相似：\n' +
-        duplicateSummary(candidates) +
-        '\n\n请确认不是重复衣物后再保存。',
-      cancelText: '先看看',
-      confirmText: '继续录入',
-      success: function (res) {
-        if (res.confirm) {
-          page.setData({ duplicateWarningAcknowledged: true });
+    if (!candidates.length) return;
+    this.setData({
+      duplicateCompareVisible: true,
+      duplicateCompareSubmitOnConfirm: !!submitOnConfirm,
+      duplicateCurrentItem: this.buildCurrentCompareItem(),
+    });
+  },
+
+  onViewDuplicateCandidates() {
+    this.openDuplicateCompare(false);
+  },
+
+  closeDuplicateCompare() {
+    this.setData({
+      duplicateCompareVisible: false,
+      duplicateCompareSubmitOnConfirm: false,
+    });
+  },
+
+  confirmDuplicateDifference() {
+    const shouldSubmit = this.data.duplicateCompareSubmitOnConfirm;
+    this.setData(
+      {
+        duplicateWarningAcknowledged: true,
+        duplicateCompareVisible: false,
+        duplicateCompareSubmitOnConfirm: false,
+      },
+      () => {
+        if (shouldSubmit) {
+          this.submitGarment();
         }
       },
-    });
+    );
+  },
+
+  noop() {
   },
 
   onInput(event) {
@@ -444,7 +491,7 @@ Page({
       (this.data.duplicateCandidates || []).length &&
       !this.data.duplicateWarningAcknowledged
     ) {
-      this.showDuplicateWarningIfNeeded();
+      this.openDuplicateCompare(true);
       return;
     }
 

@@ -22,6 +22,16 @@
       <text wx:for="{{aiDraft.sceneTags}}" wx:key="*this" class="ai-tag">{{item}}</text>
     </view>
   </view>
+  <view wx:if="{{!isEdit && duplicateCandidates.length}}" class="duplicate-panel {{duplicateWarningAcknowledged ? 'duplicate-panel-ack' : ''}}">
+    <text class="duplicate-title">{{duplicateWarningAcknowledged ? '已确认可继续录入' : '发现类似衣服'}}</text>
+    <text wx:if="{{duplicateWarningAcknowledged}}" class="duplicate-copy">
+      你已经确认这不是同一件衣服；如果想再比对一次，可以重新打开。
+    </text>
+    <text wx:else class="duplicate-copy">
+      系统找到了 {{duplicateCandidates.length}} 件相似衣物，保存前建议先看一下。
+    </text>
+    <button class="duplicate-action" bindtap="onViewDuplicateCandidates">查看类似衣服</button>
+  </view>
 
   <view class="form">
     <label class="field">
@@ -86,4 +96,79 @@
   <button wx:if="{{isBulkImport}}" class="skip" disabled="{{submitting}}" bindtap="skipBulkImportItem">
     跳过这张
   </button>
+
+  <view wx:if="{{duplicateCompareVisible}}" class="compare-mask" catchtouchmove="noop">
+    <view class="compare-sheet">
+      <view class="compare-header">
+        <text class="compare-title">查看类似衣服</text>
+        <text class="compare-copy">
+          把本次新增和库存里识别成相似的衣服放在一起看，更容易判断是不是同一件。
+        </text>
+      </view>
+
+      <scroll-view scroll-y class="compare-scroll">
+        <view class="compare-section">
+          <text class="compare-section-title">本次新增</text>
+          <view class="compare-card compare-card-current">
+            <image
+              wx:if="{{duplicateCurrentItem.photoUrl}}"
+              src="{{duplicateCurrentItem.photoUrl}}"
+              mode="aspectFill"
+              class="compare-photo"
+            />
+            <view wx:else class="compare-photo compare-placeholder">暂无图片</view>
+            <view class="compare-body">
+              <text class="compare-name">{{duplicateCurrentItem.name}}</text>
+              <text wx:if="{{duplicateCurrentItem.subcategory}}" class="compare-meta">
+                {{duplicateCurrentItem.subcategory}}
+              </text>
+              <text class="compare-meta">
+                {{duplicateCurrentItem.categoryLabel}}{{duplicateCurrentItem.colorLabel ? ' · ' + duplicateCurrentItem.colorLabel : ''}}
+              </text>
+              <text wx:if="{{duplicateCurrentItem.detailText}}" class="compare-detail">
+                {{duplicateCurrentItem.detailText}}
+              </text>
+              <text wx:if="{{duplicateCurrentItem.notes}}" class="compare-note">
+                {{duplicateCurrentItem.notes}}
+              </text>
+            </view>
+          </view>
+        </view>
+
+        <view class="compare-section">
+          <text class="compare-section-title">库存里识别成相似的衣服</text>
+          <view wx:for="{{duplicateCandidates}}" wx:key="id" wx:for-item="candidate" class="compare-card">
+            <image
+              wx:if="{{candidate.photoUrl}}"
+              src="{{candidate.photoUrl}}"
+              mode="aspectFill"
+              class="compare-photo"
+            />
+            <view wx:else class="compare-photo compare-placeholder">暂无图片</view>
+            <view class="compare-body">
+              <text class="compare-name">
+                {{candidate.name || candidate.subcategory || candidate.categoryLabel || '相似衣物'}}
+              </text>
+              <text wx:if="{{candidate.subcategory}}" class="compare-meta">
+                {{candidate.subcategory}}
+              </text>
+              <text class="compare-meta">
+                {{candidate.categoryLabel}}{{candidate.colorLabel ? ' · ' + candidate.colorLabel : ''}}
+              </text>
+              <text wx:if="{{candidate.matchReason}}" class="compare-detail">
+                相似原因：{{candidate.matchReason}}
+              </text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="compare-actions">
+        <button class="compare-secondary" bindtap="closeDuplicateCompare">返回修改</button>
+        <button class="compare-primary" bindtap="confirmDuplicateDifference">
+          {{duplicateCompareSubmitOnConfirm ? '确认不是同一件，继续录入' : '确认不是同一件'}}
+        </button>
+      </view>
+    </view>
+  </view>
 </view>
