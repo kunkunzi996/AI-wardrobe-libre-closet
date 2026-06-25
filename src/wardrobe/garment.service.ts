@@ -33,6 +33,35 @@ const CANONICAL_SIZES = [
   '5X-Large',
 ];
 
+const DUPLICATE_SCORE_THRESHOLD = 70;
+const STRONG_DUPLICATE_SCORE_THRESHOLD = 80;
+const DETAIL_MATCH_SCORE = 35;
+
+const COMMON_DUPLICATE_SHAPES = [
+  '短袖',
+  '长袖',
+  't恤',
+  'tshirt',
+  'tee',
+  '上衣',
+  '衬衫',
+  '卫衣',
+  '毛衣',
+  '背心',
+  '裤',
+  '裤子',
+  '牛仔裤',
+  '休闲裤',
+  '裙',
+  '半裙',
+  '裙子',
+  '鞋',
+  '鞋子',
+  '包',
+  '包包',
+  '配饰',
+];
+
 export interface SimilarGarmentCandidate {
   garment: Garment;
   score: number;
@@ -137,7 +166,7 @@ export class GarmentService {
     const garments = await this.findAll(userId, {});
     return garments
       .map((garment) => this.scoreSimilarity(garment, draft))
-      .filter((candidate) => candidate.score >= 60)
+      .filter((candidate) => this.isLikelyDuplicate(candidate, draft))
       .sort((a, b) => b.score - a.score || b.garment.id - a.garment.id)
       .slice(0, 3);
   }
@@ -482,7 +511,104 @@ export class GarmentService {
       reasons.push('名称相近');
     }
 
+    if (this.hasDistinctiveDetailOverlap(garment, draft)) {
+      score += DETAIL_MATCH_SCORE;
+      reasons.push('细节相同');
+    }
+
     return { garment, score, reasons };
+  }
+
+  private isLikelyDuplicate(
+    candidate: SimilarGarmentCandidate,
+    draft: Partial<GarmentVisionResult>,
+  ): boolean {
+    if (candidate.score < DUPLICATE_SCORE_THRESHOLD) return false;
+    if (candidate.reasons.includes('细节相同')) return true;
+
+    if (this.isCommonSameColorShape(candidate.garment, draft)) {
+      return false;
+    }
+
+    return candidate.score >= STRONG_DUPLICATE_SCORE_THRESHOLD;
+  }
+
+  private isCommonSameColorShape(
+    garment: Garment,
+    draft: Partial<GarmentVisionResult>,
+  ): boolean {
+    if (!draft.category || !draft.color) return false;
+    if (garment.category !== draft.category || garment.color !== draft.color) {
+      return false;
+    }
+
+    const shapeText = this.normalizeComparisonText(
+      [garment.subcategory, draft.subcategory].filter(Boolean).join(' '),
+    );
+    return COMMON_DUPLICATE_SHAPES.some((shape) =>
+      shapeText.includes(this.normalizeComparisonText(shape)),
+    );
+  }
+
+  private hasDistinctiveDetailOverlap(
+    garment: Garment,
+    draft: Partial<GarmentVisionResult>,
+  ): boolean {
+    const genericWords = this.genericDetailWords(garment, draft);
+    const garmentDetails = [garment.name, garment.notes]
+      .map((value) => this.normalizeDistinctiveText(value, genericWords))
+      .filter((value) => value.length >= 2);
+    const draftDetails = [draft.notes]
+      .map((value) => this.normalizeDistinctiveText(value, genericWords))
+      .filter((value) => value.length >= 2);
+
+    return garmentDetails.some((left) =>
+      draftDetails.some(
+        (right) => left.includes(right) || right.includes(left),
+      ),
+    );
+  }
+
+  private genericDetailWords(
+    garment: Garment,
+    draft: Partial<GarmentVisionResult>,
+  ): string[] {
+    return [
+      garment.category,
+      draft.category,
+      garment.color,
+      draft.color,
+      this.resolveColorLabel(garment.color),
+      this.resolveColorLabel(draft.color),
+      garment.subcategory,
+      draft.subcategory,
+      '衣服',
+      '衣物',
+      '适合',
+      '场合',
+      '日常',
+      '休闲',
+      '通勤',
+      '上班',
+      '春',
+      '夏',
+      '秋',
+      '冬',
+      ...COMMON_DUPLICATE_SHAPES,
+    ].filter((value): value is string => Boolean(value));
+  }
+
+  private normalizeDistinctiveText(
+    value?: string,
+    genericWords: string[] = [],
+  ): string {
+    let normalized = this.normalizeComparisonText(value);
+    for (const word of genericWords) {
+      const normalizedWord = this.normalizeComparisonText(word);
+      if (normalizedWord)
+        normalized = normalized.split(normalizedWord).join('');
+    }
+    return normalized;
   }
 
   private sameText(left?: string, right?: string): boolean {

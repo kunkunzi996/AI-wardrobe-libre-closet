@@ -174,4 +174,74 @@ describe('GarmentService', () => {
       reasons: expect.arrayContaining(['分类相同', '颜色相同', '细分相同']),
     });
   });
+
+  it('does not flag same-color short sleeve tops when details differ', async () => {
+    const { service, garmentRepository } = makeService();
+    garmentRepository.find.mockResolvedValue([
+      Object.assign(new Garment(), {
+        id: 1,
+        name: '黑色短袖',
+        category: 'tops',
+        color: GarmentColor.BLACK,
+        subcategory: '短袖T恤',
+        seasons: ['夏'],
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '棉',
+        thickness: '薄',
+        notes: '胸前白色字母印花',
+      }),
+    ]);
+
+    const candidates = await service.findSimilarToDraft({
+      category: 'tops',
+      color: GarmentColor.BLACK,
+      subcategory: '短袖T恤',
+      seasons: ['夏'],
+      styleTags: ['休闲'],
+      sceneTags: ['日常'],
+      material: '棉',
+      thickness: '薄',
+      notes: '黑色短袖，胸前红色卡通图案。',
+    });
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('flags same-color short sleeve tops when distinctive details match', async () => {
+    const { service, garmentRepository } = makeService();
+    garmentRepository.find.mockResolvedValue([
+      Object.assign(new Garment(), {
+        id: 1,
+        name: '黑色短袖',
+        category: 'tops',
+        color: GarmentColor.BLACK,
+        subcategory: '短袖T恤',
+        seasons: ['夏'],
+        styleTags: ['休闲'],
+        sceneTags: ['日常'],
+        material: '棉',
+        thickness: '薄',
+        notes: '胸前白色字母印花',
+      }),
+    ]);
+
+    const candidates = await service.findSimilarToDraft({
+      category: 'tops',
+      color: GarmentColor.BLACK,
+      subcategory: '短袖T恤',
+      seasons: ['夏'],
+      styleTags: ['休闲'],
+      sceneTags: ['日常'],
+      material: '棉',
+      thickness: '薄',
+      notes: '黑色短袖，胸前白色字母印花。',
+    });
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({
+      garment: expect.objectContaining({ id: 1 }),
+      reasons: expect.arrayContaining(['细节相同']),
+    });
+  });
 });
