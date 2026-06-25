@@ -5,6 +5,15 @@ import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
 import { Readable } from 'node:stream';
 
 describe('MiniappWardrobeController', () => {
+  const defaultStructuredFields = {
+    pocketPresence: 'unknown',
+    pocketPosition: 'unknown',
+    chestMarkPresence: 'unknown',
+    chestMarkType: 'unknown',
+    chestMarkPosition: 'unknown',
+    chestMarkText: null,
+  };
+
   const makeController = () => {
     const garmentService = {
       findAll: jest.fn(),
@@ -27,6 +36,7 @@ describe('MiniappWardrobeController', () => {
       seasons: [],
       styleTags: [],
       sceneTags: [],
+      ...defaultStructuredFields,
       confidence: 0,
       notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
     });
@@ -58,6 +68,7 @@ describe('MiniappWardrobeController', () => {
       size: 'M',
       notes: 'Warm',
       photo: { fileName: 'coat.webp' },
+      ...defaultStructuredFields,
       ...overrides,
     });
 
@@ -252,6 +263,7 @@ describe('MiniappWardrobeController', () => {
       sceneTags: ['日常'],
       material: '牛仔',
       thickness: '中等',
+      ...defaultStructuredFields,
       confidence: 0.86,
       notes: '蓝色牛仔裤，适合日常场合。',
     });
@@ -288,6 +300,12 @@ describe('MiniappWardrobeController', () => {
       sceneTags: ['上班'],
       material: '羊毛',
       thickness: '中等',
+      pocketPresence: 'no',
+      pocketPosition: 'unknown',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'text',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'r',
       confidence: 0.88,
       notes: '黑色西装外套。',
     };
@@ -338,6 +356,12 @@ describe('MiniappWardrobeController', () => {
         sceneTags: ['日常'],
         material: '牛仔',
         thickness: '中等',
+        pocketPresence: 'no',
+        pocketPosition: 'unknown',
+        chestMarkPresence: 'yes',
+        chestMarkType: 'text',
+        chestMarkPosition: 'chest-left',
+        chestMarkText: 'R',
       } as Partial<Garment>),
     );
 
@@ -353,6 +377,12 @@ describe('MiniappWardrobeController', () => {
           sceneTags: '日常',
           material: '牛仔',
           thickness: '中等',
+          pocketPresence: 'no',
+          pocketPosition: 'unknown',
+          chestMarkPresence: 'yes',
+          chestMarkType: 'text',
+          chestMarkPosition: 'chest-left',
+          chestMarkText: 'R',
           notes: '用户确认后的备注',
         },
         req,
@@ -367,6 +397,12 @@ describe('MiniappWardrobeController', () => {
         sceneTags: ['日常'],
         material: '牛仔',
         thickness: '中等',
+        pocketPresence: 'no',
+        pocketPosition: 'unknown',
+        chestMarkPresence: 'yes',
+        chestMarkType: 'text',
+        chestMarkPosition: 'chest-left',
+        chestMarkText: 'R',
       }),
     });
     expect(garmentService.create).toHaveBeenCalledWith(
@@ -380,6 +416,12 @@ describe('MiniappWardrobeController', () => {
         sceneTags: '日常',
         material: '牛仔',
         thickness: '中等',
+        pocketPresence: 'no',
+        pocketPosition: 'unknown',
+        chestMarkPresence: 'yes',
+        chestMarkType: 'text',
+        chestMarkPosition: 'chest-left',
+        chestMarkText: 'R',
         notes: '用户确认后的备注',
         photo: upload,
       }),

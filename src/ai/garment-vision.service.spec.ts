@@ -5,6 +5,14 @@ describe('GarmentVisionService', () => {
   const fileService = {
     get: jest.fn(),
   };
+  const defaultStructuredDraft = {
+    pocketPresence: 'unknown',
+    pocketPosition: 'unknown',
+    chestMarkPresence: 'unknown',
+    chestMarkType: 'unknown',
+    chestMarkPosition: 'unknown',
+    chestMarkText: null,
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,6 +39,7 @@ describe('GarmentVisionService', () => {
       sceneTags: [],
       material: undefined,
       thickness: undefined,
+      ...defaultStructuredDraft,
       confidence: 0,
       notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
     });
@@ -55,6 +64,12 @@ describe('GarmentVisionService', () => {
                 sceneTags: ['上班'],
                 material: '羊毛',
                 thickness: '中等',
+                pocketPresence: 'yes',
+                pocketPosition: 'chest pocket',
+                chestMarkPresence: 'yes',
+                chestMarkType: 'label',
+                chestMarkPosition: 'left chest',
+                chestMarkText: 'Outdoor',
                 confidence: 0.82,
                 notes: '黑色通勤外套。',
               }),
@@ -103,6 +118,12 @@ describe('GarmentVisionService', () => {
       sceneTags: ['上班'],
       material: '羊毛',
       thickness: '中等',
+      pocketPresence: 'yes',
+      pocketPosition: 'chest',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'label',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'Outdoor',
       confidence: 0.82,
       notes: '黑色通勤外套。',
     });
@@ -153,6 +174,7 @@ describe('GarmentVisionService', () => {
       sceneTags: ['约会'],
       material: undefined,
       thickness: undefined,
+      ...defaultStructuredDraft,
       confidence: 1,
       notes: 'AI 已生成草稿，请确认后再保存。',
     });
@@ -207,6 +229,7 @@ describe('GarmentVisionService', () => {
       sceneTags: ['办公室', '通勤'],
       material: '羊毛混纺',
       thickness: '中等',
+      ...defaultStructuredDraft,
       confidence: 0.9,
       notes: '黑色阔腿裤，适合正式商务场合，材质可能为羊毛混纺。',
     });
@@ -255,6 +278,7 @@ describe('GarmentVisionService', () => {
     expect(result.category).toBe('footwear');
     expect(result.subcategory).toBe('white sneakers');
     expect(result.color).toBe('white');
+    expect(result).toMatchObject(defaultStructuredDraft);
     expect(result.confidence).toBe(0.91);
   });
 
@@ -307,7 +331,60 @@ describe('GarmentVisionService', () => {
       sceneTags: ['日常', '户外'],
       material: '聚酯纤维',
       thickness: '偏厚',
+      ...defaultStructuredDraft,
       notes: '浅米色羽绒服，适合秋冬季节保暖穿着',
+    });
+  });
+
+  it('normalizes structured duplicate-check fields from the AI response', async () => {
+    fileService.get.mockResolvedValue(
+      Readable.from(Buffer.from('image-bytes')),
+    );
+    const fetchImpl = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                category: 'tops',
+                color: 'black',
+                pocketPresence: '有',
+                pocketPosition: '胸前',
+                chestMarkPresence: 'yes',
+                chestMarkType: 'letters',
+                chestMarkPosition: 'left chest',
+                chestMarkText: 'r',
+                confidence: 0.73,
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    const service = new GarmentVisionService(
+      {
+        get: jest.fn((key: string) =>
+          key === 'QWEN_API_KEY' ? 'test-qwen-key' : undefined,
+        ),
+      } as any,
+      fileService as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.analyzeImage('tee.webp');
+
+    expect(result).toMatchObject({
+      fileName: 'tee.webp',
+      category: 'tops',
+      color: 'black',
+      pocketPresence: 'yes',
+      pocketPosition: 'chest',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'text',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'r',
+      confidence: 0.73,
     });
   });
 
@@ -362,6 +439,7 @@ describe('GarmentVisionService', () => {
     await expect(service.analyzeImage('slow.webp')).resolves.toMatchObject({
       fileName: 'slow.webp',
       category: 'tops',
+      ...defaultStructuredDraft,
       confidence: 0,
       notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
     });

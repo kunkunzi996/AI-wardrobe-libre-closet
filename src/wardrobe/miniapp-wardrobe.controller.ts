@@ -22,6 +22,12 @@ import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
 import { FileService } from '../file/file-service.abstract';
+import type {
+  GarmentChestMarkPosition,
+  GarmentChestMarkType,
+  GarmentFeaturePresence,
+  GarmentPocketPosition,
+} from '../ai/dto/garment-vision-result.dto';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
 import {
@@ -47,6 +53,12 @@ type MiniappCreateBody = {
   sceneTags?: string;
   material?: string;
   thickness?: string;
+  pocketPresence?: GarmentFeaturePresence;
+  pocketPosition?: GarmentPocketPosition;
+  chestMarkPresence?: GarmentFeaturePresence;
+  chestMarkType?: GarmentChestMarkType;
+  chestMarkPosition?: GarmentChestMarkPosition;
+  chestMarkText?: string;
 };
 
 type ZipEntry = {
@@ -65,6 +77,12 @@ type BackupManifestGarment = {
   sceneTags?: string[];
   material?: string;
   thickness?: string;
+  pocketPresence?: GarmentFeaturePresence | string;
+  pocketPosition?: GarmentPocketPosition | string;
+  chestMarkPresence?: GarmentFeaturePresence | string;
+  chestMarkType?: GarmentChestMarkType | string;
+  chestMarkPosition?: GarmentChestMarkPosition | string;
+  chestMarkText?: string | null;
   brand?: string;
   size?: string;
   notes?: string;
@@ -162,6 +180,12 @@ export class MiniappWardrobeController {
               sceneTags: garment.sceneTags ?? [],
               material: garment.material ?? '',
               thickness: garment.thickness ?? '',
+              pocketPresence: garment.pocketPresence ?? 'unknown',
+              pocketPosition: garment.pocketPosition ?? 'unknown',
+              chestMarkPresence: garment.chestMarkPresence ?? 'unknown',
+              chestMarkType: garment.chestMarkType ?? 'unknown',
+              chestMarkPosition: garment.chestMarkPosition ?? 'unknown',
+              chestMarkText: garment.chestMarkText ?? null,
               brand: garment.brand ?? '',
               size: garment.size ?? '',
               notes: garment.notes ?? '',
@@ -231,6 +255,15 @@ export class MiniappWardrobeController {
           sceneTags: item.sceneTags,
           material: item.material,
           thickness: item.thickness,
+          pocketPresence: item.pocketPresence as GarmentFeaturePresence | undefined,
+          pocketPosition: item.pocketPosition as GarmentPocketPosition | undefined,
+          chestMarkPresence:
+            item.chestMarkPresence as GarmentFeaturePresence | undefined,
+          chestMarkType:
+            item.chestMarkType as GarmentChestMarkType | undefined,
+          chestMarkPosition:
+            item.chestMarkPosition as GarmentChestMarkPosition | undefined,
+          chestMarkText: item.chestMarkText ?? undefined,
           brand: item.brand,
           size: item.size,
           notes: item.notes,
@@ -267,6 +300,12 @@ export class MiniappWardrobeController {
         sceneTags: form.sceneTags,
         material: form.material,
         thickness: form.thickness,
+        pocketPresence: form.pocketPresence,
+        pocketPosition: form.pocketPosition,
+        chestMarkPresence: form.chestMarkPresence,
+        chestMarkType: form.chestMarkType,
+        chestMarkPosition: form.chestMarkPosition,
+        chestMarkText: form.chestMarkText,
         brand: form.brand,
         size: form.size,
         notes: form.notes,
@@ -299,6 +338,12 @@ export class MiniappWardrobeController {
         sceneTags: body.sceneTags,
         material: body.material,
         thickness: body.thickness,
+        pocketPresence: body.pocketPresence,
+        pocketPosition: body.pocketPosition,
+        chestMarkPresence: body.chestMarkPresence,
+        chestMarkType: body.chestMarkType,
+        chestMarkPosition: body.chestMarkPosition,
+        chestMarkText: body.chestMarkText,
         brand: body.brand,
         size: body.size,
         notes: body.notes,
@@ -386,6 +431,32 @@ export class MiniappWardrobeController {
       sceneTags: this.fieldValue(body.sceneTags, file, 'sceneTags'),
       material: this.fieldValue(body.material, file, 'material'),
       thickness: this.fieldValue(body.thickness, file, 'thickness'),
+      pocketPresence: this.fieldValue(
+        body.pocketPresence,
+        file,
+        'pocketPresence',
+      ) as GarmentFeaturePresence | undefined,
+      pocketPosition: this.fieldValue(
+        body.pocketPosition,
+        file,
+        'pocketPosition',
+      ) as GarmentPocketPosition | undefined,
+      chestMarkPresence: this.fieldValue(
+        body.chestMarkPresence,
+        file,
+        'chestMarkPresence',
+      ) as GarmentFeaturePresence | undefined,
+      chestMarkType: this.fieldValue(
+        body.chestMarkType,
+        file,
+        'chestMarkType',
+      ) as GarmentChestMarkType | undefined,
+      chestMarkPosition: this.fieldValue(
+        body.chestMarkPosition,
+        file,
+        'chestMarkPosition',
+      ) as GarmentChestMarkPosition | undefined,
+      chestMarkText: this.fieldValue(body.chestMarkText, file, 'chestMarkText'),
     };
   }
 
@@ -420,6 +491,12 @@ export class MiniappWardrobeController {
       sceneTags: garment.sceneTags ?? [],
       material: garment.material ?? '',
       thickness: garment.thickness ?? '',
+      pocketPresence: garment.pocketPresence ?? 'unknown',
+      pocketPosition: garment.pocketPosition ?? 'unknown',
+      chestMarkPresence: garment.chestMarkPresence ?? 'unknown',
+      chestMarkType: garment.chestMarkType ?? 'unknown',
+      chestMarkPosition: garment.chestMarkPosition ?? 'unknown',
+      chestMarkText: garment.chestMarkText ?? null,
       brand: garment.brand ?? '',
       size: garment.size ?? '',
       notes: garment.notes ?? '',

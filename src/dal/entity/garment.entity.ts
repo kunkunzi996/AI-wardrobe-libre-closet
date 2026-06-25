@@ -14,6 +14,12 @@ import { ShareableId } from './shareableId.entity';
 import { User } from './user.entity';
 import { GarmentColor } from '../../wardrobe/garment-color.enum';
 import { GarmentStatus } from '../../wardrobe/garment-status.enum';
+import type {
+  GarmentChestMarkPosition,
+  GarmentChestMarkType,
+  GarmentFeaturePresence,
+  GarmentPocketPosition,
+} from '../../ai/dto/garment-vision-result.dto';
 
 export { GarmentColor };
 export { GarmentStatus };
@@ -58,6 +64,24 @@ export class Garment extends ShareableId {
 
   @Property({ nullable: true })
   public thickness?: string;
+
+  @Property({ nullable: true })
+  public pocketPresence?: GarmentFeaturePresence;
+
+  @Property({ nullable: true })
+  public pocketPosition?: GarmentPocketPosition;
+
+  @Property({ nullable: true })
+  public chestMarkPresence?: GarmentFeaturePresence;
+
+  @Property({ nullable: true })
+  public chestMarkType?: GarmentChestMarkType;
+
+  @Property({ nullable: true })
+  public chestMarkPosition?: GarmentChestMarkPosition;
+
+  @Property({ nullable: true })
+  public chestMarkText?: string;
 
   @Property({ nullable: true })
   public fit?: string;

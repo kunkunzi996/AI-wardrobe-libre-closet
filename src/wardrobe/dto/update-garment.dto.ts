@@ -1,4 +1,10 @@
 import { MultipartFile } from '@fastify/multipart';
+import type {
+  GarmentChestMarkPosition,
+  GarmentChestMarkType,
+  GarmentFeaturePresence,
+  GarmentPocketPosition,
+} from '../../ai/dto/garment-vision-result.dto';
 import { GarmentColor } from '../garment-color.enum';
 import { GarmentStatus } from '../garment-status.enum';
 import { TagInput } from './create-garment.dto';
@@ -15,6 +21,12 @@ export interface UpdateGarmentDto {
   sceneTags?: TagInput;
   material?: string;
   thickness?: string;
+  pocketPresence?: GarmentFeaturePresence;
+  pocketPosition?: GarmentPocketPosition;
+  chestMarkPresence?: GarmentFeaturePresence;
+  chestMarkType?: GarmentChestMarkType;
+  chestMarkPosition?: GarmentChestMarkPosition;
+  chestMarkText?: string | null;
   fit?: string;
   status?: GarmentStatus;
   price?: number | string;

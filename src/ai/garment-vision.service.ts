@@ -5,7 +5,17 @@ import { buffer } from 'node:stream/consumers';
 import sharp from 'sharp';
 import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from '../wardrobe/garment-color.enum';
-import { GarmentVisionResult } from './dto/garment-vision-result.dto';
+import {
+  GARMENT_CHEST_MARK_POSITION_VALUES,
+  GARMENT_CHEST_MARK_TYPE_VALUES,
+  GARMENT_FEATURE_PRESENCE_VALUES,
+  GARMENT_POCKET_POSITION_VALUES,
+  type GarmentChestMarkPosition,
+  type GarmentChestMarkType,
+  type GarmentFeaturePresence,
+  type GarmentPocketPosition,
+  GarmentVisionResult,
+} from './dto/garment-vision-result.dto';
 
 type FetchLike = typeof fetch;
 
@@ -91,6 +101,87 @@ const VALID_CATEGORIES = new Set([
   'accessories',
   'other',
 ]);
+
+const PRESENCE_ALIASES: Record<string, GarmentFeaturePresence> = {
+  yes: 'yes',
+  true: 'yes',
+  visible: 'yes',
+  has: 'yes',
+  有: 'yes',
+  no: 'no',
+  false: 'no',
+  none: 'no',
+  without: 'no',
+  无: 'no',
+  没有: 'no',
+  unknown: 'unknown',
+  unsure: 'unknown',
+  unclear: 'unknown',
+  uncertain: 'unknown',
+  不确定: 'unknown',
+  看不清: 'unknown',
+};
+
+const POCKET_POSITION_ALIASES: Record<string, GarmentPocketPosition> = {
+  chest: 'chest',
+  'chest-pocket': 'chest',
+  'chest pocket': 'chest',
+  breast: 'chest',
+  'left chest': 'chest',
+  'right chest': 'chest',
+  胸前: 'chest',
+  胸口: 'chest',
+  side: 'side',
+  'side-pocket': 'side',
+  'side pocket': 'side',
+  側边: 'side',
+  侧边: 'side',
+  侧面: 'side',
+  other: 'other',
+  其他: 'other',
+  unknown: 'unknown',
+};
+
+const CHEST_MARK_TYPE_ALIASES: Record<string, GarmentChestMarkType> = {
+  text: 'text',
+  letter: 'text',
+  letters: 'text',
+  word: 'text',
+  words: 'text',
+  文字: 'text',
+  字母: 'text',
+  label: 'label',
+  tag: 'label',
+  标签: 'label',
+  标牌: 'label',
+  icon: 'icon',
+  logo: 'icon',
+  symbol: 'icon',
+  图标: 'icon',
+  标志: 'icon',
+  mixed: 'mixed',
+  both: 'mixed',
+  混合: 'mixed',
+  unknown: 'unknown',
+};
+
+const CHEST_MARK_POSITION_ALIASES: Record<string, GarmentChestMarkPosition> = {
+  'chest-left': 'chest-left',
+  'left chest': 'chest-left',
+  'left-chest': 'chest-left',
+  'left side chest': 'chest-left',
+  左胸: 'chest-left',
+  左侧胸前: 'chest-left',
+  'chest-center': 'chest-center',
+  'center chest': 'chest-center',
+  'center-chest': 'chest-center',
+  'middle chest': 'chest-center',
+  胸前正中: 'chest-center',
+  胸前中间: 'chest-center',
+  other: 'other',
+  其他: 'other',
+  unknown: 'unknown',
+};
 
 @Injectable()
 export class GarmentVisionService {
@@ -262,7 +353,7 @@ export class GarmentVisionService {
         {
           role: 'system',
           content:
-            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。除 category 和 color 必须使用给定枚举值外，subcategory、seasons、styleTags、sceneTags、material、thickness、notes 都必须使用简体中文。',
+            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。除 category、color 和结构化枚举字段必须使用给定枚举值外，subcategory、seasons、styleTags、sceneTags、material、thickness、notes 都必须使用简体中文。对于看不清、被遮挡或不确定的结构化字段，必须返回 unknown，不要猜。',
         },
         {
           role: 'user',
@@ -290,9 +381,22 @@ export class GarmentVisionService {
                   sceneTags: ['中文场景标签，例如：上班、约会、周末、旅行'],
                   material: 'string or null',
                   thickness: 'string or null',
+                  pocketPresence: 'yes | no | unknown',
+                  pocketPosition: 'chest | side | other | unknown',
+                  chestMarkPresence: 'yes | no | unknown',
+                  chestMarkType: 'text | label | icon | mixed | unknown',
+                  chestMarkPosition:
+                    'chest-left | chest-center | other | unknown',
+                  chestMarkText: 'short text or null',
                   confidence: 'number from 0 to 1',
                   notes: 'short Chinese note',
                 },
+                rules: [
+                  'Only return pocketPresence=yes when a pocket is clearly visible.',
+                  'Only return pocketPresence=no when the chest/side area is clear and you are confident there is no pocket.',
+                  'If pocket visibility or chest mark visibility is uncertain, return unknown.',
+                  'Only fill chestMarkText when the text is clearly readable.',
+                ],
               }),
             },
             {
@@ -353,9 +457,86 @@ export class GarmentVisionService {
       sceneTags: this.localizedArray(draft.sceneTags),
       material: this.localizedString(draft.material),
       thickness: this.localizedString(draft.thickness),
+      pocketPresence: this.normalizePresence(draft.pocketPresence),
+      pocketPosition: this.normalizePocketPosition(
+        draft.pocketPresence,
+        draft.pocketPosition,
+      ),
+      chestMarkPresence: this.normalizePresence(draft.chestMarkPresence),
+      chestMarkType: this.normalizeChestMarkType(
+        draft.chestMarkPresence,
+        draft.chestMarkType,
+      ),
+      chestMarkPosition: this.normalizeChestMarkPosition(
+        draft.chestMarkPresence,
+        draft.chestMarkPosition,
+      ),
+      chestMarkText: this.normalizeChestMarkText(
+        draft.chestMarkPresence,
+        draft.chestMarkText,
+      ),
       confidence: this.confidence(draft.confidence),
       notes: this.localizedNotes(draft) ?? 'AI 已生成草稿，请确认后再保存。',
     };
+  }
+
+  private normalizePresence(value: unknown): GarmentFeaturePresence {
+    const normalized = this.normalizeAlias(value, PRESENCE_ALIASES);
+    return GARMENT_FEATURE_PRESENCE_VALUES.includes(
+      normalized as GarmentFeaturePresence,
+    )
+      ? (normalized as GarmentFeaturePresence)
+      : 'unknown';
+  }
+
+  private normalizePocketPosition(
+    presence: unknown,
+    value: unknown,
+  ): GarmentPocketPosition {
+    if (this.normalizePresence(presence) !== 'yes') return 'unknown';
+    const normalized = this.normalizeAlias(value, POCKET_POSITION_ALIASES);
+    return GARMENT_POCKET_POSITION_VALUES.includes(
+      normalized as GarmentPocketPosition,
+    )
+      ? (normalized as GarmentPocketPosition)
+      : 'unknown';
+  }
+
+  private normalizeChestMarkType(
+    presence: unknown,
+    value: unknown,
+  ): GarmentChestMarkType {
+    if (this.normalizePresence(presence) !== 'yes') return 'unknown';
+    const normalized = this.normalizeAlias(value, CHEST_MARK_TYPE_ALIASES);
+    return GARMENT_CHEST_MARK_TYPE_VALUES.includes(
+      normalized as GarmentChestMarkType,
+    )
+      ? (normalized as GarmentChestMarkType)
+      : 'unknown';
+  }
+
+  private normalizeChestMarkPosition(
+    presence: unknown,
+    value: unknown,
+  ): GarmentChestMarkPosition {
+    if (this.normalizePresence(presence) !== 'yes') return 'unknown';
+    const normalized = this.normalizeAlias(
+      value,
+      CHEST_MARK_POSITION_ALIASES,
+    );
+    return GARMENT_CHEST_MARK_POSITION_VALUES.includes(
+      normalized as GarmentChestMarkPosition,
+    )
+      ? (normalized as GarmentChestMarkPosition)
+      : 'unknown';
+  }
+
+  private normalizeChestMarkText(
+    presence: unknown,
+    value: unknown,
+  ): string | null {
+    if (this.normalizePresence(presence) !== 'yes') return null;
+    return this.stringOrUndefined(value) ?? null;
   }
 
   private normalizeColor(color: unknown): GarmentColor | undefined {
@@ -443,6 +624,15 @@ export class GarmentVisionService {
     return CHINESE_LABELS[normalized] ?? value.trim();
   }
 
+  private normalizeAlias<T extends string>(
+    value: unknown,
+    aliases: Record<string, T>,
+  ): T | undefined {
+    if (typeof value !== 'string' || !value.trim()) return undefined;
+    const normalized = value.trim().toLowerCase().replace(/[_]+/g, '-');
+    return aliases[normalized] ?? aliases[normalized.replace(/-/g, ' ')];
+  }
+
   private stringOrDefault(value: unknown, fallback: string): string {
     return typeof value === 'string' && value.trim() ? value.trim() : fallback;
   }
@@ -476,6 +666,12 @@ export class GarmentVisionService {
       sceneTags: [],
       material: undefined,
       thickness: undefined,
+      pocketPresence: 'unknown',
+      pocketPosition: 'unknown',
+      chestMarkPresence: 'unknown',
+      chestMarkType: 'unknown',
+      chestMarkPosition: 'unknown',
+      chestMarkText: null,
       confidence: 0,
       notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
     };

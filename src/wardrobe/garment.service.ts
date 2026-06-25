@@ -18,7 +18,17 @@ import { SearchGarmentDto } from './dto/search-garment.dto';
 import { GarmentCategory } from './garment-category.enum';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
-import type { GarmentVisionResult } from '../ai/dto/garment-vision-result.dto';
+import {
+  GARMENT_CHEST_MARK_POSITION_VALUES,
+  GARMENT_CHEST_MARK_TYPE_VALUES,
+  GARMENT_FEATURE_PRESENCE_VALUES,
+  GARMENT_POCKET_POSITION_VALUES,
+  type GarmentChestMarkPosition,
+  type GarmentChestMarkType,
+  type GarmentFeaturePresence,
+  type GarmentPocketPosition,
+  type GarmentVisionResult,
+} from '../ai/dto/garment-vision-result.dto';
 
 const CANONICAL_SIZES = [
   'XX-Small',
@@ -222,6 +232,24 @@ export class GarmentService {
       sceneTags: this.normalizeTags(dto.sceneTags),
       material: dto.material,
       thickness: dto.thickness,
+      pocketPresence: this.normalizeFeaturePresence(dto.pocketPresence),
+      pocketPosition: this.normalizePocketPosition(
+        dto.pocketPresence,
+        dto.pocketPosition,
+      ),
+      chestMarkPresence: this.normalizeFeaturePresence(dto.chestMarkPresence),
+      chestMarkType: this.normalizeChestMarkType(
+        dto.chestMarkPresence,
+        dto.chestMarkType,
+      ),
+      chestMarkPosition: this.normalizeChestMarkPosition(
+        dto.chestMarkPresence,
+        dto.chestMarkPosition,
+      ),
+      chestMarkText: this.normalizeChestMarkText(
+        dto.chestMarkPresence,
+        dto.chestMarkText,
+      ),
       fit: dto.fit,
       status: dto.status ?? GarmentStatus.Wearable,
       price: this.normalizeNumber(dto.price),
@@ -323,6 +351,56 @@ export class GarmentService {
       garment.sceneTags = this.normalizeTags(dto.sceneTags);
     if ('material' in dto) garment.material = dto.material;
     if ('thickness' in dto) garment.thickness = dto.thickness;
+    if ('pocketPresence' in dto) {
+      garment.pocketPresence = this.normalizeFeaturePresence(dto.pocketPresence);
+      garment.pocketPosition = this.normalizePocketPosition(
+        dto.pocketPresence,
+        'pocketPosition' in dto ? dto.pocketPosition : garment.pocketPosition,
+      );
+    } else if ('pocketPosition' in dto) {
+      garment.pocketPosition = this.normalizePocketPosition(
+        garment.pocketPresence,
+        dto.pocketPosition,
+      );
+    }
+    if ('chestMarkPresence' in dto) {
+      garment.chestMarkPresence = this.normalizeFeaturePresence(
+        dto.chestMarkPresence,
+      );
+      garment.chestMarkType = this.normalizeChestMarkType(
+        dto.chestMarkPresence,
+        'chestMarkType' in dto ? dto.chestMarkType : garment.chestMarkType,
+      );
+      garment.chestMarkPosition = this.normalizeChestMarkPosition(
+        dto.chestMarkPresence,
+        'chestMarkPosition' in dto
+          ? dto.chestMarkPosition
+          : garment.chestMarkPosition,
+      );
+      garment.chestMarkText = this.normalizeChestMarkText(
+        dto.chestMarkPresence,
+        'chestMarkText' in dto ? dto.chestMarkText : garment.chestMarkText,
+      );
+    } else {
+      if ('chestMarkType' in dto) {
+        garment.chestMarkType = this.normalizeChestMarkType(
+          garment.chestMarkPresence,
+          dto.chestMarkType,
+        );
+      }
+      if ('chestMarkPosition' in dto) {
+        garment.chestMarkPosition = this.normalizeChestMarkPosition(
+          garment.chestMarkPresence,
+          dto.chestMarkPosition,
+        );
+      }
+      if ('chestMarkText' in dto) {
+        garment.chestMarkText = this.normalizeChestMarkText(
+          garment.chestMarkPresence,
+          dto.chestMarkText,
+        );
+      }
+    }
     if ('fit' in dto) garment.fit = dto.fit;
     if ('status' in dto) garment.status = dto.status ?? GarmentStatus.Wearable;
     if ('price' in dto) garment.price = this.normalizeNumber(dto.price);
@@ -487,6 +565,53 @@ export class GarmentService {
       score += 5;
       reasons.push('厚薄相同');
     }
+    if (this.sameFeaturePresence(garment.pocketPresence, draft.pocketPresence)) {
+      score += 10;
+      reasons.push('口袋结构相同');
+    }
+    if (
+      this.sameStructuredValue(
+        garment.pocketPosition,
+        draft.pocketPosition,
+        'unknown',
+      )
+    ) {
+      score += 10;
+      reasons.push('口袋位置相同');
+    }
+    if (
+      this.sameFeaturePresence(
+        garment.chestMarkPresence,
+        draft.chestMarkPresence,
+      )
+    ) {
+      score += 8;
+      reasons.push('胸前标识状态相同');
+    }
+    if (
+      this.sameStructuredValue(
+        garment.chestMarkType,
+        draft.chestMarkType,
+        'unknown',
+      )
+    ) {
+      score += 10;
+      reasons.push('胸前标识类型相同');
+    }
+    if (
+      this.sameStructuredValue(
+        garment.chestMarkPosition,
+        draft.chestMarkPosition,
+        'unknown',
+      )
+    ) {
+      score += 8;
+      reasons.push('胸前标识位置相同');
+    }
+    if (this.sameText(garment.chestMarkText, draft.chestMarkText ?? undefined)) {
+      score += 15;
+      reasons.push('胸前文字相同');
+    }
 
     const seasonOverlap = this.overlapCount(garment.seasons, draft.seasons);
     if (seasonOverlap > 0) {
@@ -523,6 +648,7 @@ export class GarmentService {
     candidate: SimilarGarmentCandidate,
     draft: Partial<GarmentVisionResult>,
   ): boolean {
+    if (this.hasStructuredDifference(candidate.garment, draft)) return false;
     if (candidate.score < DUPLICATE_SCORE_THRESHOLD) return false;
     if (candidate.reasons.includes('细节相同')) return true;
 
@@ -547,6 +673,69 @@ export class GarmentService {
     );
     return COMMON_DUPLICATE_SHAPES.some((shape) =>
       shapeText.includes(this.normalizeComparisonText(shape)),
+    );
+  }
+
+  private hasStructuredDifference(
+    garment: Garment,
+    draft: Partial<GarmentVisionResult>,
+  ): boolean {
+    const garmentPocketPresence = this.compareFeaturePresence(
+      garment.pocketPresence,
+    );
+    const draftPocketPresence = this.compareFeaturePresence(draft.pocketPresence);
+    if (
+      garmentPocketPresence &&
+      draftPocketPresence &&
+      garmentPocketPresence !== draftPocketPresence
+    ) {
+      return true;
+    }
+
+    if (
+      garmentPocketPresence === 'yes' &&
+      draftPocketPresence === 'yes' &&
+      this.structuredValuesDiffer(
+        garment.pocketPosition,
+        draft.pocketPosition,
+        'unknown',
+      )
+    ) {
+      return true;
+    }
+
+    const garmentMarkPresence = this.compareFeaturePresence(
+      garment.chestMarkPresence,
+    );
+    const draftMarkPresence = this.compareFeaturePresence(draft.chestMarkPresence);
+    if (
+      garmentMarkPresence &&
+      draftMarkPresence &&
+      garmentMarkPresence !== draftMarkPresence
+    ) {
+      return true;
+    }
+
+    if (
+      garmentMarkPresence === 'yes' &&
+      draftMarkPresence === 'yes' &&
+      (this.structuredValuesDiffer(
+        garment.chestMarkType,
+        draft.chestMarkType,
+        'unknown',
+      ) ||
+        this.structuredValuesDiffer(
+          garment.chestMarkPosition,
+          draft.chestMarkPosition,
+          'unknown',
+        ))
+    ) {
+      return true;
+    }
+
+    return this.structuredTextsDiffer(
+      garment.chestMarkText,
+      draft.chestMarkText ?? undefined,
     );
   }
 
@@ -582,6 +771,8 @@ export class GarmentService {
       this.resolveColorLabel(draft.color),
       garment.subcategory,
       draft.subcategory,
+      garment.chestMarkText,
+      draft.chestMarkText ?? undefined,
       '衣服',
       '衣物',
       '适合',
@@ -611,6 +802,127 @@ export class GarmentService {
     return normalized;
   }
 
+  private normalizeFeaturePresence(
+    value?: string | null,
+  ): GarmentFeaturePresence | undefined {
+    const normalized = this.normalizeComparisonText(value);
+    if (!normalized) return undefined;
+    return GARMENT_FEATURE_PRESENCE_VALUES.find(
+      (item) => item === normalized,
+    ) as GarmentFeaturePresence | undefined;
+  }
+
+  private normalizePocketPosition(
+    presence?: string | null,
+    value?: string | null,
+  ): GarmentPocketPosition | undefined {
+    if (this.normalizeFeaturePresence(presence) !== 'yes') {
+      return this.normalizeFeaturePresence(presence) ? 'unknown' : undefined;
+    }
+    const normalized = this.normalizeStructuredToken(value);
+    if (!normalized) return 'unknown';
+    return (
+      GARMENT_POCKET_POSITION_VALUES.find((item) => item === normalized) ??
+      'unknown'
+    );
+  }
+
+  private normalizeChestMarkType(
+    presence?: string | null,
+    value?: string | null,
+  ): GarmentChestMarkType | undefined {
+    if (this.normalizeFeaturePresence(presence) !== 'yes') {
+      return this.normalizeFeaturePresence(presence) ? 'unknown' : undefined;
+    }
+    const normalized = this.normalizeStructuredToken(value);
+    if (!normalized) return 'unknown';
+    return (
+      GARMENT_CHEST_MARK_TYPE_VALUES.find((item) => item === normalized) ??
+      'unknown'
+    );
+  }
+
+  private normalizeChestMarkPosition(
+    presence?: string | null,
+    value?: string | null,
+  ): GarmentChestMarkPosition | undefined {
+    if (this.normalizeFeaturePresence(presence) !== 'yes') {
+      return this.normalizeFeaturePresence(presence) ? 'unknown' : undefined;
+    }
+    const normalized = this.normalizeStructuredToken(value);
+    if (!normalized) return 'unknown';
+    return (
+      GARMENT_CHEST_MARK_POSITION_VALUES.find((item) => item === normalized) ??
+      'unknown'
+    );
+  }
+
+  private normalizeChestMarkText(
+    presence?: string | null,
+    value?: string | null,
+  ): string | undefined {
+    if (this.normalizeFeaturePresence(presence) !== 'yes') {
+      return this.normalizeFeaturePresence(presence) ? undefined : undefined;
+    }
+    const text = value?.trim();
+    return text ? text : undefined;
+  }
+
+  private compareFeaturePresence(
+    value?: string | null,
+  ): 'yes' | 'no' | undefined {
+    const normalized = this.normalizeFeaturePresence(value);
+    return normalized === 'yes' || normalized === 'no' ? normalized : undefined;
+  }
+
+  private sameFeaturePresence(left?: string | null, right?: string | null): boolean {
+    const normalizedLeft = this.compareFeaturePresence(left);
+    const normalizedRight = this.compareFeaturePresence(right);
+    return Boolean(normalizedLeft && normalizedLeft === normalizedRight);
+  }
+
+  private sameStructuredValue(
+    left?: string | null,
+    right?: string | null,
+    unknownValue = 'unknown',
+  ): boolean {
+    const normalizedLeft = this.normalizeComparisonText(left);
+    const normalizedRight = this.normalizeComparisonText(right);
+    return Boolean(
+      normalizedLeft &&
+        normalizedRight &&
+        normalizedLeft !== unknownValue &&
+        normalizedRight !== unknownValue &&
+        normalizedLeft === normalizedRight,
+    );
+  }
+
+  private structuredValuesDiffer(
+    left?: string | null,
+    right?: string | null,
+    unknownValue = 'unknown',
+  ): boolean {
+    const normalizedLeft = this.normalizeComparisonText(left);
+    const normalizedRight = this.normalizeComparisonText(right);
+    return Boolean(
+      normalizedLeft &&
+        normalizedRight &&
+        normalizedLeft !== unknownValue &&
+        normalizedRight !== unknownValue &&
+        normalizedLeft !== normalizedRight,
+    );
+  }
+
+  private structuredTextsDiffer(left?: string | null, right?: string | null): boolean {
+    const normalizedLeft = this.normalizeComparisonText(left);
+    const normalizedRight = this.normalizeComparisonText(right);
+    return Boolean(
+      normalizedLeft &&
+        normalizedRight &&
+        normalizedLeft !== normalizedRight,
+    );
+  }
+
   private sameText(left?: string, right?: string): boolean {
     const normalizedLeft = this.normalizeComparisonText(left);
     const normalizedRight = this.normalizeComparisonText(right);
@@ -637,10 +949,17 @@ export class GarmentService {
     ).length;
   }
 
-  private normalizeComparisonText(value?: string): string {
+  private normalizeComparisonText(value?: string | null): string {
     return (value ?? '')
       .trim()
       .toLowerCase()
       .replace(/[\s,，、。._-]+/g, '');
+  }
+
+  private normalizeStructuredToken(value?: string | null): string {
+    return (value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-');
   }
 }

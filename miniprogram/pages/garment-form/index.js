@@ -69,6 +69,17 @@ function listText(value) {
   return Array.isArray(value) ? value.filter(Boolean).join('、') : '';
 }
 
+function defaultVisionFields() {
+  return {
+    pocketPresence: 'unknown',
+    pocketPosition: 'unknown',
+    chestMarkPresence: 'unknown',
+    chestMarkType: 'unknown',
+    chestMarkPosition: 'unknown',
+    chestMarkText: '',
+  };
+}
+
 function duplicateSummary(candidates) {
   return (candidates || [])
     .slice(0, 3)
@@ -126,6 +137,7 @@ Page({
       sceneTags: '',
       material: '',
       thickness: '',
+      ...defaultVisionFields(),
     },
     recognizing: false,
     aiDraft: null,
@@ -274,6 +286,7 @@ Page({
     const seasonValue = seasonValueMap[garment.season] || garment.season || '';
     const seasonIndex = optionIndex(seasonOptions, seasonValue);
     const nextForm = {
+      ...defaultVisionFields(),
       name: garment.name || '',
       category: garment.category || categoryOptions[0].value,
       color: garment.color || colorOptions[0].value,
@@ -286,6 +299,12 @@ Page({
       sceneTags: listText(garment.sceneTags),
       material: garment.material || '',
       thickness: garment.thickness || '',
+      pocketPresence: garment.pocketPresence || 'unknown',
+      pocketPosition: garment.pocketPosition || 'unknown',
+      chestMarkPresence: garment.chestMarkPresence || 'unknown',
+      chestMarkType: garment.chestMarkType || 'unknown',
+      chestMarkPosition: garment.chestMarkPosition || 'unknown',
+      chestMarkText: garment.chestMarkText || '',
     };
 
     this.setData({
@@ -320,6 +339,12 @@ Page({
       sceneTags: listText(draft.sceneTags),
       material: draft.material || '',
       thickness: draft.thickness || '',
+      pocketPresence: draft.pocketPresence || 'unknown',
+      pocketPosition: draft.pocketPosition || 'unknown',
+      chestMarkPresence: draft.chestMarkPresence || 'unknown',
+      chestMarkType: draft.chestMarkType || 'unknown',
+      chestMarkPosition: draft.chestMarkPosition || 'unknown',
+      chestMarkText: draft.chestMarkText || '',
       notes: this.data.form.notes || draft.notes || '',
     });
 

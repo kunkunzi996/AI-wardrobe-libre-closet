@@ -36,13 +36,19 @@ describe('GarmentService', () => {
       category: 'outerwear',
       subcategory: '西装',
       brand: 'Sample',
-      color: GarmentColor.Black,
+      color: GarmentColor.BLACK,
       size: 'm',
       seasons: '春, 秋，冬',
       styleTags: ['通勤', '法式'],
       sceneTags: '上班, 约会',
       material: '羊毛',
       thickness: '中等',
+      pocketPresence: 'yes',
+      pocketPosition: 'chest',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'label',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'Outdoor',
       fit: '合身',
       status: GarmentStatus.Wearable,
       price: '399.9',
@@ -59,6 +65,12 @@ describe('GarmentService', () => {
         sceneTags: ['上班', '约会'],
         material: '羊毛',
         thickness: '中等',
+        pocketPresence: 'yes',
+        pocketPosition: 'chest',
+        chestMarkPresence: 'yes',
+        chestMarkType: 'label',
+        chestMarkPosition: 'chest-left',
+        chestMarkText: 'Outdoor',
         fit: '合身',
         status: GarmentStatus.Wearable,
         price: 399.9,
@@ -76,6 +88,11 @@ describe('GarmentService', () => {
       seasons: ['春'],
       styleTags: ['休闲'],
       sceneTags: ['周末'],
+      pocketPresence: 'unknown',
+      pocketPosition: 'unknown',
+      chestMarkPresence: 'unknown',
+      chestMarkType: 'unknown',
+      chestMarkPosition: 'unknown',
       status: GarmentStatus.Wearable,
       wearCount: 3,
     });
@@ -84,6 +101,11 @@ describe('GarmentService', () => {
     const garment = await service.update(1, {
       subcategory: '衬衫',
       seasons: '夏,秋',
+      pocketPresence: 'no',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'text',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'R',
       status: GarmentStatus.Laundry,
     });
 
@@ -91,6 +113,12 @@ describe('GarmentService', () => {
     expect(garment.seasons).toEqual(['夏', '秋']);
     expect(garment.styleTags).toEqual(['休闲']);
     expect(garment.sceneTags).toEqual(['周末']);
+    expect(garment.pocketPresence).toBe('no');
+    expect(garment.pocketPosition).toBe('unknown');
+    expect(garment.chestMarkPresence).toBe('yes');
+    expect(garment.chestMarkType).toBe('text');
+    expect(garment.chestMarkPosition).toBe('chest-left');
+    expect(garment.chestMarkText).toBe('R');
     expect(garment.status).toBe(GarmentStatus.Laundry);
     expect(garment.wearCount).toBe(3);
     expect(entityManager.flush).toHaveBeenCalled();
@@ -189,7 +217,12 @@ describe('GarmentService', () => {
         sceneTags: ['日常'],
         material: '棉',
         thickness: '薄',
-        notes: '胸前白色字母印花',
+        pocketPresence: 'yes',
+        pocketPosition: 'chest',
+        chestMarkPresence: 'yes',
+        chestMarkType: 'label',
+        chestMarkPosition: 'chest-left',
+        notes: '胸前口袋带白色标签',
       }),
     ]);
 
@@ -202,7 +235,13 @@ describe('GarmentService', () => {
       sceneTags: ['日常'],
       material: '棉',
       thickness: '薄',
-      notes: '黑色短袖，胸前红色卡通图案。',
+      pocketPresence: 'no',
+      pocketPosition: 'unknown',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'text',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'r',
+      notes: '黑色短袖，左胸前有一个很小的字母 r。',
     });
 
     expect(candidates).toEqual([]);
@@ -222,7 +261,13 @@ describe('GarmentService', () => {
         sceneTags: ['日常'],
         material: '棉',
         thickness: '薄',
-        notes: '胸前白色字母印花',
+        pocketPresence: 'no',
+        pocketPosition: 'unknown',
+        chestMarkPresence: 'yes',
+        chestMarkType: 'text',
+        chestMarkPosition: 'chest-left',
+        chestMarkText: 'r',
+        notes: '左胸前有一个很小的字母 r',
       }),
     ]);
 
@@ -235,13 +280,24 @@ describe('GarmentService', () => {
       sceneTags: ['日常'],
       material: '棉',
       thickness: '薄',
-      notes: '黑色短袖，胸前白色字母印花。',
+      pocketPresence: 'no',
+      pocketPosition: 'unknown',
+      chestMarkPresence: 'yes',
+      chestMarkType: 'text',
+      chestMarkPosition: 'chest-left',
+      chestMarkText: 'r',
+      notes: '黑色短袖，左胸前有一个很小的字母 r。',
     });
 
     expect(candidates).toHaveLength(1);
     expect(candidates[0]).toMatchObject({
       garment: expect.objectContaining({ id: 1 }),
-      reasons: expect.arrayContaining(['细节相同']),
+      reasons: expect.arrayContaining([
+        '胸前标识状态相同',
+        '胸前标识类型相同',
+        '胸前标识位置相同',
+        '胸前文字相同',
+      ]),
     });
   });
 });
