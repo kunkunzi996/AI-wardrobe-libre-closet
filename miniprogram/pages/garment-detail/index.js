@@ -66,7 +66,7 @@ Page({
   },
 
   goBackToWardrobe() {
-    wx.reLaunch({ url: '/pages/wardrobe/index' });
+    wx.switchTab({ url: '/pages/wardrobe/index' });
   },
 
   goToEdit() {
@@ -76,9 +76,9 @@ Page({
 
   goToOutfitRecommendation() {
     if (!this.data.id) return;
-    wx.navigateTo({
-      url: '/pages/outfit/index?coreGarmentId=' + this.data.id,
-    });
+    // 搭配页是 tab 页，switchTab 不能带参数，改用全局变量中转
+    getApp().globalData.pendingCoreGarmentId = this.data.id;
+    wx.switchTab({ url: '/pages/outfit/index' });
   },
 
   deleteGarment() {
@@ -87,7 +87,7 @@ Page({
       title: '删除衣物',
       content: '确定删除这件衣物吗？',
       confirmText: '删除',
-      confirmColor: '#d96c3f',
+      confirmColor: '#c0392b',
       success(res) {
         if (!res.confirm) return;
         api

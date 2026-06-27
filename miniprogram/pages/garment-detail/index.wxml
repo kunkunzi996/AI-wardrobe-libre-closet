@@ -7,26 +7,54 @@
   <view wx:if="{{loading}}" class="loading">加载中...</view>
 
   <view wx:if="{{garment}}" class="detail">
-    <image wx:if="{{garment.photoUrl}}" class="photo" src="{{garment.photoUrl}}" mode="aspectFill" />
+    <view class="photo-card">
+      <image wx:if="{{garment.photoUrl}}" class="photo" src="{{garment.photoUrl}}" mode="aspectFill" />
+      <view wx:else class="photo photo-placeholder">暂无图片</view>
+    </view>
+
     <view class="info">
       <text class="name">{{garment.name || garment.categoryLabel}}</text>
-      <view class="row"><text>分类</text><text>{{garment.categoryLabel}}</text></view>
-      <view wx:if="{{garment.subcategory}}" class="row"><text>细分</text><text>{{garment.subcategory}}</text></view>
-      <view class="row"><text>颜色</text><text>{{garment.colorLabel}}</text></view>
-      <view class="row"><text>状态</text><text>{{garment.statusLabel}}</text></view>
-      <view class="row"><text>季节</text><text>{{garment.seasonDisplay || '-'}}</text></view>
-      <view wx:if="{{garment.material}}" class="row"><text>材质</text><text>{{garment.material}}</text></view>
-      <view wx:if="{{garment.thickness}}" class="row"><text>厚薄</text><text>{{garment.thickness}}</text></view>
-      <view class="row"><text>品牌</text><text>{{garment.brand || '-'}}</text></view>
-      <view class="row"><text>尺码</text><text>{{garment.size || '-'}}</text></view>
+      <text class="meta">{{garment.categoryLabel}} · {{garment.colorLabel}} · {{garment.statusLabel}}</text>
+
       <view wx:if="{{garment.styleTags.length || garment.sceneTags.length}}" class="tag-panel">
-        <text wx:for="{{garment.styleTags}}" wx:key="*this" class="tag">{{item}}</text>
-        <text wx:for="{{garment.sceneTags}}" wx:key="*this" class="tag">{{item}}</text>
+        <text wx:for="{{garment.styleTags}}" wx:key="*this" class="tag tag-lavender">{{item}}</text>
+        <text wx:for="{{garment.sceneTags}}" wx:key="*this" class="tag tag-peach">{{item}}</text>
       </view>
+
+      <view class="stat-grid">
+        <view class="stat-card stat-peach">
+          <text class="stat-label">季节</text>
+          <text class="stat-value">{{garment.seasonDisplay || '-'}}</text>
+        </view>
+        <view class="stat-card stat-mint">
+          <text class="stat-label">材质</text>
+          <text class="stat-value">{{garment.material || '-'}}</text>
+        </view>
+        <view class="stat-card stat-sky">
+          <text class="stat-label">品牌</text>
+          <text class="stat-value">{{garment.brand || '-'}}</text>
+        </view>
+        <view class="stat-card stat-rose">
+          <text class="stat-label">尺码</text>
+          <text class="stat-value">{{garment.size || '-'}}</text>
+        </view>
+        <view wx:if="{{garment.subcategory}}" class="stat-card stat-lavender">
+          <text class="stat-label">细分</text>
+          <text class="stat-value">{{garment.subcategory}}</text>
+        </view>
+        <view wx:if="{{garment.thickness}}" class="stat-card stat-peach">
+          <text class="stat-label">厚薄</text>
+          <text class="stat-value">{{garment.thickness}}</text>
+        </view>
+      </view>
+
       <view class="notes">{{garment.notes || '暂无备注'}}</view>
     </view>
+
     <button class="recommend" bindtap="goToOutfitRecommendation">围绕这件搭配</button>
-    <button class="edit" bindtap="goToEdit">编辑衣物</button>
-    <button class="danger" bindtap="deleteGarment">删除衣物</button>
+    <view class="bottom-row">
+      <button class="edit" bindtap="goToEdit">编辑</button>
+      <button class="danger" bindtap="deleteGarment">删除</button>
+    </view>
   </view>
 </view>

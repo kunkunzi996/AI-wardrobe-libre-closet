@@ -1,0 +1,65 @@
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 110rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid #eceaf3;
+  backdrop-filter: blur(8px);
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  color: #b4aec4;
+}
+
+.tab-item.active {
+  color: #6f5ae0;
+}
+
+.label {
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.tab-item.active .label {
+  font-weight: 600;
+}
+
+/* ---------- CSS 画的图标（无需图片素材） ---------- */
+.icon {
+  width: 36rpx;
+  height: 36rpx;
+  box-sizing: border-box;
+}
+
+/* 衣橱：方块 */
+.icon-wardrobe {
+  border: 4rpx solid currentColor;
+  border-radius: 10rpx;
+}
+
+/* 搭配：菱形 */
+.icon-outfit {
+  width: 32rpx;
+  height: 32rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 6rpx;
+  transform: rotate(45deg);
+}
+
+/* 今日：圆形 */
+.icon-daily {
+  border: 4rpx solid currentColor;
+  border-radius: 50%;
+}

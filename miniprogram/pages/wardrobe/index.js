@@ -54,6 +54,24 @@ function garmentMatchesSeason(garment, season) {
   });
 }
 
+// 方案 B：按分类给卡片轮换 5 种柔彩底色
+const categoryTintMap = {
+  tops: 'tint-lavender',
+  bottoms: 'tint-peach',
+  outerwear: 'tint-mint',
+  dresses: 'tint-rose',
+  footwear: 'tint-sky',
+  bags: 'tint-sky',
+  accessories: 'tint-rose',
+  other: 'tint-lavender',
+};
+
+function decorateGarment(garment) {
+  return Object.assign({}, garment, {
+    tintClass: categoryTintMap[garment.category] || 'tint-lavender',
+  });
+}
+
 const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 const bulkImportConcurrency = 2;
 const maxAnalyzePhotoEdge = 900;
@@ -103,6 +121,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 0 });
+    }
     const queue = wx.getStorageSync(bulkImportStorageKey);
     if (!queue || !queue.files || !queue.files.length) {
       this.setData({ importProgress: '' });
@@ -128,7 +149,7 @@ Page({
     return api
       .listGarments()
       .then(function (data) {
-        const garments = data.items || [];
+        const garments = (data.items || []).map(decorateGarment);
         page.setData({
           allGarments: garments,
           garments: garments,
@@ -469,11 +490,11 @@ Page({
   },
 
   goToOutfit() {
-    wx.navigateTo({ url: '/pages/outfit/index' });
+    wx.switchTab({ url: '/pages/outfit/index' });
   },
 
   goToDaily() {
-    wx.navigateTo({ url: '/pages/daily-outfit/index' });
+    wx.switchTab({ url: '/pages/daily-outfit/index' });
   },
 
   onCategoryChange(event) {
@@ -561,7 +582,7 @@ Page({
       content:
         '确定删除选中的 ' + ids.length + ' 件衣物吗？删除后无法在衣橱中恢复。',
       confirmText: '删除',
-      confirmColor: '#9d3f22',
+      confirmColor: '#c0392b',
       success: function (res) {
         if (!res.confirm) return;
         page.deleteSelectedGarments(ids);
