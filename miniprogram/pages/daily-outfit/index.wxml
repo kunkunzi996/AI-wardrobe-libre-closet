@@ -1,12 +1,10 @@
 <view class="page">
-  <view class="toolbar">
-    <button class="secondary" bindtap="goToWardrobe">返回衣橱</button>
-    <button class="secondary" bindtap="retryLoad">重新加载</button>
-  </view>
-
   <view class="header">
-    <text class="eyebrow">{{date}}</text>
-    <text class="title">今日穿搭</text>
+    <view class="header-text">
+      <text class="eyebrow">{{date}}</text>
+      <text class="title">今日穿搭</text>
+    </view>
+    <view class="refresh" bindtap="retryLoad">重新加载</view>
   </view>
 
   <view wx:if="{{error}}" class="notice error">

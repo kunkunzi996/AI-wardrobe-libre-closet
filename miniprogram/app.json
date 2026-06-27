@@ -11,7 +11,18 @@
     "navigationBarTitleText": "AI 衣橱",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f7f7f5"
+    "backgroundColor": "#eceaf0"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#b4aec4",
+    "selectedColor": "#6f5ae0",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/wardrobe/index", "text": "衣橱" },
+      { "pagePath": "pages/outfit/index", "text": "搭配" },
+      { "pagePath": "pages/daily-outfit/index", "text": "今日" }
+    ]
   },
   "lazyCodeLoading": "requiredComponents",
   "style": "v2"

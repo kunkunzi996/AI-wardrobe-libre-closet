@@ -13,7 +13,7 @@
   <view wx:if="{{recognizing}}" class="ai-panel ai-loading">AI正在识别衣服...</view>
   <view wx:elif="{{aiError}}" class="notice">{{aiError}}</view>
   <view wx:elif="{{aiDraft}}" class="ai-panel">
-    <text class="ai-title">AI识别建议</text>
+    <text class="ai-title">✨ AI 识别建议</text>
     <view class="ai-tags">
       <text wx:if="{{form.subcategory}}" class="ai-tag">{{form.subcategory}}</text>
       <text wx:if="{{form.material}}" class="ai-tag">{{form.material}}</text>

@@ -22,6 +22,23 @@ Page({
     this.generateOutfit();
   },
 
+  onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 1 });
+    }
+    // 从「衣物详情 - 围绕这件搭配」用全局变量带过来的核心衣物
+    const app = getApp();
+    const pending = app.globalData && app.globalData.pendingCoreGarmentId;
+    if (pending) {
+      app.globalData.pendingCoreGarmentId = '';
+      this.setData({
+        coreGarmentId: pending,
+        requestText: '围绕这件衣服，帮我搭一套完整穿搭',
+      });
+      this.generateOutfit();
+    }
+  },
+
   onInput(event) {
     this.setData({ requestText: event.detail.value });
   },
@@ -53,11 +70,11 @@ Page({
   },
 
   goToWardrobe() {
-    wx.reLaunch({ url: '/pages/wardrobe/index' });
+    wx.switchTab({ url: '/pages/wardrobe/index' });
   },
 
   goToDaily() {
-    wx.navigateTo({ url: '/pages/daily-outfit/index' });
+    wx.switchTab({ url: '/pages/daily-outfit/index' });
   },
 
   saveDailyOutfit(event) {

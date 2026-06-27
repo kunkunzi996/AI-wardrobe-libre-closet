@@ -1,5 +1,30 @@
+/* ============================================================
+   方案 B · 柔彩卡片 设计系统（全局）
+   主色：柔和时尚紫 #6F5AE0
+   分类柔彩：薰衣草 / 蜜桃 / 薄荷 / 天蓝 / 玫瑰
+   AI 识别：Notion 醒目黄 #F3E08A
+   字体：Inter / PingFang SC，卡片 12–18px 圆角
+   ============================================================ */
 page {
-  background: #f7f7f5;
-  color: #202124;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #eceaf0;
+  color: #221c3a;
+  font-family: "Inter", "PingFang SC", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+}
+
+/* 分类柔彩卡片底色（5 色轮换，比设计稿稍加深，便于在真实照片旁看清色块） */
+.tint-lavender {
+  background: #e1d9f6;
+}
+.tint-peach {
+  background: #fbe1c9;
+}
+.tint-mint {
+  background: #d4eedd;
+}
+.tint-sky {
+  background: #d9e7fb;
+}
+.tint-rose {
+  background: #f9d6e6;
 }

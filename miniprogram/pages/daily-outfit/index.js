@@ -13,6 +13,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 2 });
+    }
     if (this.data.loadedOnce) {
       this.loadToday();
     }
@@ -49,11 +52,11 @@ Page({
   },
 
   goToWardrobe() {
-    wx.reLaunch({ url: '/pages/wardrobe/index' });
+    wx.switchTab({ url: '/pages/wardrobe/index' });
   },
 
   goToOutfit() {
-    wx.navigateTo({ url: '/pages/outfit/index' });
+    wx.switchTab({ url: '/pages/outfit/index' });
   },
 
   goToGarment(event) {

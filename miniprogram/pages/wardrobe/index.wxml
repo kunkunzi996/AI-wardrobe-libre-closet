@@ -1,16 +1,28 @@
 <view class="page">
-  <view class="hero">
-    <text class="eyebrow">Libre Closet</text>
-    <text class="title">AI 衣橱</text>
-    <text class="subtitle">管理你的第一批衣物，先把衣橱跑通。</text>
+  <view class="head">
+    <view class="head-text">
+      <text class="page-title">衣橱</text>
+      <text class="page-sub">{{allGarments.length}} 件 · 今天想穿什么？</text>
+    </view>
+    <view class="head-icon" bindtap="retryLoad">
+      <view class="search-glass"></view>
+    </view>
+  </view>
+
+  <view class="ai-banner" bindtap="goToDaily">
+    <view class="ai-dot ai-dot-1"></view>
+    <view class="ai-dot ai-dot-2"></view>
+    <view class="ai-dot ai-dot-3"></view>
+    <text class="ai-eyebrow">今日 AI 推荐</text>
+    <text class="ai-headline">让 AI 帮你搭配</text>
+    <text class="ai-desc">根据你衣橱里的衣物，生成适合今天的穿搭。</text>
+    <view class="ai-cta">查看搭配</view>
   </view>
 
   <view class="quick-actions">
     <button class="secondary-action" loading="{{importing}}" bindtap="chooseBulkImport">批量导入</button>
     <button class="secondary-action" loading="{{importingBackup}}" bindtap="chooseBackupImport">导入备份</button>
     <button class="secondary-action" loading="{{exporting}}" bindtap="exportWardrobeBackup">导出备份</button>
-    <button class="secondary-action" bindtap="goToOutfit">AI 搭配</button>
-    <button class="secondary-action" bindtap="goToDaily">今日穿搭</button>
     <button class="secondary-action" bindtap="retryLoad">重新加载</button>
   </view>
 
@@ -33,10 +45,10 @@
   <view wx:else>
     <view class="filters">
       <picker mode="selector" range="{{categoryOptions}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
-        <view class="filter-chip">{{categoryOptions[categoryIndex].label}}</view>
+        <view class="filter-chip {{categoryIndex ? 'filter-chip-active' : ''}}">{{categoryOptions[categoryIndex].label}}</view>
       </picker>
       <picker mode="selector" range="{{seasonOptions}}" range-key="label" value="{{seasonIndex}}" bindchange="onSeasonChange">
-        <view class="filter-chip">{{seasonOptions[seasonIndex].label}}</view>
+        <view class="filter-chip {{seasonIndex ? 'filter-chip-active' : ''}}">{{seasonOptions[seasonIndex].label}}</view>
       </picker>
       <button wx:if="{{activeFilterCount}}" class="clear-filter" bindtap="clearFilters">清空</button>
     </view>
@@ -51,7 +63,7 @@
     <view
       wx:for="{{filteredGarments}}"
       wx:key="id"
-      class="card {{selectedGarmentMap[item.id] ? 'selected-card' : ''}}"
+      class="card {{item.tintClass}} {{selectedGarmentMap[item.id] ? 'selected-card' : ''}}"
       data-id="{{item.id}}"
       bindtap="goToDetail"
       bindlongpress="enterDeleteMode"
@@ -61,13 +73,15 @@
       </view>
       <image wx:if="{{item.photoUrl}}" class="photo" src="{{item.photoUrl}}" mode="aspectFill" />
       <view wx:else class="photo placeholder">暂无图片</view>
-      <text class="name">{{item.name || item.categoryLabel}}</text>
-      <text class="meta">{{item.categoryLabel}} · {{item.colorLabel}}</text>
+      <view class="card-info">
+        <text class="name">{{item.name || item.categoryLabel}}</text>
+        <text class="meta">{{item.categoryLabel}} · {{item.colorLabel}}</text>
+      </view>
     </view>
     </view>
   </view>
 
-  <button wx:if="{{!deleteMode}}" class="fab" bindtap="goToAdd">+</button>
+  <view wx:if="{{!deleteMode}}" class="fab" bindtap="goToAdd">+</view>
   <view wx:else class="delete-bar">
     <button class="cancel-delete" disabled="{{bulkDeleting}}" bindtap="cancelDeleteMode">取消</button>
     <button
