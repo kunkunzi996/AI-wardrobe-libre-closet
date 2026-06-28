@@ -1,6 +1,6 @@
 # 后端架构实施真源文档
 
-更新时间：2026-06-19
+更新时间：2026-06-28
 
 ## 1. 当前后端语言和框架
 
@@ -32,6 +32,7 @@
 
 - Web 页面请求进 `WardrobeController`、`OutfitController`、`CalendarController` 等页面 Controller。
 - 微信小程序请求进 `MiniappWardrobeController`、`MiniappOutfitController`、`MiniappDailyOutfitController`、`MiniappAuthController`。
+- 小程序手动保存今日穿搭仍走 `MiniappDailyOutfitController`，请求为 multipart，照片字段名为 `photo`。
 - Controller 只负责接请求、读参数、调用 Service、组织返回，不直接写复杂业务规则。
 
 ## 5. 新增模块文件组织规则
@@ -49,6 +50,7 @@
 ## 6. 参数校验规则
 
 - 小程序上传图片必须先在 Controller 校验文件存在和 `image/*` 类型。
+- 今日穿搭全身照必须上传图片，但不要求选择衣柜单品；衣柜单品只作为可选关联。
 - 分类等必填字段在 Controller 做入口校验。
 - 字段标准化在 Service 内处理，例如 `GarmentService` 负责尺寸、标签、数字、日期标准化。
 
@@ -56,12 +58,15 @@
 
 - 与衣物库存、入库、更新、查询有关的规则放 `GarmentService`。
 - 与小程序请求格式、multipart 字段读取、返回给小程序的 view model 有关的规则放 `MiniappWardrobeController`。
+- 与今日穿搭 multipart 读取、全身照校验、返回给小程序的今日穿搭 view model 有关的规则放 `MiniappDailyOutfitController`。
+- 今日穿搭整体照片保存归 `FileService.storeOriginalImageFromFileUpload`，不走衣物抠图；`Outfit.photo` 关联归 `OutfitService`；场合、评分、反馈等口味字段归 `CalendarService`。
 - 与模型提示词、AI 返回规范有关的规则放 `GarmentVisionService` 或 `OutfitAiService`。
 
 ## 8. 数据库访问规则
 
 - 数据库访问通过 MikroORM Repository 或 EntityManager。
 - 衣物数据查询和保存统一走 `GarmentService`。
+- `Outfit` 可通过 `photo_id` 关联一张整体穿搭照片；读取今日穿搭时需要 populate `outfit.photo`，否则小程序看不到全身照。
 - 小程序用户隔离必须带 `userId`，有登录用户时查 `owner.id`，无登录模式只查 `owner=null`。
 
 ## 9. 接口响应规则
@@ -74,6 +79,8 @@
 | 衣物详情      | `{ item: {...} }`                              |
 | 新增/更新衣物 | `{ item: {...} }`                              |
 | AI 识别草稿   | `{ draft: {...}, duplicateCandidates: [...] }` |
+| 今日穿搭查询  | `{ date, items: [...] }`                       |
+| 今日穿搭保存  | `{ item: {...} }`                              |
 | 删除成功      | `{ ok: true }`                                 |
 | 备份导入      | `{ imported, skipped }`                        |
 | 参数错误      | NestJS `BadRequestException`                   |
@@ -151,6 +158,7 @@ docker exec ai-wardrobe sh -c 'echo "QWEN_VISION_MODEL=$QWEN_VISION_MODEL"'
 ## 18. 项目自定义封装边界
 
 - `FileService` 是文件存储抽象，允许本地/S3 切换。
+- 衣物照片使用 `storeImageFromFileUpload`，会做衣物抠图/白底处理；今日穿搭全身照使用 `storeOriginalImageFromFileUpload`，只做原图方向校正、WebP 转换和尺寸标准化。
 - `ConditionalAuthGuard` 是本项目的 Web/小程序共用鉴权入口。
 - `GarmentVisionService` 是衣物图片识别边界。
 - `OutfitAiService` 是搭配文本生成边界。
