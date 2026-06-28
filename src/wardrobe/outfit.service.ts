@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { I18nContext } from 'nestjs-i18n';
+import { File } from '../dal/entity/file.entity';
 import { Garment } from '../dal/entity/garment.entity';
 import { Outfit, OutfitSlot } from '../dal/entity/outfit.entity';
 import { User } from '../dal/entity/user.entity';
@@ -23,6 +24,8 @@ export class OutfitService {
     private readonly outfitRepository: EntityRepository<Outfit>,
     @InjectRepository(Garment)
     private readonly garmentRepository: EntityRepository<Garment>,
+    @InjectRepository(File)
+    private readonly fileRepository: EntityRepository<File>,
     @InjectRepository(User)
     private readonly userRepository: EntityRepository<User>,
     private readonly garmentService: GarmentService,
@@ -32,19 +35,19 @@ export class OutfitService {
     if (userId != null) {
       return this.outfitRepository.find(
         { owner: { id: userId } },
-        { populate: ['garments', 'garments.photo'] },
+        { populate: ['garments', 'garments.photo', 'photo'] },
       );
     }
     // AUTH_ENABLED=false: only return outfits that belong to no user
     return this.outfitRepository.find(
       { owner: null },
-      { populate: ['garments', 'garments.photo'] },
+      { populate: ['garments', 'garments.photo', 'photo'] },
     );
   }
 
   async findOne(id: number, userId?: number): Promise<Outfit> {
     const outfit = await this.outfitRepository.findOne(id, {
-      populate: ['garments', 'garments.photo'],
+      populate: ['garments', 'garments.photo', 'photo'],
     });
     if (!outfit) throw new NotFoundException('Outfit not found');
     if (userId != null) {
@@ -60,7 +63,7 @@ export class OutfitService {
   async findOneByShareableId(shareableId: string): Promise<Outfit> {
     const outfit = await this.outfitRepository.findOne(
       { shareableId },
-      { populate: ['garments', 'garments.photo'] },
+      { populate: ['garments', 'garments.photo', 'photo'] },
     );
     if (!outfit) throw new NotFoundException('Outfit not found');
     return outfit;
@@ -73,15 +76,25 @@ export class OutfitService {
       slots: dto.slots,
     });
 
+    if (dto.photoFileName) {
+      outfit.photo =
+        (await this.fileRepository.findOne({
+          fileName: dto.photoFileName,
+          ...(userId != null ? { createdBy: userId } : { createdBy: null }),
+        })) ?? undefined;
+    }
+
     const garmentIds =
       dto.slots
         ?.map((s) => s.garmentId)
         .filter((id): id is number => id !== null) ?? [];
 
     if (garmentIds.length) {
-      const garments = await this.garmentRepository.find({
-        id: { $in: garmentIds },
-      });
+      const garments = await this.garmentRepository.find(
+        userId != null
+          ? { id: { $in: garmentIds }, owner: { id: userId } }
+          : { id: { $in: garmentIds }, owner: null },
+      );
       outfit.garments.set(garments);
     }
 

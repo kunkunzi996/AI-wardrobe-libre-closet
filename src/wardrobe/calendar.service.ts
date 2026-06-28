@@ -70,7 +70,14 @@ export class CalendarService {
 
     const entries = await this.calendarRepository.find(
       { ...ownerFilter, date: { $gte: weekStart, $lt: weekEnd } },
-      { populate: ['outfit', 'outfit.garments', 'outfit.garments.photo'] },
+      {
+        populate: [
+          'outfit',
+          'outfit.photo',
+          'outfit.garments',
+          'outfit.garments.photo',
+        ],
+      },
     );
 
     const days: CalendarDay[] = Array.from({ length: 7 }, (_, i) => {
@@ -178,12 +185,12 @@ export class CalendarService {
     if (userId != null) {
       return this.outfitRepository.find(
         { owner: { id: userId } },
-        { populate: ['garments', 'garments.photo'] },
+        { populate: ['garments', 'garments.photo', 'photo'] },
       );
     }
     return this.outfitRepository.find(
       { owner: null },
-      { populate: ['garments', 'garments.photo'] },
+      { populate: ['garments', 'garments.photo', 'photo'] },
     );
   }
 

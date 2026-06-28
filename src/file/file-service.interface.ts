@@ -11,6 +11,12 @@ export interface FileServiceInterface {
   storeImageFromFileUpload(
     upload: MultipartFile | undefined,
     userId: any,
+    fileName?: string,
+  ): Promise<File>;
+  storeOriginalImageFromFileUpload(
+    upload: MultipartFile | undefined,
+    userId: any,
+    fileName?: string,
   ): Promise<File>;
   delete(fileName: string): Promise<void>;
   deleteById(fileId: any, userId: any): Promise<any>;

@@ -8,12 +8,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { MultipartFile } from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
 import type { OutfitCalendar } from '../dal/entity/outfit-calendar.entity';
 import type { Outfit } from '../dal/entity/outfit.entity';
+import { FileService } from '../file/file-service.abstract';
 import { CalendarService } from './calendar.service';
 import { GarmentService } from './garment.service';
 import { OutfitService } from './outfit.service';
@@ -28,7 +30,10 @@ type SaveDailyOutfitBody = {
   title?: string;
   reason?: string;
   notes?: string;
-  garmentIds?: Array<number | string>;
+  scene?: string;
+  rating?: number | string;
+  feedback?: string;
+  garmentIds?: Array<number | string> | string;
 };
 
 @UseGuards(ConditionalAuthGuard)
@@ -38,33 +43,45 @@ export class MiniappDailyOutfitController {
     private readonly garmentService: GarmentService,
     private readonly outfitService: OutfitService,
     private readonly calendarService: CalendarService,
+    private readonly fileService: FileService,
   ) {}
 
   @Get('today')
-  async today(@Query('date') date: string | undefined, @Req() req: MiniappRequest) {
+  async today(
+    @Query('date') date: string | undefined,
+    @Req() req: MiniappRequest,
+  ) {
     const targetDate = this.parseDate(date);
     const schedule = await this.calendarService.findWeek(
       targetDate,
       this.userId(req),
     );
     const dateKey = this.toDateKey(targetDate);
-    const day = schedule.days.find((item) => this.toDateKey(item.date) === dateKey);
+    const day = schedule.days.find(
+      (item) => this.toDateKey(item.date) === dateKey,
+    );
 
     return {
       date: dateKey,
-      items: (day?.entries ?? []).map((entry) => this.toCalendarItem(entry, req)),
+      items: (day?.entries ?? []).map((entry) =>
+        this.toCalendarItem(entry, req),
+      ),
     };
   }
 
   @Post()
-  async save(@Body() body: SaveDailyOutfitBody, @Req() req: MiniappRequest) {
-    const garmentIds = this.normalizeGarmentIds(body.garmentIds);
-    if (!garmentIds.length) {
-      throw new BadRequestException('请先选择一套搭配');
-    }
+  async save(
+    @Body() body: SaveDailyOutfitBody = {},
+    @Req() req: MiniappRequest,
+  ) {
+    const file = await this.readImageUpload(req);
+    const form = this.mergeMultipartFields(body, file);
+    const garmentIds = this.normalizeGarmentIds(form.garmentIds);
 
     const allGarments = await this.garmentService.findAll(this.userId(req), {});
-    const garmentById = new Map(allGarments.map((garment) => [garment.id, garment]));
+    const garmentById = new Map(
+      allGarments.map((garment) => [garment.id, garment]),
+    );
     const selectedGarments = garmentIds
       .map((id) => garmentById.get(id))
       .filter((garment): garment is Garment => Boolean(garment));
@@ -73,10 +90,15 @@ export class MiniappDailyOutfitController {
       throw new BadRequestException('有衣物不存在，请重新生成搭配');
     }
 
+    const photo = await this.fileService.storeOriginalImageFromFileUpload(
+      file,
+      this.userId(req),
+    );
     const outfit = await this.outfitService.create(
       {
-        name: body.title?.trim() || '今日穿搭',
-        notes: body.notes?.trim() || body.reason?.trim(),
+        name: form.title?.trim() || '今日穿搭',
+        notes: form.notes?.trim() || form.reason?.trim(),
+        photoFileName: photo.fileName,
         slots: selectedGarments.map((garment) => ({
           category: garment.category,
           garmentId: garment.id,
@@ -86,9 +108,12 @@ export class MiniappDailyOutfitController {
     );
     const entry = await this.calendarService.create(
       {
-        date: this.parseDate(body.date),
+        date: this.parseDate(form.date),
         outfitId: outfit.id,
-        notes: body.reason?.trim(),
+        notes: form.reason?.trim(),
+        scene: form.scene?.trim(),
+        rating: form.rating,
+        feedback: form.feedback?.trim(),
       },
       this.userId(req),
     );
@@ -102,11 +127,71 @@ export class MiniappDailyOutfitController {
     return (req['user'] as Payload | undefined)?.userId;
   }
 
-  private normalizeGarmentIds(input?: Array<number | string>): number[] {
-    const ids = (input ?? [])
+  private async readImageUpload(req: MiniappRequest): Promise<MultipartFile> {
+    const file = await req.file?.();
+    if (!file) {
+      throw new BadRequestException('请先选择穿搭照片');
+    }
+    if (!file.mimetype?.startsWith('image/')) {
+      file.file.resume();
+      throw new BadRequestException('上传文件必须是图片');
+    }
+    return file;
+  }
+
+  private mergeMultipartFields(
+    body: SaveDailyOutfitBody,
+    file: MultipartFile,
+  ): SaveDailyOutfitBody {
+    return {
+      date: this.fieldValue(body.date, file, 'date'),
+      title: this.fieldValue(body.title, file, 'title'),
+      reason: this.fieldValue(body.reason, file, 'reason'),
+      notes: this.fieldValue(body.notes, file, 'notes'),
+      scene: this.fieldValue(body.scene, file, 'scene'),
+      rating: this.fieldValue(body.rating, file, 'rating'),
+      feedback: this.fieldValue(body.feedback, file, 'feedback'),
+      garmentIds:
+        this.fieldValue(body.garmentIds, file, 'garmentIds') ?? body.garmentIds,
+    };
+  }
+
+  private fieldValue(
+    bodyValue: string | number | Array<string | number> | undefined,
+    file: MultipartFile,
+    name: string,
+  ): string | undefined {
+    if (Array.isArray(bodyValue)) return undefined;
+    const value =
+      bodyValue ??
+      (file.fields?.[name] as { value?: unknown } | undefined)?.value;
+    if (typeof value === 'number') return String(value);
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  private normalizeGarmentIds(
+    input?: Array<number | string> | string,
+  ): number[] {
+    const rawValues = Array.isArray(input)
+      ? input
+      : this.parseGarmentIdsString(input);
+    const ids = rawValues
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value));
     return Array.from(new Set(ids));
+  }
+
+  private parseGarmentIdsString(input?: string): Array<number | string> {
+    if (!input) return [];
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Fall back to comma-separated form for older clients or manual tests.
+    }
+    return input.split(',').map((item) => item.trim());
   }
 
   private parseDate(input?: string): Date {
@@ -135,10 +220,16 @@ export class MiniappDailyOutfitController {
       id: entry.id,
       date: this.toDateKey(entry.date),
       notes: entry.notes ?? outfit.notes ?? '',
+      scene: entry.scene ?? '',
+      rating: entry.rating ?? '',
+      feedback: entry.feedback ?? '',
       outfit: {
         id: outfit.id,
         name: outfit.name ?? '今日穿搭',
         notes: outfit.notes ?? '',
+        photoUrl: outfit.photo?.fileName
+          ? `${this.origin(req)}/file/${outfit.photo.fileName}`
+          : '',
         garments: garments.map((garment) => this.toGarmentCard(garment, req)),
       },
     };
@@ -153,7 +244,9 @@ export class MiniappDailyOutfitController {
       categoryLabel: this.categoryLabel(garment.category),
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
-      photoUrl: photoFileName ? `${this.origin(req)}/file/${photoFileName}` : '',
+      photoUrl: photoFileName
+        ? `${this.origin(req)}/file/${photoFileName}`
+        : '',
     };
   }
 
@@ -200,6 +293,6 @@ export class MiniappDailyOutfitController {
       pattern: '图案',
       other: '其他',
     };
-    return color ? labels[color] ?? color : '';
+    return color ? (labels[color] ?? color) : '';
   }
 }

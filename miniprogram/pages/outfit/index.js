@@ -86,19 +86,29 @@ Page({
     }
 
     const page = this;
-    this.setData({ savingIndex: index, error: '' });
-    api
-      .saveDailyOutfit(plan, this.todayDate())
-      .then(function () {
-        page.setData({ savedIndex: index });
-        wx.showToast({ title: '已保存到今日穿搭', icon: 'success' });
-      })
-      .catch(function (error) {
-        page.setData({ error: error.message || '保存今日穿搭失败' });
-      })
-      .finally(function () {
-        page.setData({ savingIndex: -1 });
-      });
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: function (res) {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file || !file.tempFilePath) return;
+        page.setData({ savingIndex: index, error: '' });
+        api
+          .saveDailyOutfit(plan, page.todayDate(), file.tempFilePath)
+          .then(function () {
+            page.setData({ savedIndex: index });
+            wx.showToast({ title: '已保存到今日穿搭', icon: 'success' });
+          })
+          .catch(function (error) {
+            page.setData({ error: error.message || '保存今日穿搭失败' });
+          })
+          .finally(function () {
+            page.setData({ savingIndex: -1 });
+          });
+      },
+    });
   },
 
   goToGarment(event) {

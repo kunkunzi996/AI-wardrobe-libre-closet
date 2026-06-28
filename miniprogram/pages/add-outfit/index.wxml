@@ -1,0 +1,77 @@
+<view class="page">
+  <view class="head">
+    <view>
+      <text class="eyebrow">{{date}}</text>
+      <text class="title">添加穿搭</text>
+    </view>
+  </view>
+
+  <view wx:if="{{error}}" class="notice error">{{error}}</view>
+
+  <view class="section">
+    <view class="photo-picker" bindtap="choosePhoto">
+      <image wx:if="{{photoPath}}" class="outfit-photo" src="{{photoPath}}" mode="widthFix" />
+      <view wx:else class="photo-empty">
+        <text class="photo-plus">+</text>
+        <text class="photo-text">选择全身照</text>
+      </view>
+    </view>
+    <button class="secondary" bindtap="choosePhoto">{{photoPath ? '重拍 / 重选' : '拍照 / 相册'}}</button>
+  </view>
+
+  <view class="section">
+    <text class="label">理由</text>
+    <textarea class="textarea" maxlength="200" value="{{reason}}" bindinput="onReasonInput" placeholder="为什么这套好看" />
+  </view>
+
+  <view class="section">
+    <text class="label">场合</text>
+    <picker mode="selector" range="{{sceneOptions}}" value="{{sceneIndex}}" bindchange="onSceneChange">
+      <view class="picker">{{sceneOptions[sceneIndex]}}</view>
+    </picker>
+    <input class="input" value="{{customScene}}" bindinput="onCustomSceneInput" placeholder="补充场合" />
+  </view>
+
+  <view class="section">
+    <text class="label">评分</text>
+    <view class="stars">
+      <text
+        wx:for="{{[1,2,3,4,5]}}"
+        wx:key="*this"
+        class="star {{rating >= item ? 'active' : ''}}"
+        data-value="{{item}}"
+        bindtap="setRating"
+      >★</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <text class="label">关联单品</text>
+      <text class="hint">已选 {{selectedGarmentIds.length}} 件</text>
+    </view>
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{garments.length === 0}}" class="empty">衣柜暂无单品</view>
+    <view wx:else class="grid">
+      <view
+        wx:for="{{garments}}"
+        wx:key="id"
+        class="card {{item.tintClass}} {{selectedGarmentMap[item.id] ? 'selected-card' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="toggleSelect"
+      >
+        <view class="select-mark {{selectedGarmentMap[item.id] ? 'checked' : ''}}">
+          {{selectedGarmentMap[item.id] ? '✓' : ''}}
+        </view>
+        <image wx:if="{{item.photoUrl}}" class="garment-photo" src="{{item.photoUrl}}" mode="aspectFill" />
+        <view wx:else class="garment-photo placeholder">暂无图片</view>
+        <text class="name">{{item.name || item.categoryLabel}}</text>
+        <text class="meta">{{item.categoryLabel}} · {{item.colorLabel}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="save-bar">
+    <button class="save" loading="{{saving}}" bindtap="save">保存</button>
+  </view>
+</view>

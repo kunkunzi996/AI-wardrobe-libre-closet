@@ -59,6 +59,10 @@ Page({
     wx.switchTab({ url: '/pages/outfit/index' });
   },
 
+  goToAddOutfit() {
+    wx.navigateTo({ url: '/pages/add-outfit/index' });
+  },
+
   goToGarment(event) {
     const id = event.currentTarget.dataset.id;
     if (!id) return;

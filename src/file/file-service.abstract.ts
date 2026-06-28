@@ -43,6 +43,11 @@ export abstract class FileService implements FileServiceInterface {
     userId: any,
     fileName?: string,
   ): Promise<File>;
+  abstract storeOriginalImageFromFileUpload(
+    upload: MultipartFile | undefined,
+    userId: any,
+    fileName?: string,
+  ): Promise<File>;
   abstract delete(fileName: string): Promise<void>;
 
   async storeNobgVariantFromStream(
@@ -181,7 +186,7 @@ export abstract class FileService implements FileServiceInterface {
     }
   }
 
-  private async normalizeOriginalPhoto(imageBuffer: Buffer): Promise<Buffer> {
+  protected async normalizeOriginalPhoto(imageBuffer: Buffer): Promise<Buffer> {
     return sharp(imageBuffer)
       .autoOrient()
       .webp({ quality: 100 })

@@ -31,6 +31,33 @@ export class S3FileService extends FileService {
     userId: any,
     fileName?: string,
   ): Promise<File> {
+    return this.storeProcessedImageFromFileUpload(
+      upload,
+      userId,
+      (input) => this.prepareGarmentPhotoForStorage(input),
+      fileName,
+    );
+  }
+
+  public async storeOriginalImageFromFileUpload(
+    upload: MultipartFile | undefined,
+    userId: any,
+    fileName?: string,
+  ): Promise<File> {
+    return this.storeProcessedImageFromFileUpload(
+      upload,
+      userId,
+      (input) => this.normalizeOriginalPhoto(input),
+      fileName,
+    );
+  }
+
+  private async storeProcessedImageFromFileUpload(
+    upload: MultipartFile | undefined,
+    userId: any,
+    processImage: (input: Buffer) => Promise<Buffer>,
+    fileName?: string,
+  ): Promise<File> {
     if (!upload) {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
@@ -43,7 +70,7 @@ export class S3FileService extends FileService {
 
     const storedFileName = fileName ?? randomUUID() + '.webp';
     const inputBuffer = await buffer(upload.file);
-    const outputBuffer = await this.prepareGarmentPhotoForStorage(inputBuffer);
+    const outputBuffer = await processImage(inputBuffer);
 
     const s3Upload = new Upload({
       client: this.s3,

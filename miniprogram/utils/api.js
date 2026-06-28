@@ -82,7 +82,12 @@ function request(path, options) {
             resolve(res.data);
             return;
           }
-          console.warn('api request bad status', path, res.statusCode, res.data);
+          console.warn(
+            'api request bad status',
+            path,
+            res.statusCode,
+            res.data,
+          );
           reject(
             new Error(
               res.data && res.data.message
@@ -131,6 +136,41 @@ function uploadGarment(filePath, formData) {
   });
 }
 
+function uploadDailyOutfit(filePath, formData) {
+  return loginMiniapp().then(function () {
+    return new Promise(function (resolve, reject) {
+      wx.uploadFile({
+        url: API_BASE_URL + '/api/miniapp/daily-outfits',
+        filePath: filePath,
+        name: 'photo',
+        formData: formData,
+        header: tokenHeader(),
+        timeout: 180000,
+        success(res) {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(res.data));
+            } catch (error) {
+              reject(new Error('服务器返回格式不正确'));
+            }
+            return;
+          }
+          console.warn(
+            'uploadDailyOutfit bad status',
+            res.statusCode,
+            res.data,
+          );
+          reject(new Error('保存今日穿搭失败，请重新选择照片'));
+        },
+        fail(error) {
+          console.warn('uploadDailyOutfit failed', error);
+          reject(new Error('保存今日穿搭失败，请重新选择照片'));
+        },
+      });
+    });
+  });
+}
+
 function analyzeGarmentPhoto(filePath) {
   return loginMiniapp().then(function () {
     return new Promise(function (resolve, reject) {
@@ -149,7 +189,11 @@ function analyzeGarmentPhoto(filePath) {
             }
             return;
           }
-          console.warn('analyzeGarmentPhoto bad status', res.statusCode, res.data);
+          console.warn(
+            'analyzeGarmentPhoto bad status',
+            res.statusCode,
+            res.data,
+          );
           reject(new Error('AI识别失败，请手动填写'));
         },
         fail(error) {
@@ -179,7 +223,11 @@ function importWardrobeBackup(filePath) {
             }
             return;
           }
-          console.warn('importWardrobeBackup bad status', res.statusCode, res.data);
+          console.warn(
+            'importWardrobeBackup bad status',
+            res.statusCode,
+            res.data,
+          );
           reject(new Error('备份导入失败，请确认文件是否正确'));
         },
         fail(error) {
@@ -207,7 +255,10 @@ module.exports = {
     });
   },
   deleteGarment: function (id) {
-    return request('/api/miniapp/garments/' + id, { method: 'DELETE', data: {} });
+    return request('/api/miniapp/garments/' + id, {
+      method: 'DELETE',
+      data: {},
+    });
   },
   recommendOutfit: function (requestText, coreGarmentId) {
     const data = { requestText: requestText };
@@ -219,21 +270,36 @@ module.exports = {
       data: data,
     });
   },
-  saveDailyOutfit: function (plan, date) {
-    return request('/api/miniapp/daily-outfits', {
-      method: 'POST',
-      data: {
-        date: date,
-        title: plan.title,
-        reason: plan.reason,
-        garmentIds: (plan.garments || []).map(function (garment) {
+  saveDailyOutfit: function (plan, date, photoPath) {
+    if (!photoPath) {
+      return Promise.reject(new Error('请先拍一张今日穿搭照片'));
+    }
+    return uploadDailyOutfit(photoPath, {
+      date: date,
+      title: plan.title || '今日穿搭',
+      reason: plan.reason || '',
+      garmentIds: JSON.stringify(
+        (plan.garments || []).map(function (garment) {
           return garment.id;
         }),
-      },
+      ),
+    });
+  },
+  saveManualOutfit: function (form) {
+    return uploadDailyOutfit(form.photoPath, {
+      date: form.date,
+      title: form.title || '今日穿搭',
+      reason: form.reason || '',
+      scene: form.scene || '',
+      rating: form.rating || '',
+      feedback: form.feedback || '',
+      garmentIds: JSON.stringify(form.garmentIds || []),
     });
   },
   getTodayOutfits: function (date) {
-    return request('/api/miniapp/daily-outfits/today' + (date ? '?date=' + date : ''));
+    return request(
+      '/api/miniapp/daily-outfits/today' + (date ? '?date=' + date : ''),
+    );
   },
   analyzeGarmentPhoto: analyzeGarmentPhoto,
   uploadGarment: uploadGarment,

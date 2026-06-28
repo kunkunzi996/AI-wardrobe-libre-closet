@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { Garment } from '../dal/entity/garment.entity';
 import { OutfitCalendar } from '../dal/entity/outfit-calendar.entity';
 import { Outfit } from '../dal/entity/outfit.entity';
@@ -17,21 +18,36 @@ describe('MiniappDailyOutfitController', () => {
       ...overrides,
     });
 
-  const makeOutfit = (garments: Garment[]) =>
+  const makeOutfit = (garments: Garment[], overrides: Partial<Outfit> = {}) =>
     Object.assign(new Outfit(), {
       id: 18,
       name: '休闲通勤',
       notes: '白 T 搭配牛仔裤。',
+      photo: { fileName: 'look.webp' },
       garments: { getItems: () => garments },
+      ...overrides,
     });
 
-  const makeEntry = (outfit: Outfit) =>
+  const makeEntry = (outfit: Outfit, overrides: Partial<OutfitCalendar> = {}) =>
     Object.assign(new OutfitCalendar(), {
       id: 7,
       date: new Date('2026-06-13T00:00:00.000Z'),
       notes: '适合上班。',
+      scene: '通勤',
+      rating: 5,
+      feedback: '显精神',
       outfit: { unwrap: () => outfit },
+      ...overrides,
     });
+
+  const makeUpload = (fields: Record<string, string> = {}) =>
+    ({
+      mimetype: 'image/jpeg',
+      file: Readable.from(Buffer.from('fake image')),
+      fields: Object.fromEntries(
+        Object.entries(fields).map(([key, value]) => [key, { value }]),
+      ),
+    }) as any;
 
   const makeController = () => {
     const garmentService = {
@@ -44,18 +60,41 @@ describe('MiniappDailyOutfitController', () => {
       create: jest.fn(),
       findWeek: jest.fn(),
     };
+    const fileService = {
+      storeOriginalImageFromFileUpload: jest
+        .fn()
+        .mockResolvedValue({ fileName: 'look.webp' }),
+    };
     const controller = new MiniappDailyOutfitController(
       garmentService as any,
       outfitService as any,
       calendarService as any,
+      fileService as any,
     );
-    const req = { protocol: 'https', host: 'aimatchwear.asia' } as any;
-    return { controller, garmentService, outfitService, calendarService, req };
+    const req = {
+      protocol: 'https',
+      host: 'aimatchwear.asia',
+      file: jest.fn(),
+    } as any;
+    return {
+      controller,
+      garmentService,
+      outfitService,
+      calendarService,
+      fileService,
+      req,
+    };
   };
 
-  it('saves recommended garments as today outfit', async () => {
-    const { controller, garmentService, outfitService, calendarService, req } =
-      makeController();
+  it('saves uploaded photo and selected garments as today outfit', async () => {
+    const {
+      controller,
+      garmentService,
+      outfitService,
+      calendarService,
+      fileService,
+      req,
+    } = makeController();
     const shirt = makeGarment();
     const pants = makeGarment({
       id: 2,
@@ -70,24 +109,29 @@ describe('MiniappDailyOutfitController', () => {
     garmentService.findAll.mockResolvedValue([shirt, pants]);
     outfitService.create.mockResolvedValue(outfit);
     calendarService.create.mockResolvedValue(entry);
+    req.file.mockResolvedValue(
+      makeUpload({
+        date: '2026-06-13',
+        title: '休闲通勤',
+        reason: '白 T 和牛仔裤适合日常上班。',
+        scene: '通勤',
+        rating: '5',
+        feedback: '显精神',
+        garmentIds: JSON.stringify([1, 2]),
+      }),
+    );
 
-    await expect(
-      controller.save(
-        {
-          date: '2026-06-13',
-          title: '休闲通勤',
-          reason: '白 T 和牛仔裤适合日常上班。',
-          garmentIds: [1, 2],
-        },
-        req,
-      ),
-    ).resolves.toEqual({
+    await expect(controller.save({}, req)).resolves.toEqual({
       item: expect.objectContaining({
         id: 7,
         date: '2026-06-13',
+        scene: '通勤',
+        rating: 5,
+        feedback: '显精神',
         outfit: expect.objectContaining({
           id: 18,
           name: '休闲通勤',
+          photoUrl: 'https://aimatchwear.asia/file/look.webp',
           garments: [
             expect.objectContaining({
               id: 1,
@@ -107,6 +151,7 @@ describe('MiniappDailyOutfitController', () => {
       {
         name: '休闲通勤',
         notes: '白 T 和牛仔裤适合日常上班。',
+        photoFileName: 'look.webp',
         slots: [
           { category: 'tops', garmentId: 1 },
           { category: 'bottoms', garmentId: 2 },
@@ -119,6 +164,59 @@ describe('MiniappDailyOutfitController', () => {
         date: new Date('2026-06-13T00:00:00.000Z'),
         outfitId: 18,
         notes: '白 T 和牛仔裤适合日常上班。',
+        scene: '通勤',
+        rating: '5',
+        feedback: '显精神',
+      },
+      undefined,
+    );
+    expect(fileService.storeOriginalImageFromFileUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ mimetype: 'image/jpeg' }),
+      undefined,
+    );
+  });
+
+  it('saves a photo-only daily outfit without garments', async () => {
+    const { controller, garmentService, outfitService, calendarService, req } =
+      makeController();
+    const outfit = makeOutfit([], {
+      name: '今天很满意',
+      notes: '颜色很和谐',
+    });
+    const entry = makeEntry(outfit, {
+      notes: '颜色很和谐',
+      scene: '约会',
+      rating: undefined,
+      feedback: undefined,
+    });
+
+    garmentService.findAll.mockResolvedValue([]);
+    outfitService.create.mockResolvedValue(outfit);
+    calendarService.create.mockResolvedValue(entry);
+    req.file.mockResolvedValue(
+      makeUpload({
+        date: '2026-06-13',
+        title: '今天很满意',
+        reason: '颜色很和谐',
+        scene: '约会',
+        garmentIds: JSON.stringify([]),
+      }),
+    );
+
+    await expect(controller.save({}, req)).resolves.toEqual({
+      item: expect.objectContaining({
+        outfit: expect.objectContaining({
+          photoUrl: 'https://aimatchwear.asia/file/look.webp',
+          garments: [],
+        }),
+      }),
+    });
+    expect(outfitService.create).toHaveBeenCalledWith(
+      {
+        name: '今天很满意',
+        notes: '颜色很和谐',
+        photoFileName: 'look.webp',
+        slots: [],
       },
       undefined,
     );
@@ -142,6 +240,7 @@ describe('MiniappDailyOutfitController', () => {
         expect.objectContaining({
           id: 7,
           outfit: expect.objectContaining({
+            photoUrl: 'https://aimatchwear.asia/file/look.webp',
             garments: [
               expect.objectContaining({
                 id: 1,
