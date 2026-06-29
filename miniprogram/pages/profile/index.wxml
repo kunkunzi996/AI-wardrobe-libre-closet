@@ -17,12 +17,13 @@
     <view class="decor decor-teal"></view>
     <view class="avatar-wrap">
       <view class="avatar">
-        <text>衣</text>
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <text wx:else>衣</text>
       </view>
       <view class="status-dot">✓</view>
     </view>
-    <text class="name">AI 衣橱用户</text>
-    <text class="bio">衣橱爱好者、极简主义者。用穿搭整理生活。</text>
+    <text class="name">{{nickname}}</text>
+    <text class="bio">{{bio}}</text>
     <button class="edit-btn" bindtap="editProfile">编辑资料</button>
   </view>
 

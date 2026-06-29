@@ -21,6 +21,8 @@ import { AnalyticsController } from './analytics.controller';
 import { MiniappOutfitController } from './miniapp-outfit.controller';
 import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
 import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller';
+import { MiniappProfileController } from './miniapp-profile.controller';
+import { MiniappProfileService } from './miniapp-profile.service';
 
 @Module({
   imports: [
@@ -37,6 +39,7 @@ import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller'
     MiniappOutfitController,
     MiniappWardrobeController,
     MiniappDailyOutfitController,
+    MiniappProfileController,
   ],
   providers: [
     GarmentService,
@@ -45,6 +48,7 @@ import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller'
     WardrobeRecommendationService,
     OutfitGeneratorService,
     WardrobeAnalyticsService,
+    MiniappProfileService,
   ],
   exports: [
     GarmentService,

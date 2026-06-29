@@ -1,0 +1,131 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx 32rpx 180rpx;
+  background: #eceaf0;
+  box-sizing: border-box;
+}
+
+.head {
+  padding-top: 12rpx;
+}
+
+.eyebrow,
+.title,
+.label,
+.hint,
+.avatar-action {
+  display: block;
+}
+
+.eyebrow {
+  margin-bottom: 6rpx;
+  color: #9a94ac;
+  font-size: 24rpx;
+  font-weight: 500;
+  letter-spacing: 2rpx;
+}
+
+.title {
+  color: #221c3a;
+  font-size: 48rpx;
+  font-weight: 700;
+}
+
+.section {
+  margin-top: 24rpx;
+  padding: 28rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(34, 26, 58, 0.05);
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.avatar-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 176rpx;
+  height: 176rpx;
+  border: 8rpx solid #ebe6f2;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(145deg, #f9d6e6, #d9e7fb);
+  box-shadow: 0 10rpx 24rpx rgba(34, 26, 58, 0.12);
+}
+
+.avatar-image,
+.avatar-empty {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-word {
+  color: #5746d5;
+  font-size: 68rpx;
+  font-weight: 600;
+}
+
+.avatar-action {
+  margin-top: 18rpx;
+  color: #5a47c9;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: 8rpx;
+  color: #9a94ac;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.label {
+  color: #221c3a;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  margin-top: 16rpx;
+  padding: 20rpx 22rpx;
+  border-radius: 20rpx;
+  background: #f7f5fb;
+  color: #221c3a;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.textarea {
+  min-height: 176rpx;
+  line-height: 1.55;
+}
+
+.save {
+  height: 92rpx;
+  margin-top: 32rpx;
+  border-radius: 20rpx;
+  background: #6f5ae0;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 92rpx;
+  box-shadow: 0 16rpx 32rpx -10rpx rgba(111, 90, 224, 0.6);
+}
+
+.save::after {
+  border: none;
+}

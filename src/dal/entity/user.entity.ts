@@ -35,6 +35,15 @@ export class User extends ShareableId {
   @Property({ nullable: true })
   public wechatOpenId?: string;
 
+  @Property({ nullable: true })
+  public nickname?: string;
+
+  @Property({ type: 'text', nullable: true })
+  public bio?: string;
+
+  @OneToOne({ entity: () => File, nullable: true })
+  public avatar?: File;
+
   @Property()
   public password!: string;
 

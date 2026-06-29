@@ -1,5 +1,8 @@
 const api = require('../../utils/api');
 
+const defaultNickname = 'AI 衣橱用户';
+const defaultBio = '衣橱爱好者、极简主义者。用穿搭整理生活。';
+
 const categoryGroups = [
   {
     key: 'tops',
@@ -70,6 +73,9 @@ Page({
     error: '',
     total: 0,
     completion: 0,
+    nickname: defaultNickname,
+    bio: defaultBio,
+    avatarUrl: '',
     categories: categoryGroups.map(function (group) {
       return Object.assign({}, group, { count: 0 });
     }),
@@ -97,6 +103,7 @@ Page({
   loadProfile() {
     const page = this;
     this.setData({ loading: true, error: '' });
+    this.loadUserProfile();
     return api
       .listGarments()
       .then(function (data) {
@@ -122,12 +129,29 @@ Page({
     this.loadProfile();
   },
 
+  loadUserProfile() {
+    const page = this;
+    return api
+      .getUserProfile()
+      .then(function (res) {
+        const profile = (res && res.item) || {};
+        page.setData({
+          nickname: profile.nickname || defaultNickname,
+          bio: profile.bio || defaultBio,
+          avatarUrl: profile.avatarUrl || '',
+        });
+      })
+      .catch(function () {
+        // 资料加载失败不影响衣橱统计展示；用户下拉刷新会再试。
+      });
+  },
+
   goToWardrobe() {
     wx.switchTab({ url: '/pages/wardrobe/index' });
   },
 
   goToOutfit() {
-    wx.switchTab({ url: '/pages/outfit/index' });
+    wx.switchTab({ url: '/pages/daily-outfit/index' });
   },
 
   goToSettings() {
@@ -135,7 +159,7 @@ Page({
   },
 
   editProfile() {
-    wx.showToast({ title: '资料编辑稍后接入', icon: 'none' });
+    wx.navigateTo({ url: '/pages/profile-edit/index' });
   },
 
   logout() {

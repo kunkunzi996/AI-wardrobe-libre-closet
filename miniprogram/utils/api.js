@@ -239,9 +239,59 @@ function importWardrobeBackup(filePath) {
   });
 }
 
+function getUserProfile() {
+  return request('/api/miniapp/profile');
+}
+
+function updateUserProfile(form) {
+  form = form || {};
+  if (form.avatarPath) {
+    return loginMiniapp().then(function () {
+      return new Promise(function (resolve, reject) {
+        wx.uploadFile({
+          url: API_BASE_URL + '/api/miniapp/profile',
+          filePath: form.avatarPath,
+          name: 'avatar',
+          formData: {
+            nickname: form.nickname || '',
+            bio: form.bio || '',
+          },
+          header: tokenHeader(),
+          timeout: 180000,
+          success(res) {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              try {
+                resolve(JSON.parse(res.data));
+              } catch (error) {
+                reject(new Error('服务器返回格式不正确'));
+              }
+              return;
+            }
+            console.warn('updateUserProfile bad status', res.statusCode, res.data);
+            reject(new Error('保存失败，请重试'));
+          },
+          fail(error) {
+            console.warn('updateUserProfile failed', error);
+            reject(new Error('保存失败，请重试'));
+          },
+        });
+      });
+    });
+  }
+  return request('/api/miniapp/profile', {
+    method: 'POST',
+    data: {
+      nickname: form.nickname || '',
+      bio: form.bio || '',
+    },
+  });
+}
+
 module.exports = {
   API_BASE_URL: API_BASE_URL,
   loginMiniapp: loginMiniapp,
+  getUserProfile: getUserProfile,
+  updateUserProfile: updateUserProfile,
   listGarments: function () {
     return request('/api/miniapp/garments');
   },

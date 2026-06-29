@@ -74,3 +74,9 @@ node_modules/
 
 # Load test results
 /scripts/results/
+
+# WeChat DevTools 本地私人配置（开发者工具自动生成，含本机设置，不入库）
+project.private.config.json
+
+# 小程序 UI 整理副本（本地参考用，原文件在 miniprogram/，不入库）
+/miniapp-ui-files/
