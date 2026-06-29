@@ -56,6 +56,7 @@ describe('MiniappDailyOutfitController', () => {
     const outfitService = {
       create: jest.fn(),
       remove: jest.fn(),
+      update: jest.fn(),
     };
     const calendarService = {
       create: jest.fn(),
@@ -63,6 +64,7 @@ describe('MiniappDailyOutfitController', () => {
       findOwnedEntry: jest.fn(),
       remove: jest.fn(),
       countByOutfit: jest.fn(),
+      update: jest.fn(),
     };
     const fileService = {
       storeOriginalImageFromFileUpload: jest
@@ -293,5 +295,146 @@ describe('MiniappDailyOutfitController', () => {
     expect(calendarService.countByOutfit).toHaveBeenCalledWith(18);
     expect(outfitService.remove).not.toHaveBeenCalled();
     expect(fileService.deleteById).not.toHaveBeenCalled();
+  });
+
+  it('updates daily outfit calendar fields and selected garments', async () => {
+    const { controller, garmentService, outfitService, calendarService, req } =
+      makeController();
+    const shirt = makeGarment();
+    const pants = makeGarment({
+      id: 2,
+      name: '蓝色牛仔裤',
+      category: 'bottoms',
+      color: GarmentColor.BLUE,
+      photo: { fileName: 'pants.webp' },
+    });
+    const originalOutfit = makeOutfit([shirt]);
+    const originalEntry = makeEntry(originalOutfit);
+    const updatedOutfit = makeOutfit([shirt, pants]);
+    const updatedEntry = makeEntry(updatedOutfit, {
+      scene: '休闲',
+      rating: 4,
+      notes: '周末出门更舒服。',
+    });
+
+    req.file.mockResolvedValue(undefined);
+    garmentService.findAll.mockResolvedValue([shirt, pants]);
+    calendarService.findOwnedEntry
+      .mockResolvedValueOnce(originalEntry)
+      .mockResolvedValueOnce(updatedEntry);
+
+    await expect(
+      controller.update(
+        7,
+        {
+          title: '今日穿搭',
+          reason: '周末出门更舒服。',
+          scene: '休闲',
+          rating: '4',
+          garmentIds: JSON.stringify([1, 2]),
+        },
+        req,
+      ),
+    ).resolves.toEqual({
+      item: expect.objectContaining({
+        id: 7,
+        scene: '休闲',
+        rating: 4,
+        notes: '周末出门更舒服。',
+        outfit: expect.objectContaining({
+          garments: [
+            expect.objectContaining({ id: 1 }),
+            expect.objectContaining({ id: 2 }),
+          ],
+        }),
+      }),
+    });
+    expect(outfitService.update).toHaveBeenCalledWith(
+      18,
+      {
+        name: '今日穿搭',
+        notes: '周末出门更舒服。',
+        slots: [
+          { category: 'tops', garmentId: 1 },
+          { category: 'bottoms', garmentId: 2 },
+        ],
+      },
+      undefined,
+    );
+    expect(calendarService.update).toHaveBeenCalledWith(
+      7,
+      {
+        scene: '休闲',
+        rating: '4',
+        feedback: undefined,
+        notes: '周末出门更舒服。',
+      },
+      undefined,
+    );
+  });
+
+  it('updates text fields without replacing photo or garments', async () => {
+    const {
+      controller,
+      garmentService,
+      outfitService,
+      calendarService,
+      fileService,
+      req,
+    } = makeController();
+    const outfit = makeOutfit([makeGarment()]);
+    const originalEntry = makeEntry(outfit);
+    const updatedEntry = makeEntry(outfit, {
+      scene: '正式',
+      rating: 3,
+      notes: '会议日穿。',
+    });
+
+    req.file.mockResolvedValue(undefined);
+    garmentService.findAll.mockResolvedValue([]);
+    calendarService.findOwnedEntry
+      .mockResolvedValueOnce(originalEntry)
+      .mockResolvedValueOnce(updatedEntry);
+
+    await expect(
+      controller.update(
+        7,
+        {
+          title: '今日穿搭',
+          reason: '会议日穿。',
+          scene: '正式',
+          rating: '3',
+          garmentIds: JSON.stringify([]),
+        },
+        req,
+      ),
+    ).resolves.toEqual({
+      item: expect.objectContaining({
+        id: 7,
+        scene: '正式',
+        rating: 3,
+        notes: '会议日穿。',
+      }),
+    });
+    expect(outfitService.update).toHaveBeenCalledWith(
+      18,
+      {
+        name: '今日穿搭',
+        notes: '会议日穿。',
+        slots: [],
+      },
+      undefined,
+    );
+    expect(fileService.storeOriginalImageFromFileUpload).not.toHaveBeenCalled();
+    expect(calendarService.update).toHaveBeenCalledWith(
+      7,
+      {
+        scene: '正式',
+        rating: '3',
+        feedback: undefined,
+        notes: '会议日穿。',
+      },
+      undefined,
+    );
   });
 });

@@ -307,6 +307,58 @@ module.exports = {
       data: {},
     });
   },
+  getDailyOutfitDetail: function (id) {
+    return request('/api/miniapp/daily-outfits/' + id + '/detail');
+  },
+  updateDailyOutfit: function (id, form) {
+    if (form.photoPath) {
+      return loginMiniapp().then(function () {
+        return new Promise(function (resolve, reject) {
+          wx.uploadFile({
+            url: API_BASE_URL + '/api/miniapp/daily-outfits/' + id,
+            filePath: form.photoPath,
+            name: 'photo',
+            formData: {
+              date: form.date || '',
+              title: form.title || '',
+              reason: form.reason || '',
+              scene: form.scene || '',
+              rating: form.rating || '',
+              feedback: form.feedback || '',
+              garmentIds: JSON.stringify(form.garmentIds || []),
+            },
+            header: tokenHeader(),
+            timeout: 180000,
+            success(res) {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                try {
+                  resolve(JSON.parse(res.data));
+                } catch (error) {
+                  reject(new Error('服务器返回格式不正确'));
+                }
+                return;
+              }
+              reject(new Error('修改失败，请稍后重试'));
+            },
+            fail() {
+              reject(new Error('修改失败，请稍后重试'));
+            },
+          });
+        });
+      });
+    }
+    return request('/api/miniapp/daily-outfits/' + id, {
+      method: 'PATCH',
+      data: {
+        title: form.title || '',
+        reason: form.reason || '',
+        scene: form.scene || '',
+        rating: form.rating || '',
+        feedback: form.feedback || '',
+        garmentIds: JSON.stringify(form.garmentIds || []),
+      },
+    });
+  },
   analyzeGarmentPhoto: analyzeGarmentPhoto,
   uploadGarment: uploadGarment,
   importWardrobeBackup: importWardrobeBackup,

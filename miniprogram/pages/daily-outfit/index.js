@@ -74,10 +74,14 @@ Page({
     if (!id) return;
     const page = this;
     wx.showActionSheet({
-      itemList: ['删除这条穿搭'],
-      itemColor: '#e64340',
+      itemList: ['修改', '删除这条穿搭'],
+      itemColor: '#333',
       success: function (res) {
-        if (res.tapIndex !== 0) return;
+        if (res.tapIndex === 0) {
+          wx.navigateTo({ url: '/pages/edit-outfit/index?id=' + id });
+          return;
+        }
+        if (res.tapIndex !== 1) return;
         wx.showModal({
           title: '删除穿搭',
           content: '删除后无法恢复，确定删除吗？',

@@ -1,4 +1,4 @@
-import { EntityRepository } from '@mikro-orm/core';
+import { EntityRepository, wrap } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import {
   ForbiddenException,
@@ -10,6 +10,7 @@ import { OutfitCalendar } from '../dal/entity/outfit-calendar.entity';
 import { Outfit } from '../dal/entity/outfit.entity';
 import { User } from '../dal/entity/user.entity';
 import { CreateCalendarEntryDto } from './dto/create-calendar-entry.dto';
+import type { UpdateCalendarEntryDto } from './dto/update-calendar-entry.dto';
 import { CalendarDay } from './view-models/calendar-day.view-model';
 import { WeekSchedule } from './view-models/week-schedule.view-model';
 import { I18nContext } from 'nestjs-i18n';
@@ -163,10 +164,34 @@ export class CalendarService {
     await this.calendarRepository.getEntityManager().removeAndFlush(entry);
   }
 
+  async update(
+    id: number,
+    dto: UpdateCalendarEntryDto,
+    userId?: number,
+  ): Promise<OutfitCalendar> {
+    const entry = await this.findOneOwned(id, userId);
+
+    wrap(entry).assign({
+      scene: dto.scene ?? entry.scene,
+      weather: dto.weather ?? entry.weather,
+      temperature: dto.temperature ?? entry.temperature,
+      rating: this.normalizeNumber(dto.rating) ?? entry.rating,
+      feedback: dto.feedback ?? entry.feedback,
+      complimented:
+        dto.complimented == null
+          ? entry.complimented
+          : this.normalizeBoolean(dto.complimented),
+      notes: dto.notes ?? entry.notes,
+    });
+
+    await this.calendarRepository.getEntityManager().flush();
+    return entry;
+  }
+
   /** 按 id 取一条日历记录，带 owner 校验，并预加载 outfit 及其照片，供删除清理用 */
   async findOwnedEntry(id: number, userId?: number): Promise<OutfitCalendar> {
     const entry = await this.calendarRepository.findOne(id, {
-      populate: ['outfit', 'outfit.photo'],
+      populate: ['outfit', 'outfit.photo', 'outfit.garments', 'outfit.garments.photo'],
     });
     if (!entry) throw new NotFoundException('Calendar entry not found');
 

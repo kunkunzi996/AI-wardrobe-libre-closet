@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -69,6 +70,20 @@ export class MiniappDailyOutfitController {
       items: (day?.entries ?? []).map((entry) =>
         this.toCalendarItem(entry, req),
       ),
+    };
+  }
+
+  @Get(':id/detail')
+  async detail(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: MiniappRequest,
+  ) {
+    const entry = await this.calendarService.findOwnedEntry(
+      id,
+      this.userId(req),
+    );
+    return {
+      item: this.toCalendarItem(entry, req),
     };
   }
 
@@ -155,6 +170,95 @@ export class MiniappDailyOutfitController {
     }
 
     return { ok: true };
+  }
+
+  @Patch(':id')
+  @Post(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: SaveDailyOutfitBody = {},
+    @Req() req: MiniappRequest,
+  ) {
+    const userId = this.userId(req);
+
+    let newPhoto: Awaited<
+      ReturnType<FileService['storeOriginalImageFromFileUpload']>
+    > | null = null;
+    let uploadFile: MultipartFile | undefined;
+    try {
+      uploadFile = await req.file?.();
+      if (uploadFile && uploadFile.mimetype?.startsWith('image/')) {
+        newPhoto = await this.fileService.storeOriginalImageFromFileUpload(
+          uploadFile,
+          userId,
+        );
+      } else if (uploadFile) {
+        uploadFile.file.resume();
+      }
+    } catch {
+      // No new photo was uploaded; keep the original outfit photo.
+    }
+
+    const form = this.mergeMultipartFields(body, uploadFile ?? ({} as any));
+    const shouldUpdateGarments = form.garmentIds !== undefined;
+    const garmentIds = this.normalizeGarmentIds(form.garmentIds);
+
+    const entry = await this.calendarService.findOwnedEntry(id, userId);
+    const outfit = entry.outfit?.unwrap();
+    if (!outfit) throw new BadRequestException('Outfit not found');
+
+    const outfitUpdate: Parameters<OutfitService['update']>[1] = {};
+    if (form.title || form.reason || form.notes) {
+      outfitUpdate.name = form.title?.trim() || outfit.name;
+      outfitUpdate.notes =
+        form.notes?.trim() || form.reason?.trim() || outfit.notes;
+    }
+
+    if (shouldUpdateGarments) {
+      const allGarments = await this.garmentService.findAll(userId, {});
+      const garmentById = new Map(
+        allGarments.map((garment) => [garment.id, garment]),
+      );
+      const selectedGarments = garmentIds
+        .map((gid) => garmentById.get(gid))
+        .filter((garment): garment is Garment => Boolean(garment));
+
+      if (selectedGarments.length !== garmentIds.length) {
+        throw new BadRequestException('有衣物不存在，请重新选择');
+      }
+
+      outfitUpdate.slots = selectedGarments.map((garment) => ({
+        category: garment.category,
+        garmentId: garment.id,
+      }));
+    }
+
+    if (Object.keys(outfitUpdate).length > 0) {
+      await this.outfitService.update(outfit.id, outfitUpdate, userId);
+    }
+
+    if (newPhoto) {
+      outfit.photo = newPhoto;
+      await (this.outfitService as any).outfitRepository
+        .getEntityManager()
+        .flush();
+    }
+
+    await this.calendarService.update(
+      id,
+      {
+        scene: form.scene?.trim(),
+        rating: form.rating,
+        feedback: form.feedback?.trim(),
+        notes: form.reason?.trim(),
+      },
+      userId,
+    );
+
+    const updated = await this.calendarService.findOwnedEntry(id, userId);
+    return {
+      item: this.toCalendarItem(updated, req),
+    };
   }
 
   private userId(req: FastifyRequest): number | undefined {

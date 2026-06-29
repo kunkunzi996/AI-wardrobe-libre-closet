@@ -20,6 +20,10 @@ const requiredFiles = [
   'miniprogram/pages/garment-detail/index.wxml',
   'miniprogram/pages/garment-detail/index.wxss',
   'miniprogram/pages/garment-detail/index.js',
+  'miniprogram/pages/edit-outfit/index.json',
+  'miniprogram/pages/edit-outfit/index.wxml',
+  'miniprogram/pages/edit-outfit/index.wxss',
+  'miniprogram/pages/edit-outfit/index.js',
 ];
 
 const jsonFiles = [
@@ -28,6 +32,7 @@ const jsonFiles = [
   'miniprogram/pages/wardrobe/index.json',
   'miniprogram/pages/garment-form/index.json',
   'miniprogram/pages/garment-detail/index.json',
+  'miniprogram/pages/edit-outfit/index.json',
 ];
 
 function readRequiredFile(relativePath) {
@@ -72,6 +77,7 @@ const expectedPages = [
   'pages/wardrobe/index',
   'pages/garment-form/index',
   'pages/garment-detail/index',
+  'pages/edit-outfit/index',
 ];
 if (!Array.isArray(appJson.pages)) {
   throw new Error('miniprogram/app.json must define pages');
@@ -126,6 +132,15 @@ if (
   !detailWxml.includes('reloadGarment')
 ) {
   throw new Error('garment detail page must expose wardrobe navigation and reload actions');
+}
+
+const editOutfitWxml = readRequiredFile('miniprogram/pages/edit-outfit/index.wxml');
+if (
+  !editOutfitWxml.includes('修改穿搭') ||
+  !editOutfitWxml.includes('choosePhoto') ||
+  !editOutfitWxml.includes('save')
+) {
+  throw new Error('edit outfit page must render edit title, photo picker, and save action');
 }
 
 console.log('Native mini-program validation passed.');
