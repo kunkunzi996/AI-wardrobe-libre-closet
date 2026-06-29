@@ -82,4 +82,15 @@ jobs:
           REMOTE_SCRIPT
 
       - name: Public health check
-        run: curl --fail --silent --show-error https://aimatchwear.asia/ > /dev/null
+        run: |
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error https://aimatchwear.asia/ > /dev/null; then
+              echo "Public health check passed on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Public health check failed on attempt ${attempt}; retrying in 5 seconds..."
+            sleep 5
+          done
+
+          echo "Public health check failed after 12 attempts."
+          exit 1
