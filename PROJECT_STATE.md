@@ -18,21 +18,23 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 
 今日穿搭删除功能已完成服务器部署和微信开发者工具验收：今日页长按穿搭卡片可弹出删除确认；后端新增 `DELETE /api/miniapp/daily-outfits/:id`，删除前按当前微信用户做 owner 校验；删除日历记录后会统计搭配引用数，只有未被其他日期引用时才连带清理搭配和照片。该功能已通过本地 TypeScript 检查、控制器单测、小程序结构校验、服务器 Docker 重建和用户确认的微信开发者工具删除验收。
 
+今日穿搭修改功能已完成服务器部署和微信开发者工具验收：今日页长按穿搭卡片可选择“修改”，进入 `pages/edit-outfit` 后可编辑理由、场合、评分、反馈、关联衣物，并可重拍/重选全身照。后端新增详情接口 `GET /api/miniapp/daily-outfits/:id/detail` 和修改接口 `POST/PATCH /api/miniapp/daily-outfits/:id`；部署联调中已修复小程序 `PATCH` 兼容问题和 Nest 同方法多 HTTP 装饰器导致的 `Cannot POST` 路由问题。该功能已通过本地控制器单测、项目构建、服务器 Docker 重建和用户确认的微信开发者工具修改保存验收。
+
 最新已验收功能提交为：
 
 ```text
-7440a56 merge: manual daily outfit delete
+bd3316c fix(server): register daily outfit post update route
 ```
 
 最新主分支部署验收提交为：
 
 ```text
-7440a56 merge: manual daily outfit delete
+bd3316c fix(server): register daily outfit post update route
 ```
 
 ## 当前阶段
 
-阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收
+阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收
 
 后端骨架验收状态：已验收（2026-06-19，后端验收官通过）
 
@@ -53,6 +55,7 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 - 围绕核心衣物生成穿搭推荐，并确保结果包含核心衣物
 - 今日穿搭保存
 - 今日穿搭删除：长按今日穿搭卡片，确认后删除该条记录；搭配和照片只在没有其他日历引用时清理
+- 今日穿搭修改：长按今日穿搭卡片选择“修改”，可编辑文字信息、评分、关联衣物，也可更换全身照；后端同时支持 `POST/PATCH /api/miniapp/daily-outfits/:id`
 - 手动添加今日穿搭：必选全身照，可填写理由/场合/评分/反馈，可选关联衣柜单品，已通过微信开发者工具端到端验收并合入 `main`
 - 衣橱照片批量导入：相册多选、后台预识别、逐张确认/跳过
 - 衣橱备份导出：ZIP 包含 `manifest.json` 和 `photos/`
@@ -115,7 +118,7 @@ port: 127.0.0.1:3000->3000
 volume: ai_wardrobe_data:/app/data
 ```
 
-最近一次生产/测试服务器验收：2026-06-29，今日穿搭删除功能已部署到服务器并通过用户确认的微信开发者工具验收；`main` 已同步到 `7440a56`，服务器日志确认已映射 `DELETE /api/miniapp/daily-outfits/:id`。
+最近一次生产/测试服务器验收：2026-06-29，今日穿搭修改功能已部署到服务器并通过用户确认的微信开发者工具验收；`main` 已同步到 `bd3316c`，服务器日志和微信开发者工具确认 `POST /api/miniapp/daily-outfits/:id` 修改保存链路可用。
 
 部署时必须保留 `.env`：
 
@@ -241,8 +244,8 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级、重复衣物入库提醒、重复判断结构化细化 V2 / V2.1、查看类似衣服、手动添加今日穿搭、今日穿搭删除 均已通过微信开发者工具验收；`main` 与服务器已同步到 `7440a56`。
+- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级、重复衣物入库提醒、重复判断结构化细化 V2 / V2.1、查看类似衣服、手动添加今日穿搭、今日穿搭删除、今日穿搭修改 均已通过微信开发者工具验收；`main` 与服务器已同步到 `bd3316c`。
 - 建议任务：继续收集真实试用反馈，优先修复影响保存、删除、识别、导入导出的关键问题；需要给体验版用户使用时，再在微信开发者工具上传体验版。
-- 继续文件：优先看 `PROJECT_STATE.md`、`docs/backend-architecture-source-of-truth.md`、`miniprogram/utils/api.js`、`src/wardrobe/miniapp-daily-outfit.controller.ts`。
+- 继续文件：优先看 `PROJECT_STATE.md`、`docs/backend-architecture-source-of-truth.md`、`miniprogram/utils/api.js`、`miniprogram/pages/daily-outfit/index.*`、`miniprogram/pages/edit-outfit/index.*`、`src/wardrobe/miniapp-daily-outfit.controller.ts`。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在。
