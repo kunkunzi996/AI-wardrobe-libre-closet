@@ -3,6 +3,7 @@
     "pages/wardrobe/index",
     "pages/outfit/index",
     "pages/daily-outfit/index",
+    "pages/profile/index",
     "pages/add-outfit/index",
     "pages/edit-outfit/index",
     "pages/garment-form/index",
@@ -23,7 +24,8 @@
     "list": [
       { "pagePath": "pages/wardrobe/index", "text": "衣橱" },
       { "pagePath": "pages/outfit/index", "text": "搭配" },
-      { "pagePath": "pages/daily-outfit/index", "text": "今日" }
+      { "pagePath": "pages/daily-outfit/index", "text": "今日" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
     ]
   },
   "lazyCodeLoading": "requiredComponents",

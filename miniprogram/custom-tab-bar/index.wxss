@@ -63,3 +63,21 @@
   border: 4rpx solid currentColor;
   border-radius: 50%;
 }
+
+/* 我的：头像 */
+.icon-profile {
+  position: relative;
+  border: 4rpx solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-profile::after {
+  content: "";
+  position: absolute;
+  left: 7rpx;
+  right: 7rpx;
+  bottom: 5rpx;
+  height: 10rpx;
+  border-radius: 10rpx 10rpx 4rpx 4rpx;
+  background: currentColor;
+}

@@ -1,0 +1,85 @@
+<view class="profile-page">
+  <view class="top-bar">
+    <view class="menu-icon">
+      <view></view>
+      <view></view>
+      <view></view>
+    </view>
+    <text class="top-title">我的</text>
+    <view class="settings-icon" bindtap="goToSettings">
+      <view class="gear-dot"></view>
+    </view>
+  </view>
+
+  <view class="hero">
+    <view class="decor decor-pink"></view>
+    <view class="decor decor-yellow"></view>
+    <view class="decor decor-teal"></view>
+    <view class="avatar-wrap">
+      <view class="avatar">
+        <text>衣</text>
+      </view>
+      <view class="status-dot">✓</view>
+    </view>
+    <text class="name">AI 衣橱用户</text>
+    <text class="bio">衣橱爱好者、极简主义者。用穿搭整理生活。</text>
+    <button class="edit-btn" bindtap="editProfile">编辑资料</button>
+  </view>
+
+  <view class="stats-section">
+    <text class="section-title">衣橱统计</text>
+
+    <view wx:if="{{error}}" class="notice error-card">
+      <text class="error-title">资料加载失败</text>
+      <text class="error-text">{{error}}</text>
+      <button class="retry-btn" loading="{{loading}}" bindtap="retryLoad">重试</button>
+    </view>
+
+    <view wx:else>
+      <view class="total-card">
+        <view>
+          <text class="total-title">总件数: {{total}}</text>
+          <text class="total-desc">你的数字衣橱已完成 {{completion}}%。</text>
+        </view>
+        <view class="inventory-mark"></view>
+      </view>
+
+      <view class="stat-grid">
+        <view
+          wx:for="{{categories}}"
+          wx:key="key"
+          class="stat-card {{item.tintClass}}"
+        >
+          <view class="stat-icon {{item.iconClass}}"></view>
+          <text class="stat-text">{{item.label}}: {{item.count}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="menu-card">
+    <view class="menu-row" bindtap="goToWardrobe">
+      <view class="row-left">
+        <view class="row-icon row-wardrobe"></view>
+        <text>我的衣橱</text>
+      </view>
+      <text class="chevron">›</text>
+    </view>
+    <view class="menu-row" bindtap="goToOutfit">
+      <view class="row-left">
+        <view class="row-icon row-outfit"></view>
+        <text>已存搭配</text>
+      </view>
+      <text class="chevron">›</text>
+    </view>
+    <view class="menu-row last" bindtap="goToSettings">
+      <view class="row-left">
+        <view class="row-icon row-settings"></view>
+        <text>设置</text>
+      </view>
+      <text class="chevron">›</text>
+    </view>
+  </view>
+
+  <button class="logout-btn" bindtap="logout">退出登录</button>
+</view>
