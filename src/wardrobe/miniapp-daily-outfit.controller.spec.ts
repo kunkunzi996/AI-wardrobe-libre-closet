@@ -55,15 +55,20 @@ describe('MiniappDailyOutfitController', () => {
     };
     const outfitService = {
       create: jest.fn(),
+      remove: jest.fn(),
     };
     const calendarService = {
       create: jest.fn(),
       findWeek: jest.fn(),
+      findOwnedEntry: jest.fn(),
+      remove: jest.fn(),
+      countByOutfit: jest.fn(),
     };
     const fileService = {
       storeOriginalImageFromFileUpload: jest
         .fn()
         .mockResolvedValue({ fileName: 'look.webp' }),
+      deleteById: jest.fn(),
     };
     const controller = new MiniappDailyOutfitController(
       garmentService as any,
@@ -251,5 +256,42 @@ describe('MiniappDailyOutfitController', () => {
         }),
       ],
     });
+  });
+
+  it('removes daily outfit and cleans unused outfit photo', async () => {
+    const { controller, outfitService, calendarService, fileService, req } =
+      makeController();
+    const outfit = makeOutfit([makeGarment()], {
+      photo: { id: 99, fileName: 'look.webp' } as any,
+    });
+    const entry = makeEntry(outfit);
+
+    calendarService.findOwnedEntry.mockResolvedValue(entry);
+    calendarService.countByOutfit.mockResolvedValue(0);
+
+    await expect(controller.remove(7, req)).resolves.toEqual({ ok: true });
+    expect(calendarService.findOwnedEntry).toHaveBeenCalledWith(7, undefined);
+    expect(calendarService.remove).toHaveBeenCalledWith(7, undefined);
+    expect(calendarService.countByOutfit).toHaveBeenCalledWith(18);
+    expect(outfitService.remove).toHaveBeenCalledWith(18, undefined);
+    expect(fileService.deleteById).toHaveBeenCalledWith(99, undefined);
+  });
+
+  it('removes only calendar entry when outfit is still referenced', async () => {
+    const { controller, outfitService, calendarService, fileService, req } =
+      makeController();
+    const outfit = makeOutfit([makeGarment()], {
+      photo: { id: 99, fileName: 'look.webp' } as any,
+    });
+    const entry = makeEntry(outfit);
+
+    calendarService.findOwnedEntry.mockResolvedValue(entry);
+    calendarService.countByOutfit.mockResolvedValue(1);
+
+    await expect(controller.remove(7, req)).resolves.toEqual({ ok: true });
+    expect(calendarService.remove).toHaveBeenCalledWith(7, undefined);
+    expect(calendarService.countByOutfit).toHaveBeenCalledWith(18);
+    expect(outfitService.remove).not.toHaveBeenCalled();
+    expect(fileService.deleteById).not.toHaveBeenCalled();
   });
 });

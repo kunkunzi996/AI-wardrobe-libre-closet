@@ -2,7 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  ParseIntPipe,
   Post,
   Query,
   Req,
@@ -121,6 +124,37 @@ export class MiniappDailyOutfitController {
     return {
       item: this.toCalendarItem(entry, req, outfit),
     };
+  }
+
+  @Delete(':id')
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: MiniappRequest,
+  ) {
+    const userId = this.userId(req);
+
+    const entry = await this.calendarService.findOwnedEntry(id, userId);
+    const outfit = entry.outfit?.unwrap();
+    const outfitId = outfit?.id;
+    const photoId = outfit?.photo?.id;
+
+    await this.calendarService.remove(id, userId);
+
+    if (outfitId != null) {
+      const stillUsed = await this.calendarService.countByOutfit(outfitId);
+      if (stillUsed === 0) {
+        await this.outfitService.remove(outfitId, userId);
+        if (photoId != null) {
+          try {
+            await this.fileService.deleteById(photoId, userId);
+          } catch {
+            // The calendar entry and outfit are already removed; photo cleanup is best-effort.
+          }
+        }
+      }
+    }
+
+    return { ok: true };
   }
 
   private userId(req: FastifyRequest): number | undefined {
