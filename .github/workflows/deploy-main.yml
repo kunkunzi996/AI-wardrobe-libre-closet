@@ -1,0 +1,85 @@
+name: Deploy main to server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22.x"
+
+jobs:
+  verify:
+    name: Verify before deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate miniapp shell
+        run: npm run test:miniapp
+
+      - name: Build backend and assets
+        run: npm run build
+
+  deploy:
+    name: Deploy main
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY_MAIN == 'true' }}
+    env:
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+    steps:
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" 'bash -s' <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          cd /root/AI-wardrobe-libre-closet
+
+          cp .env /root/ai-wardrobe.env.backup
+          git fetch --depth=20 origin +refs/heads/main:refs/remotes/origin/main
+          git switch main
+          git merge --ff-only origin/main
+          git log --oneline -3
+          cp /root/ai-wardrobe.env.backup /root/AI-wardrobe-libre-closet/.env
+
+          docker build -f docker/Dockerfile -t ai-wardrobe:latest .
+          docker rm -f ai-wardrobe || true
+          docker run -d \
+            --name ai-wardrobe \
+            -p 127.0.0.1:3000:3000 \
+            --env-file /root/AI-wardrobe-libre-closet/.env \
+            -v ai_wardrobe_data:/app/data \
+            ai-wardrobe:latest
+
+          docker ps --filter name=ai-wardrobe
+          docker logs --tail=80 ai-wardrobe
+          REMOTE_SCRIPT
+
+      - name: Public health check
+        run: curl --fail --silent --show-error https://aimatchwear.asia/ > /dev/null

@@ -122,6 +122,8 @@ volume: ai_wardrobe_data:/app/data
 
 最近一次生产/测试服务器验收：2026-06-29，今日穿搭修改功能已部署到服务器并通过用户确认的微信开发者工具验收；`main` 已同步到 `bd3316c`，服务器日志和微信开发者工具确认 `POST /api/miniapp/daily-outfits/:id` 修改保存链路可用。
 
+GitHub Actions 自动部署已接入：新增 `.github/workflows/deploy-main.yml`，推送 `main` 后会先执行 `npm run test:miniapp` 和 `npm run build`；只有仓库变量 `AUTO_DEPLOY_MAIN=true` 时才会 SSH 到服务器自动拉取主分支、备份 `.env`、重建 Docker 并重启 `ai-wardrobe`。未开启变量时，仍可在 GitHub Actions 页面手动点击 `Run workflow` 部署。配置说明见 `docs/github-actions-auto-deploy.md`。
+
 部署时必须保留 `.env`：
 
 ```bash
