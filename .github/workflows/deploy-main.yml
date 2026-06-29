@@ -62,7 +62,18 @@ jobs:
           cd /root/AI-wardrobe-libre-closet
 
           cp .env /root/ai-wardrobe.env.backup
-          git fetch --depth=20 origin +refs/heads/main:refs/remotes/origin/main
+          for attempt in $(seq 1 5); do
+            if git fetch --depth=20 origin +refs/heads/main:refs/remotes/origin/main; then
+              echo "git fetch succeeded on attempt ${attempt}."
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "git fetch failed after ${attempt} attempts."
+              exit 1
+            fi
+            echo "git fetch failed on attempt ${attempt}; retrying in 10 seconds..."
+            sleep 10
+          done
           git switch main
           git merge --ff-only origin/main
           git log --oneline -3

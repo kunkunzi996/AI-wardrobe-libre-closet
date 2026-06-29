@@ -89,5 +89,5 @@ volume: ai_wardrobe_data:/app/data
 
 - `Verify before deploy` 失败：代码检查或构建失败，先修代码。
 - `Configure SSH key` 失败：Secrets 配错，重点检查服务器 IP、用户、SSH 私钥、端口。
-- `Deploy on server` 失败：服务器拉代码、Docker 构建或容器启动失败。
+- `Deploy on server` 失败：服务器拉代码、Docker 构建或容器启动失败。`git fetch` 已内置最多 5 次重试；如果仍出现 `GnuTLS recv error (-110)`，通常是服务器到 GitHub 网络临时不稳，可稍后重新运行。
 - `Public health check` 失败：工作流会在部署后最多重试约 1 分钟；如果仍失败，容器可能启动异常，或公网反代暂时无法连到后端。
