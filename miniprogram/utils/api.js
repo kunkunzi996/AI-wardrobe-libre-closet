@@ -338,9 +338,15 @@ module.exports = {
                 }
                 return;
               }
+              console.warn(
+                'updateDailyOutfit upload bad status',
+                res.statusCode,
+                res.data,
+              );
               reject(new Error('修改失败，请稍后重试'));
             },
-            fail() {
+            fail(error) {
+              console.warn('updateDailyOutfit upload failed', error);
               reject(new Error('修改失败，请稍后重试'));
             },
           });
@@ -348,7 +354,7 @@ module.exports = {
       });
     }
     return request('/api/miniapp/daily-outfits/' + id, {
-      method: 'PATCH',
+      method: 'POST',
       data: {
         title: form.title || '',
         reason: form.reason || '',
