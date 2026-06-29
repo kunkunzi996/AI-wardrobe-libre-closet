@@ -163,6 +163,26 @@ export class CalendarService {
     await this.calendarRepository.getEntityManager().removeAndFlush(entry);
   }
 
+  /** 按 id 取一条日历记录，带 owner 校验，并预加载 outfit 及其照片，供删除清理用 */
+  async findOwnedEntry(id: number, userId?: number): Promise<OutfitCalendar> {
+    const entry = await this.calendarRepository.findOne(id, {
+      populate: ['outfit', 'outfit.photo'],
+    });
+    if (!entry) throw new NotFoundException('Calendar entry not found');
+
+    if (userId != null) {
+      if (entry.owner?.id !== userId) throw new ForbiddenException();
+    } else {
+      if (entry.owner != null) throw new ForbiddenException();
+    }
+    return entry;
+  }
+
+  /** 统计还有多少条日历记录引用了某套搭配（用于判断该搭配是否可以连带删除） */
+  async countByOutfit(outfitId: number): Promise<number> {
+    return this.calendarRepository.count({ outfit: outfitId });
+  }
+
   /**
    * Toggles the wornAt field.  If wornAt is null, sets it to today.
    * If already set, clears it (unmark worn).

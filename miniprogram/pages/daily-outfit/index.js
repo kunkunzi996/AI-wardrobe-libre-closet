@@ -69,6 +69,44 @@ Page({
     wx.navigateTo({ url: '/pages/garment-detail/index?id=' + id });
   },
 
+  onEntryLongPress(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    const page = this;
+    wx.showActionSheet({
+      itemList: ['删除这条穿搭'],
+      itemColor: '#e64340',
+      success: function (res) {
+        if (res.tapIndex !== 0) return;
+        wx.showModal({
+          title: '删除穿搭',
+          content: '删除后无法恢复，确定删除吗？',
+          confirmText: '删除',
+          confirmColor: '#e64340',
+          success: function (modalRes) {
+            if (!modalRes.confirm) return;
+            wx.showLoading({ title: '删除中...' });
+            api
+              .deleteDailyOutfit(id)
+              .then(function () {
+                wx.showToast({ title: '已删除', icon: 'success' });
+                return page.loadToday();
+              })
+              .catch(function (error) {
+                wx.showToast({
+                  title: error.message || '删除失败',
+                  icon: 'none',
+                });
+              })
+              .finally(function () {
+                wx.hideLoading();
+              });
+          },
+        });
+      },
+    });
+  },
+
   todayDate() {
     const now = new Date();
     const year = now.getFullYear();

@@ -301,6 +301,12 @@ module.exports = {
       '/api/miniapp/daily-outfits/today' + (date ? '?date=' + date : ''),
     );
   },
+  deleteDailyOutfit: function (id) {
+    return request('/api/miniapp/daily-outfits/' + id, {
+      method: 'DELETE',
+      data: {},
+    });
+  },
   analyzeGarmentPhoto: analyzeGarmentPhoto,
   uploadGarment: uploadGarment,
   importWardrobeBackup: importWardrobeBackup,
