@@ -172,12 +172,28 @@ export class MiniappDailyOutfitController {
     return { ok: true };
   }
 
-  @Patch(':id')
   @Post(':id')
+  async updateByPost(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: SaveDailyOutfitBody = {},
+    @Req() req: MiniappRequest,
+  ) {
+    return this.updateDailyOutfit(id, body, req);
+  }
+
+  @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: SaveDailyOutfitBody = {},
     @Req() req: MiniappRequest,
+  ) {
+    return this.updateDailyOutfit(id, body, req);
+  }
+
+  private async updateDailyOutfit(
+    id: number,
+    body: SaveDailyOutfitBody = {},
+    req: MiniappRequest,
   ) {
     const userId = this.userId(req);
 

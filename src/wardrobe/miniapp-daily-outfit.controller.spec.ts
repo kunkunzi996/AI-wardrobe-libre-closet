@@ -1,4 +1,6 @@
 import { Readable } from 'node:stream';
+import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
+import { RequestMethod } from '@nestjs/common';
 import { Garment } from '../dal/entity/garment.entity';
 import { OutfitCalendar } from '../dal/entity/outfit-calendar.entity';
 import { Outfit } from '../dal/entity/outfit.entity';
@@ -7,6 +9,16 @@ import { GarmentStatus } from './garment-status.enum';
 import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller';
 
 describe('MiniappDailyOutfitController', () => {
+  it('registers POST route for miniapp daily outfit updates', () => {
+    const prototype = MiniappDailyOutfitController.prototype;
+    expect(Reflect.getMetadata(PATH_METADATA, prototype.updateByPost)).toBe(
+      ':id',
+    );
+    expect(Reflect.getMetadata(METHOD_METADATA, prototype.updateByPost)).toBe(
+      RequestMethod.POST,
+    );
+  });
+
   const makeGarment = (overrides: Partial<Garment> = {}) =>
     Object.assign(new Garment(), {
       id: 1,
