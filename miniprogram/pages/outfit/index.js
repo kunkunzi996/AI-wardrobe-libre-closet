@@ -10,6 +10,8 @@ Page({
     savingIndex: -1,
     savedIndex: -1,
     coreGarmentId: '',
+    lastRequestText: '',
+    lastSource: '',
   },
 
   onLoad(options) {
@@ -55,10 +57,21 @@ Page({
     api
       .recommendOutfit(requestText, this.data.coreGarmentId)
       .then(function (data) {
+        const recommendations = (data.recommendations || []).map(
+          function (plan) {
+            plan.feedbackRating = '';
+            plan.feedbackComment = '';
+            plan.feedbackSubmitting = false;
+            plan.feedbackSubmitted = false;
+            return plan;
+          },
+        );
         page.setData({
-          recommendations: data.recommendations || [],
+          recommendations: recommendations,
           message: data.message || '',
           savedIndex: -1,
+          lastRequestText: requestText,
+          lastSource: data.source || '',
         });
       })
       .catch(function (error) {
@@ -109,6 +122,68 @@ Page({
           });
       },
     });
+  },
+
+  onFeedbackRating(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const rating = event.currentTarget.dataset.rating;
+    const plan = this.data.recommendations[index];
+    if (!plan || plan.feedbackSubmitted || plan.feedbackSubmitting) return;
+    this.setData({
+      ['recommendations[' + index + '].feedbackRating']: rating,
+    });
+  },
+
+  onFeedbackInput(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    this.setData({
+      ['recommendations[' + index + '].feedbackComment']: event.detail.value,
+    });
+  },
+
+  submitFeedback(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const plan = this.data.recommendations[index];
+    if (!plan || plan.feedbackSubmitted || plan.feedbackSubmitting) return;
+    if (!plan.feedbackRating) {
+      wx.showToast({ title: '先选一个评价再提交', icon: 'none' });
+      return;
+    }
+
+    const page = this;
+    this.setData({
+      ['recommendations[' + index + '].feedbackSubmitting']: true,
+    });
+    api
+      .submitOutfitFeedback({
+        rating: plan.feedbackRating,
+        comment: (plan.feedbackComment || '').trim(),
+        requestText: this.data.lastRequestText || this.data.requestText,
+        planTitle: plan.title || '',
+        planReason: plan.reason || '',
+        garmentIds: (plan.garments || []).map(function (garment) {
+          return garment.id;
+        }),
+        source: this.data.lastSource || '',
+        coreGarmentId: this.data.coreGarmentId || '',
+      })
+      .then(function () {
+        page.setData({
+          ['recommendations[' + index + '].feedbackSubmitted']: true,
+        });
+        wx.showToast({ title: '感谢你的反馈', icon: 'success' });
+      })
+      .catch(function (error) {
+        wx.showToast({
+          title: error.message || '反馈提交失败，请稍后重试',
+          icon: 'none',
+        });
+      })
+      .finally(function () {
+        page.setData({
+          ['recommendations[' + index + '].feedbackSubmitting']: false,
+        });
+      });
   },
 
   goToGarment(event) {

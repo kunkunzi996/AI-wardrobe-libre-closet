@@ -320,6 +320,12 @@ module.exports = {
       data: data,
     });
   },
+  submitOutfitFeedback: function (payload) {
+    return request('/api/miniapp/outfit-feedback', {
+      method: 'POST',
+      data: payload,
+    });
+  },
   saveDailyOutfit: function (plan, date, photoPath) {
     if (!photoPath) {
       return Promise.reject(new Error('请先拍一张今日穿搭照片'));

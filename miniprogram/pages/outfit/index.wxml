@@ -51,5 +51,46 @@
     >
       {{savedIndex === index ? '已保存到今日穿搭' : '保存为今日穿搭'}}
     </button>
+
+    <view class="feedback">
+      <text class="feedback-title">这套搭配怎么样？</text>
+      <view class="feedback-options">
+        <view
+          class="feedback-option {{item.feedbackRating === 'good' ? 'active' : ''}}"
+          data-index="{{index}}"
+          data-rating="good"
+          bindtap="onFeedbackRating"
+        >搭配得不错</view>
+        <view
+          class="feedback-option {{item.feedbackRating === 'soso' ? 'active' : ''}}"
+          data-index="{{index}}"
+          data-rating="soso"
+          bindtap="onFeedbackRating"
+        >一般</view>
+        <view
+          class="feedback-option {{item.feedbackRating === 'bad' ? 'active' : ''}}"
+          data-index="{{index}}"
+          data-rating="bad"
+          bindtap="onFeedbackRating"
+        >不喜欢</view>
+      </view>
+      <block wx:if="{{!item.feedbackSubmitted}}">
+        <textarea
+          class="feedback-input"
+          value="{{item.feedbackComment}}"
+          data-index="{{index}}"
+          bindinput="onFeedbackInput"
+          maxlength="500"
+          placeholder="说说理由（选填），帮 AI 搭得更好"
+        />
+        <button
+          class="feedback-submit"
+          loading="{{item.feedbackSubmitting}}"
+          data-index="{{index}}"
+          bindtap="submitFeedback"
+        >提交反馈</button>
+      </block>
+      <view wx:else class="feedback-done">已收到你的反馈，谢谢！</view>
+    </view>
   </view>
 </view>
