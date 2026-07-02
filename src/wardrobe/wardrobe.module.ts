@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { Garment } from '../dal/entity/garment.entity';
 import { Outfit } from '../dal/entity/outfit.entity';
 import { OutfitCalendar } from '../dal/entity/outfit-calendar.entity';
+import { OutfitFeedback } from '../dal/entity/outfit-feedback.entity';
 import { User } from '../dal/entity/user.entity';
 import { File } from '../dal/entity/file.entity';
 import { FileModule } from '../file/file.module';
@@ -23,13 +24,22 @@ import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
 import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller';
 import { MiniappProfileController } from './miniapp-profile.controller';
 import { MiniappProfileService } from './miniapp-profile.service';
+import { MiniappOutfitFeedbackController } from './miniapp-outfit-feedback.controller';
+import { OutfitFeedbackService } from './outfit-feedback.service';
 
 @Module({
   imports: [
     AuthModule,
     AiModule,
     FileModule,
-    MikroOrmModule.forFeature([Garment, Outfit, OutfitCalendar, User, File]),
+    MikroOrmModule.forFeature([
+      Garment,
+      Outfit,
+      OutfitCalendar,
+      OutfitFeedback,
+      User,
+      File,
+    ]),
   ],
   controllers: [
     WardrobeController,
@@ -40,6 +50,7 @@ import { MiniappProfileService } from './miniapp-profile.service';
     MiniappWardrobeController,
     MiniappDailyOutfitController,
     MiniappProfileController,
+    MiniappOutfitFeedbackController,
   ],
   providers: [
     GarmentService,
@@ -49,6 +60,7 @@ import { MiniappProfileService } from './miniapp-profile.service';
     OutfitGeneratorService,
     WardrobeAnalyticsService,
     MiniappProfileService,
+    OutfitFeedbackService,
   ],
   exports: [
     GarmentService,

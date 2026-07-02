@@ -20,6 +20,8 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 
 今日穿搭修改功能已完成服务器部署和微信开发者工具验收：今日页长按穿搭卡片可选择“修改”，进入 `pages/edit-outfit` 后可编辑理由、场合、评分、反馈、关联衣物，并可重拍/重选全身照。后端新增详情接口 `GET /api/miniapp/daily-outfits/:id/detail` 和修改接口 `POST/PATCH /api/miniapp/daily-outfits/:id`；部署联调中已修复小程序 `PATCH` 兼容问题和 Nest 同方法多 HTTP 装饰器导致的 `Cannot POST` 路由问题。该功能已通过本地控制器单测、项目构建、服务器 Docker 重建和用户确认的微信开发者工具修改保存验收。
 
+AI 搭配反馈收集功能已完成本地开发和微信开发者工具前端验收：AI 搭配页每套推荐方案下方新增反馈区，用户可三选一评价（搭配得不错 / 一般 / 不喜欢）并填写文字理由（选填，最多 500 字）。提交后存入新数据表 `outfit_feedback`，快照包含评价、文字、当时的需求语句、方案标题/理由、衣物 id 列表、推荐来源（ai/fallback）、核心衣物 id 和归属用户，后端另提供 `GET /api/miniapp/outfit-feedback/export` 按当前用户导出全部反馈用于后期分析。新增 sqlite/postgres 迁移只建新表，不改旧表。已通过本地控制器单测（4 个）、`npm run test:miniapp`、`npm run build` 和建表 SQL 临时库实测；**尚未部署服务器**，部署后需在微信开发者工具真实提交一次反馈验收数据入库。
+
 Stitch「我的」页面小程序落地已完成本地开发：新增 `miniprogram/pages/profile` 页面，并把底部自定义标签栏扩展为「衣橱 / 搭配 / 今日 / 我的」。页面按 Stitch HTML 的“个人资料 + 衣橱统计 + 入口菜单”结构实现，统计数字读取当前用户衣橱真实数据。本地已通过 `npm run test:miniapp` 和 `npm run build`；尚需在微信开发者工具里做视觉和 tab 跳转验收。
 
 最新已验收功能提交为：
@@ -92,6 +94,9 @@ bd3316c fix(server): register daily outfit post update route
 - `src/wardrobe/miniapp-wardrobe.controller.ts`：小程序衣物 API、AI 分析、备份导入导出
 - `src/wardrobe/miniapp-outfit.controller.ts`：小程序搭配推荐 API
 - `src/wardrobe/miniapp-daily-outfit.controller.ts`：小程序今日穿搭 API
+- `src/wardrobe/miniapp-outfit-feedback.controller.ts`：AI 搭配反馈保存 / 导出 API
+- `src/wardrobe/outfit-feedback.service.ts`：反馈保存与按用户查询
+- `src/dal/entity/outfit-feedback.entity.ts`：反馈数据表实体
 - `src/wardrobe/recommendation/outfit-generator.service.ts`：穿搭推荐生成
 - `src/ai/outfit-ai.service.ts`：AI 搭配提示词与返回结果规范
 - `src/ai/garment-vision.service.ts`：衣物图片识别

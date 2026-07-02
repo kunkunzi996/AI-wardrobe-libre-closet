@@ -183,3 +183,80 @@
 .save::after {
   border: none;
 }
+
+/* ---------- 搭配反馈 ---------- */
+.feedback {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #f7f6fb;
+}
+
+.feedback-title {
+  display: block;
+  color: #221c3a;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.feedback-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.feedback-option {
+  padding: 18rpx 0;
+  border-radius: 16rpx;
+  background: #fff;
+  border: 2rpx solid #e4e0ef;
+  color: #6b6580;
+  font-size: 26rpx;
+  text-align: center;
+}
+
+.feedback-option.active {
+  background: #6f5ae0;
+  border-color: #6f5ae0;
+  color: #fff;
+  font-weight: 600;
+}
+
+.feedback-input {
+  width: 100%;
+  min-height: 120rpx;
+  margin-top: 18rpx;
+  padding: 20rpx 22rpx;
+  border-radius: 14rpx;
+  background: #fff;
+  border: 2rpx solid #e4e0ef;
+  color: #221c3a;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.feedback-submit {
+  margin-top: 18rpx;
+  height: 80rpx;
+  border-radius: 18rpx;
+  background: #fff;
+  border: 2rpx solid #6f5ae0;
+  color: #6f5ae0;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 76rpx;
+}
+
+.feedback-submit::after {
+  border: none;
+}
+
+.feedback-done {
+  margin-top: 18rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  background: #e6f5e9;
+  color: #2f7d43;
+  font-size: 26rpx;
+}
