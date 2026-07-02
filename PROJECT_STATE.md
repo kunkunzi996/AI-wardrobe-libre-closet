@@ -22,6 +22,8 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 
 AI 搭配反馈收集功能已完成本地开发和微信开发者工具前端验收：AI 搭配页每套推荐方案下方新增反馈区，用户可三选一评价（搭配得不错 / 一般 / 不喜欢）并填写文字理由（选填，最多 500 字）。提交后存入新数据表 `outfit_feedback`，快照包含评价、文字、当时的需求语句、方案标题/理由、衣物 id 列表、推荐来源（ai/fallback）、核心衣物 id 和归属用户，后端另提供 `GET /api/miniapp/outfit-feedback/export` 按当前用户导出全部反馈用于后期分析。新增 sqlite/postgres 迁移只建新表，不改旧表。已通过本地控制器单测（4 个）、`npm run test:miniapp`、`npm run build` 和建表 SQL 临时库实测；**尚未部署服务器**，部署后需在微信开发者工具真实提交一次反馈验收数据入库。
 
+反馈数据导出 Excel 已完成本地开发：「我的」页面菜单新增「导出反馈数据」入口，小程序经 `wx.downloadFile` + `wx.openDocument` 下载并打开真实 `.xlsx` 文件，可转发保存用于分析。后端在反馈 Controller 新增 `GET /api/miniapp/outfit-feedback/export.xlsx`，用新依赖 `exceljs` 生成表格（8 列：北京时间、中文评价、文字反馈、需求语句、方案标题、方案理由、衣物ID列表、推荐来源），下载响应模式与衣橱备份导出一致，数据按当前微信用户隔离。已通过本地控制器单测（5 个）、`npm run test:miniapp` 和 `npm run build`。
+
 Stitch「我的」页面小程序落地已完成本地开发：新增 `miniprogram/pages/profile` 页面，并把底部自定义标签栏扩展为「衣橱 / 搭配 / 今日 / 我的」。页面按 Stitch HTML 的“个人资料 + 衣橱统计 + 入口菜单”结构实现，统计数字读取当前用户衣橱真实数据。本地已通过 `npm run test:miniapp` 和 `npm run build`；尚需在微信开发者工具里做视觉和 tab 跳转验收。
 
 最新已验收功能提交为：

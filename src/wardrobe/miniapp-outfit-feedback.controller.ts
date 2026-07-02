@@ -5,9 +5,11 @@ import {
   Get,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import ExcelJS from 'exceljs';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { OutfitFeedback } from '../dal/entity/outfit-feedback.entity';
@@ -72,6 +74,47 @@ export class MiniappOutfitFeedbackController {
     return { items: items.map((feedback) => this.toItem(feedback)) };
   }
 
+  @Get('export.xlsx')
+  async exportExcel(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
+    const items = await this.outfitFeedbackService.findAll(this.userId(req));
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('搭配反馈');
+    sheet.columns = [
+      { header: '时间（北京时间）', key: 'createdAt', width: 22 },
+      { header: '评价', key: 'ratingLabel', width: 12 },
+      { header: '文字反馈', key: 'comment', width: 40 },
+      { header: '需求语句', key: 'requestText', width: 28 },
+      { header: '方案标题', key: 'planTitle', width: 20 },
+      { header: '方案理由', key: 'planReason', width: 40 },
+      { header: '衣物ID列表', key: 'garmentIds', width: 16 },
+      { header: '推荐来源', key: 'sourceLabel', width: 12 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    for (const feedback of items) {
+      sheet.addRow({
+        createdAt: this.toBeijingTime(feedback.createdAt),
+        ratingLabel: this.ratingLabel(feedback.rating),
+        comment: feedback.comment ?? '',
+        requestText: feedback.requestText ?? '',
+        planTitle: feedback.planTitle ?? '',
+        planReason: feedback.planReason ?? '',
+        garmentIds: (feedback.garmentIds ?? []).join(', '),
+        sourceLabel: this.sourceLabel(feedback.source),
+      });
+    }
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const fileName = `outfit-feedback-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    reply.header(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+    return reply.send(buffer);
+  }
+
   private userId(req: FastifyRequest): number | undefined {
     return (req['user'] as Payload | undefined)?.userId;
   }
@@ -121,5 +164,19 @@ export class MiniappOutfitFeedbackController {
       bad: '不喜欢',
     };
     return labels[rating] ?? rating;
+  }
+
+  private sourceLabel(source?: string): string {
+    const labels: Record<string, string> = {
+      ai: 'AI生成',
+      fallback: '规则兜底',
+    };
+    return source ? (labels[source] ?? source) : '';
+  }
+
+  private toBeijingTime(date?: Date): string {
+    if (!date) return '';
+    const beijing = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+    return beijing.toISOString().slice(0, 19).replace('T', ' ');
   }
 }

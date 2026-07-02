@@ -90,6 +90,28 @@ describe('MiniappOutfitFeedbackController', () => {
     expect(outfitFeedbackService.create).not.toHaveBeenCalled();
   });
 
+  it('exports feedback as an excel download', async () => {
+    const { controller, outfitFeedbackService, req } = makeController();
+    outfitFeedbackService.findAll.mockResolvedValue([makeFeedback()]);
+    const reply = { header: jest.fn(), send: jest.fn() } as any;
+
+    await controller.exportExcel(req, reply);
+
+    expect(outfitFeedbackService.findAll).toHaveBeenCalledWith(7);
+    expect(reply.header).toHaveBeenCalledWith(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    expect(reply.header).toHaveBeenCalledWith(
+      'Content-Disposition',
+      expect.stringContaining('outfit-feedback-'),
+    );
+    expect(reply.send).toHaveBeenCalledTimes(1);
+    const sent = reply.send.mock.calls[0][0];
+    expect(Buffer.isBuffer(sent)).toBe(true);
+    expect(sent.length).toBeGreaterThan(0);
+  });
+
   it('exports feedback for the current miniapp user', async () => {
     const { controller, outfitFeedbackService, req } = makeController();
     outfitFeedbackService.findAll.mockResolvedValue([

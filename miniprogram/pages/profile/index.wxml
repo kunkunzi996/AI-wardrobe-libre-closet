@@ -73,6 +73,13 @@
       </view>
       <text class="chevron">›</text>
     </view>
+    <view class="menu-row" bindtap="exportFeedbackExcel">
+      <view class="row-left">
+        <view class="row-icon row-export"></view>
+        <text>{{exportingFeedback ? '正在导出…' : '导出反馈数据'}}</text>
+      </view>
+      <text class="chevron">›</text>
+    </view>
     <view class="menu-row last" bindtap="goToSettings">
       <view class="row-left">
         <view class="row-icon row-settings"></view>

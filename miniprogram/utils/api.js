@@ -427,6 +427,14 @@ module.exports = {
   wardrobeBackupUrl: function () {
     return API_BASE_URL + '/api/miniapp/garments/backup/export';
   },
+  feedbackExcelUrl: function () {
+    return API_BASE_URL + '/api/miniapp/outfit-feedback/export.xlsx';
+  },
+  feedbackExcelHeaders: function () {
+    return loginMiniapp().then(function () {
+      return tokenHeader();
+    });
+  },
   wardrobeBackupHeaders: function () {
     return loginMiniapp().then(function () {
       return tokenHeader();

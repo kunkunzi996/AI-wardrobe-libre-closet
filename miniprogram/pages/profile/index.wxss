@@ -412,6 +412,12 @@
   border-radius: 50%;
 }
 
+.row-export {
+  border: 4rpx solid #6b6580;
+  border-radius: 6rpx;
+  border-top-style: dashed;
+}
+
 .chevron {
   color: #c8c4d7;
   font-size: 48rpx;

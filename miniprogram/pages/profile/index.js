@@ -158,6 +158,56 @@ Page({
     wx.showToast({ title: '设置功能稍后接入', icon: 'none' });
   },
 
+  exportFeedbackExcel() {
+    if (this.data.exportingFeedback) return;
+    const page = this;
+    const excelUrl = api.feedbackExcelUrl();
+    this.setData({ exportingFeedback: true });
+    api
+      .feedbackExcelHeaders()
+      .then(function (headers) {
+        wx.downloadFile({
+          url: excelUrl,
+          header: headers,
+          success: function (res) {
+            if (res.statusCode < 200 || res.statusCode >= 300) {
+              wx.showToast({ title: '导出失败', icon: 'none' });
+              return;
+            }
+            wx.openDocument({
+              filePath: res.tempFilePath,
+              fileType: 'xlsx',
+              showMenu: true,
+              success: function () {
+                wx.showModal({
+                  title: '导出完成',
+                  content: '反馈表格已打开，可用右上角菜单转发或保存。',
+                  showCancel: false,
+                });
+              },
+              fail: function () {
+                wx.showModal({
+                  title: '导出完成',
+                  content: '反馈表格已下载，可从微信文件里转发或保存。',
+                  showCancel: false,
+                });
+              },
+            });
+          },
+          fail: function () {
+            wx.showToast({ title: '导出失败', icon: 'none' });
+          },
+          complete: function () {
+            page.setData({ exportingFeedback: false });
+          },
+        });
+      })
+      .catch(function () {
+        page.setData({ exportingFeedback: false });
+        wx.showToast({ title: '导出失败', icon: 'none' });
+      });
+  },
+
   editProfile() {
     wx.navigateTo({ url: '/pages/profile-edit/index' });
   },
