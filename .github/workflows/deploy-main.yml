@@ -41,7 +41,7 @@ jobs:
     name: Deploy main
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     if: ${{ github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY_MAIN == 'true' }}
     env:
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
