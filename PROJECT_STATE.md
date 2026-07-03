@@ -24,7 +24,7 @@ AI 搭配反馈收集功能已完成本地开发和微信开发者工具前端�
 
 反馈数据导出 Excel 已完成本地开发：「我的」页面菜单新增「导出反馈数据」入口，小程序经 `wx.downloadFile` + `wx.openDocument` 下载并打开真实 `.xlsx` 文件，可转发保存用于分析。后端在反馈 Controller 新增 `GET /api/miniapp/outfit-feedback/export.xlsx`，用新依赖 `exceljs` 生成表格，并在原有“衣物ID列表”基础上补充“核心衣物对照”和“衣物ID对照”，方便看懂数字 ID 对应哪件衣服；下载响应模式与衣橱备份导出一致，数据按当前微信用户隔离。已通过本地控制器单测、`npm run test:miniapp` 和 `npm run build`。
 
-管理员库存导出已完成本地开发：新增 `GET /api/miniapp/admin/users`、`GET /api/miniapp/admin/users/:id/garments`、`GET /api/miniapp/admin/users/:id/garments/export.xlsx`，管理员可在小程序「我的」页进入「管理员库存导出」，查看用户列表并导出某位用户的当前库存 Excel，表格包含衣物 ID、名称、分类、颜色、状态、标签、备注等对照信息。管理员身份不新增数据库角色表，使用生产环境变量 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 配置白名单；未配置时入口不显示、接口拒绝访问。已通过本地管理员权限/导出单测、`npm run test:miniapp` 和 `npm run build`；**尚未部署服务器**，部署时必须同步配置管理员环境变量并上传小程序体验版。
+管理员库存导出已完成本地开发：新增 `GET /api/miniapp/admin/users`、`GET /api/miniapp/admin/users/:id/garments`、`GET /api/miniapp/admin/users/:id/garments/export.xlsx`，管理员可在小程序「我的」页进入「管理员库存导出」，查看用户列表并导出某位用户的当前库存 Excel，表格包含衣物 ID、照片、名称、分类、颜色、状态、标签、备注等对照信息。管理员身份不新增数据库角色表，使用生产环境变量 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 配置白名单；未配置时入口不显示、接口拒绝访问。已通过本地管理员权限/导出单测、`npm run test:miniapp` 和 `npm run build`；**尚未部署服务器**，部署时必须同步配置管理员环境变量并上传小程序体验版。
 
 Stitch「我的」页面小程序落地已完成本地开发：新增 `miniprogram/pages/profile` 页面，并把底部自定义标签栏扩展为「衣橱 / 搭配 / 今日 / 我的」。页面按 Stitch HTML 的“个人资料 + 衣橱统计 + 入口菜单”结构实现，统计数字读取当前用户衣橱真实数据。本地已通过 `npm run test:miniapp` 和 `npm run build`；尚需在微信开发者工具里做视觉和 tab 跳转验收。
 

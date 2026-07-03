@@ -1,14 +1,26 @@
+import { Readable } from 'node:stream';
 import { MiniappAdminController } from './miniapp-admin.controller';
 
 describe('MiniappAdminController', () => {
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+    'base64',
+  );
+
   const makeController = () => {
     const adminService = {
       listUsers: jest.fn(),
       findUserGarments: jest.fn(),
     };
-    const controller = new MiniappAdminController(adminService as any);
+    const fileService = {
+      get: jest.fn(async () => Readable.from(tinyPng)),
+    };
+    const controller = new MiniappAdminController(
+      adminService as any,
+      fileService as any,
+    );
     const req = { user: { userId: 7 } } as any;
-    return { controller, adminService, req };
+    return { controller, adminService, fileService, req };
   };
 
   it('returns admin user summaries for the current admin', async () => {
@@ -36,7 +48,7 @@ describe('MiniappAdminController', () => {
   });
 
   it('exports selected user garments as an excel download', async () => {
-    const { controller, adminService, req } = makeController();
+    const { controller, adminService, fileService, req } = makeController();
     adminService.findUserGarments.mockResolvedValue([
       {
         id: 3,
@@ -44,6 +56,7 @@ describe('MiniappAdminController', () => {
         category: 'tops',
         color: 'black',
         status: 'wearable',
+        photo: { fileName: 'shirt.webp' },
         seasons: ['夏'],
         styleTags: ['通勤'],
         sceneTags: ['日常'],
@@ -54,6 +67,7 @@ describe('MiniappAdminController', () => {
     await controller.exportUserGarments(12, req, reply);
 
     expect(adminService.findUserGarments).toHaveBeenCalledWith(7, 12);
+    expect(fileService.get).toHaveBeenCalledWith('shirt.webp');
     expect(reply.header).toHaveBeenCalledWith(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

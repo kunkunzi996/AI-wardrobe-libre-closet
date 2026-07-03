@@ -9,15 +9,21 @@ import {
 } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { buffer } from 'node:stream/consumers';
+import sharp from 'sharp';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
+import { FileService } from '../file/file-service.abstract';
 import { MiniappAdminService } from './miniapp-admin.service';
 
 @UseGuards(ConditionalAuthGuard)
 @Controller('api/miniapp/admin')
 export class MiniappAdminController {
-  constructor(private readonly adminService: MiniappAdminService) {}
+  constructor(
+    private readonly adminService: MiniappAdminService,
+    private readonly fileService: FileService,
+  ) {}
 
   @Get('users')
   async users(@Req() req: FastifyRequest) {
@@ -52,6 +58,7 @@ export class MiniappAdminController {
     const sheet = workbook.addWorksheet('用户库存');
     sheet.columns = [
       { header: '衣物ID', key: 'id', width: 10 },
+      { header: '照片', key: 'photo', width: 16 },
       { header: '衣物名称', key: 'name', width: 24 },
       { header: '分类', key: 'categoryLabel', width: 12 },
       { header: '细分', key: 'subcategory', width: 18 },
@@ -71,7 +78,8 @@ export class MiniappAdminController {
     sheet.getRow(1).font = { bold: true };
 
     for (const garment of garments) {
-      sheet.addRow(this.toExcelRow(garment));
+      const row = sheet.addRow(this.toExcelRow(garment));
+      await this.addPhotoToRow(workbook, sheet, row, garment);
     }
 
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -93,6 +101,7 @@ export class MiniappAdminController {
   private toItem(garment: Garment) {
     return {
       id: garment.id,
+      photo: garment.photo?.fileName ? '见图' : '无照片',
       name: garment.name ?? '',
       category: garment.category,
       categoryLabel: this.categoryLabel(garment.category),
@@ -104,6 +113,42 @@ export class MiniappAdminController {
       brand: garment.brand ?? '',
       size: garment.size ?? '',
     };
+  }
+
+  private async addPhotoToRow(
+    workbook: ExcelJS.Workbook,
+    sheet: ExcelJS.Worksheet,
+    row: ExcelJS.Row,
+    garment: Garment,
+  ): Promise<void> {
+    const fileName = garment.photo?.fileName;
+    if (!fileName) return;
+
+    try {
+      const photoStream = await this.fileService.get(fileName);
+      if (!photoStream) return;
+
+      const photo = await sharp(await buffer(photoStream))
+        .autoOrient()
+        .resize(96, 96, {
+          fit: 'contain',
+          background: { r: 255, g: 255, b: 255, alpha: 1 },
+        })
+        .png()
+        .toBuffer();
+      const imageId = workbook.addImage({
+        base64: photo.toString('base64'),
+        extension: 'png',
+      });
+      row.height = 76;
+      sheet.addImage(imageId, {
+        tl: { col: 1.15, row: row.number - 0.85 },
+        ext: { width: 72, height: 72 },
+        editAs: 'oneCell',
+      });
+    } catch {
+      row.getCell('photo').value = '照片读取失败';
+    }
   }
 
   private toExcelRow(garment: Garment) {
