@@ -11,6 +11,7 @@ import {
 import ExcelJS from 'exceljs';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
+import type { Garment } from '../dal/entity/garment.entity';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { OutfitFeedback } from '../dal/entity/outfit-feedback.entity';
 import { OutfitFeedbackService } from './outfit-feedback.service';
@@ -77,6 +78,10 @@ export class MiniappOutfitFeedbackController {
   @Get('export.xlsx')
   async exportExcel(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
     const items = await this.outfitFeedbackService.findAll(this.userId(req));
+    const garmentLookup = await this.outfitFeedbackService.findGarmentLookup(
+      this.userId(req),
+      this.collectFeedbackGarmentIds(items),
+    );
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('搭配反馈');
@@ -88,6 +93,8 @@ export class MiniappOutfitFeedbackController {
       { header: '方案标题', key: 'planTitle', width: 20 },
       { header: '方案理由', key: 'planReason', width: 40 },
       { header: '衣物ID列表', key: 'garmentIds', width: 16 },
+      { header: '核心衣物对照', key: 'coreGarmentLabel', width: 34 },
+      { header: '衣物ID对照', key: 'garmentLabels', width: 48 },
       { header: '推荐来源', key: 'sourceLabel', width: 12 },
     ];
     sheet.getRow(1).font = { bold: true };
@@ -101,6 +108,13 @@ export class MiniappOutfitFeedbackController {
         planTitle: feedback.planTitle ?? '',
         planReason: feedback.planReason ?? '',
         garmentIds: (feedback.garmentIds ?? []).join(', '),
+        coreGarmentLabel: this.describeGarmentId(
+          feedback.coreGarmentId,
+          garmentLookup,
+        ),
+        garmentLabels: (feedback.garmentIds ?? [])
+          .map((id) => this.describeGarmentId(id, garmentLookup))
+          .join('\n'),
         sourceLabel: this.sourceLabel(feedback.source),
       });
     }
@@ -157,6 +171,33 @@ export class MiniappOutfitFeedbackController {
     };
   }
 
+  private collectFeedbackGarmentIds(items: OutfitFeedback[]): number[] {
+    return items.flatMap((feedback) => [
+      ...(feedback.garmentIds ?? []),
+      ...(feedback.coreGarmentId ? [feedback.coreGarmentId] : []),
+    ]);
+  }
+
+  private describeGarmentId(
+    id: number | undefined | null,
+    garmentLookup: Map<number, Garment>,
+  ): string {
+    if (id == null) return '';
+    const garment = garmentLookup.get(id);
+    if (!garment) return `#${id}（未找到，可能已删除）`;
+    const parts = [
+      garment.name,
+      garment.subcategory,
+      this.categoryLabel(garment.category),
+      this.colorLabel(garment.color),
+      garment.brand,
+      garment.size,
+    ]
+      .map((value) => value?.trim())
+      .filter(Boolean);
+    return `#${id} ${parts.join(' / ')}`;
+  }
+
   private ratingLabel(rating: string): string {
     const labels: Record<string, string> = {
       good: '搭配得不错',
@@ -172,6 +213,42 @@ export class MiniappOutfitFeedbackController {
       fallback: '规则兜底',
     };
     return source ? (labels[source] ?? source) : '';
+  }
+
+  private categoryLabel(category?: string): string {
+    const labels: Record<string, string> = {
+      accessories: '配饰',
+      bags: '包包',
+      outerwear: '外套',
+      dresses: '连衣裙',
+      tops: '上衣',
+      bottoms: '下装',
+      footwear: '鞋子',
+      other: '其他',
+    };
+    return category ? (labels[category] ?? category) : '';
+  }
+
+  private colorLabel(color?: string): string {
+    const labels: Record<string, string> = {
+      red: '红色',
+      pink: '粉色',
+      orange: '橙色',
+      yellow: '黄色',
+      green: '绿色',
+      blue: '蓝色',
+      purple: '紫色',
+      black: '黑色',
+      white: '白色',
+      grey: '灰色',
+      beige: '米色',
+      brown: '棕色',
+      gold: '金色',
+      silver: '银色',
+      pattern: '图案',
+      other: '其他',
+    };
+    return color ? (labels[color] ?? color) : '';
   }
 
   private toBeijingTime(date?: Date): string {

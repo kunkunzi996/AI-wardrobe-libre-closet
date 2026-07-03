@@ -80,6 +80,13 @@
       </view>
       <text class="chevron">›</text>
     </view>
+    <view wx:if="{{isAdmin}}" class="menu-row" bindtap="goToAdminInventory">
+      <view class="row-left">
+        <view class="row-icon row-admin"></view>
+        <text>管理员库存导出</text>
+      </view>
+      <text class="chevron">›</text>
+    </view>
     <view class="menu-row last" bindtap="goToSettings">
       <view class="row-left">
         <view class="row-icon row-settings"></view>

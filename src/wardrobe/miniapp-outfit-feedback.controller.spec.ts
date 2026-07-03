@@ -6,6 +6,7 @@ describe('MiniappOutfitFeedbackController', () => {
     const outfitFeedbackService = {
       create: jest.fn(),
       findAll: jest.fn(),
+      findGarmentLookup: jest.fn(),
     };
     const controller = new MiniappOutfitFeedbackController(
       outfitFeedbackService as any,
@@ -93,11 +94,38 @@ describe('MiniappOutfitFeedbackController', () => {
   it('exports feedback as an excel download', async () => {
     const { controller, outfitFeedbackService, req } = makeController();
     outfitFeedbackService.findAll.mockResolvedValue([makeFeedback()]);
+    outfitFeedbackService.findGarmentLookup.mockResolvedValue(
+      new Map([
+        [
+          1,
+          {
+            id: 1,
+            name: '白衬衫',
+            category: 'tops',
+            color: 'white',
+          },
+        ],
+        [
+          2,
+          {
+            id: 2,
+            name: '牛仔裤',
+            category: 'bottoms',
+            color: 'blue',
+          },
+        ],
+      ]),
+    );
     const reply = { header: jest.fn(), send: jest.fn() } as any;
 
     await controller.exportExcel(req, reply);
 
     expect(outfitFeedbackService.findAll).toHaveBeenCalledWith(7);
+    expect(outfitFeedbackService.findGarmentLookup).toHaveBeenCalledWith(7, [
+      1,
+      2,
+      1,
+    ]);
     expect(reply.header).toHaveBeenCalledWith(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

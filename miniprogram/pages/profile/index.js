@@ -76,6 +76,7 @@ Page({
     nickname: defaultNickname,
     bio: defaultBio,
     avatarUrl: '',
+    isAdmin: false,
     categories: categoryGroups.map(function (group) {
       return Object.assign({}, group, { count: 0 });
     }),
@@ -139,6 +140,7 @@ Page({
           nickname: profile.nickname || defaultNickname,
           bio: profile.bio || defaultBio,
           avatarUrl: profile.avatarUrl || '',
+          isAdmin: Boolean(profile.isAdmin),
         });
       })
       .catch(function () {
@@ -156,6 +158,10 @@ Page({
 
   goToSettings() {
     wx.showToast({ title: '设置功能稍后接入', icon: 'none' });
+  },
+
+  goToAdminInventory() {
+    wx.navigateTo({ url: '/pages/admin-inventory/index' });
   },
 
   exportFeedbackExcel() {

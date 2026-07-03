@@ -27,7 +27,13 @@ describe('MiniappProfileController', () => {
       getProfile: jest.fn(),
       updateProfile: jest.fn(),
     };
-    const controller = new MiniappProfileController(profileService as any);
+    const adminService = {
+      isAdmin: jest.fn().mockResolvedValue(false),
+    };
+    const controller = new MiniappProfileController(
+      profileService as any,
+      adminService as any,
+    );
     const req = {
       protocol: 'https',
       host: 'aimatchwear.asia',
@@ -36,7 +42,7 @@ describe('MiniappProfileController', () => {
       isMultipart: jest.fn().mockReturnValue(false),
       file: jest.fn(),
     } as any;
-    return { controller, profileService, req };
+    return { controller, profileService, adminService, req };
   };
 
   it('returns current user profile with avatar url', async () => {
@@ -48,6 +54,7 @@ describe('MiniappProfileController', () => {
         nickname: '昆昆子',
         bio: '用穿搭整理生活。',
         avatarUrl: 'https://aimatchwear.asia/file/avatar.webp',
+        isAdmin: false,
       },
     });
     expect(profileService.getProfile).toHaveBeenCalledWith(42);
@@ -70,6 +77,7 @@ describe('MiniappProfileController', () => {
         nickname: '小衣橱',
         bio: '今天也要好好穿衣。',
         avatarUrl: '',
+        isAdmin: false,
       },
     });
     expect(profileService.updateProfile).toHaveBeenCalledWith(
@@ -100,6 +108,7 @@ describe('MiniappProfileController', () => {
         nickname: '头像用户',
         bio: '换了新头像。',
         avatarUrl: 'https://aimatchwear.asia/file/new-avatar.webp',
+        isAdmin: false,
       },
     });
     expect(profileService.updateProfile).toHaveBeenCalledWith(
@@ -140,5 +149,16 @@ describe('MiniappProfileController', () => {
       { nickname: '本人资料', bio: '不能改别人' },
       undefined,
     );
+  });
+
+  it('marks admin users in profile response', async () => {
+    const { controller, profileService, adminService, req } = makeController();
+    profileService.getProfile.mockResolvedValue(makeUser({ id: 42 }));
+    adminService.isAdmin.mockResolvedValue(true);
+
+    await expect(controller.get(req)).resolves.toEqual({
+      item: expect.objectContaining({ isAdmin: true }),
+    });
+    expect(adminService.isAdmin).toHaveBeenCalledWith(42);
   });
 });

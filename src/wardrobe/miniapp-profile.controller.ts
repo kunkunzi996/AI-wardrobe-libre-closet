@@ -12,6 +12,7 @@ import type { FastifyRequest } from 'fastify';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { User } from '../dal/entity/user.entity';
+import { MiniappAdminService } from './miniapp-admin.service';
 import { MiniappProfileService } from './miniapp-profile.service';
 
 type MiniappRequest = FastifyRequest & {
@@ -28,12 +29,15 @@ type ProfileBody = {
 @UseGuards(ConditionalAuthGuard)
 @Controller('api/miniapp/profile')
 export class MiniappProfileController {
-  constructor(private readonly profileService: MiniappProfileService) {}
+  constructor(
+    private readonly profileService: MiniappProfileService,
+    private readonly adminService: MiniappAdminService,
+  ) {}
 
   @Get()
   async get(@Req() req: MiniappRequest) {
     const user = await this.profileService.getProfile(this.userId(req));
-    return { item: this.toProfile(user, req) };
+    return { item: await this.toProfile(user, req) };
   }
 
   @Post()
@@ -60,7 +64,7 @@ export class MiniappProfileController {
       { nickname, bio },
       avatar,
     );
-    return { item: this.toProfile(user, req) };
+    return { item: await this.toProfile(user, req) };
   }
 
   private userId(req: FastifyRequest): number {
@@ -74,12 +78,13 @@ export class MiniappProfileController {
     return value;
   }
 
-  private toProfile(user: User, req: MiniappRequest) {
+  private async toProfile(user: User, req: MiniappRequest) {
     const fileName = user.avatar?.fileName;
     return {
       nickname: user.nickname ?? '',
       bio: user.bio ?? '',
       avatarUrl: fileName ? `${this.origin(req)}/file/${fileName}` : '',
+      isAdmin: await this.adminService.isAdmin(user.id),
     };
   }
 

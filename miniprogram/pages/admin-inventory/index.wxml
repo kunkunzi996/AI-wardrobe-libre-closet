@@ -1,0 +1,42 @@
+<view class="admin-page">
+  <view class="header">
+    <text class="title">库存导出</text>
+    <text class="subtitle">用户当前库存与衣物ID</text>
+  </view>
+
+  <view wx:if="{{error}}" class="notice error-card">
+    <text class="error-title">加载失败</text>
+    <text class="error-text">{{error}}</text>
+    <button class="retry-btn" loading="{{loading}}" bindtap="retryLoad">重试</button>
+  </view>
+
+  <view wx:elif="{{loading}}" class="notice">
+    <text class="loading-text">正在加载…</text>
+  </view>
+
+  <view wx:elif="{{users.length === 0}}" class="notice">
+    <text class="loading-text">暂无用户</text>
+  </view>
+
+  <view wx:else class="user-list">
+    <view wx:for="{{users}}" wx:key="id" class="user-card">
+      <view class="user-main">
+        <text class="user-name">{{item.displayName}}</text>
+        <text class="user-meta">用户ID: {{item.id}}</text>
+        <text wx:if="{{item.wechatOpenIdMasked}}" class="user-meta">微信: {{item.wechatOpenIdMasked}}</text>
+      </view>
+      <view class="user-side">
+        <text class="count">{{item.garmentCount}}</text>
+        <text class="count-label">件</text>
+        <button
+          class="export-btn"
+          loading="{{exportingUserId === item.id}}"
+          data-id="{{item.id}}"
+          bindtap="exportUserInventory"
+        >
+          导出
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

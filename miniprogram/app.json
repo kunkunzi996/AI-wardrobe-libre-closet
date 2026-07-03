@@ -5,6 +5,7 @@
     "pages/daily-outfit/index",
     "pages/profile/index",
     "pages/profile-edit/index",
+    "pages/admin-inventory/index",
     "pages/add-outfit/index",
     "pages/edit-outfit/index",
     "pages/garment-form/index",

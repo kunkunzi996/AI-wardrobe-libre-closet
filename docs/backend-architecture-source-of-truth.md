@@ -68,6 +68,7 @@
 - 衣物数据查询和保存统一走 `GarmentService`。
 - `Outfit` 可通过 `photo_id` 关联一张整体穿搭照片；读取今日穿搭时需要 populate `outfit.photo`，否则小程序看不到全身照。
 - 小程序用户隔离必须带 `userId`，有登录用户时查 `owner.id`，无登录模式只查 `owner=null`。
+- 管理员库存导出不新增角色表，使用 `MINIAPP_ADMIN_USER_IDS` / `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 环境变量做白名单；管理员接口读取其他用户库存时必须先校验当前 JWT 用户是否在白名单内。
 
 ## 9. 接口响应规则
 
@@ -107,12 +108,14 @@
 - Web 和小程序衣橱相关 Controller 使用 `ConditionalAuthGuard`。
 - 小程序登录通过 `/api/miniapp/auth/login` 换取 JWT。
 - 后续小程序请求必须带 `Authorization: Bearer ...`，Guard 会把 `request.user.userId` 写入请求。
+- 小程序管理员接口统一放在 `MiniappAdminController`，入口为 `/api/miniapp/admin/*`，只允许配置白名单里的管理员访问。
 
 ## 13. 配置读取规则
 
 - 全局配置在 `src/app.module.ts` 的 `ConfigModule.forRoot` 中声明和校验。
 - 生产 `.env` 不提交 GitHub。
 - Qwen 识图必须确认 `QWEN_API_KEY`、`QWEN_API_BASE_URL`、`QWEN_VISION_MODEL=qwen3.7-plus`。
+- 管理员入口显示和管理员导出依赖 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS`，生产环境至少配置其中一个；不配置时普通用户和当前登录用户都看不到管理员入口。
 
 ## 14. 日志入口和日志格式
 

@@ -22,7 +22,9 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 
 AI 搭配反馈收集功能已完成本地开发和微信开发者工具前端验收：AI 搭配页每套推荐方案下方新增反馈区，用户可三选一评价（搭配得不错 / 一般 / 不喜欢）并填写文字理由（选填，最多 500 字）。提交后存入新数据表 `outfit_feedback`，快照包含评价、文字、当时的需求语句、方案标题/理由、衣物 id 列表、推荐来源（ai/fallback）、核心衣物 id 和归属用户，后端另提供 `GET /api/miniapp/outfit-feedback/export` 按当前用户导出全部反馈用于后期分析。新增 sqlite/postgres 迁移只建新表，不改旧表。已通过本地控制器单测（4 个）、`npm run test:miniapp`、`npm run build` 和建表 SQL 临时库实测；**尚未部署服务器**，部署后需在微信开发者工具真实提交一次反馈验收数据入库。
 
-反馈数据导出 Excel 已完成本地开发：「我的」页面菜单新增「导出反馈数据」入口，小程序经 `wx.downloadFile` + `wx.openDocument` 下载并打开真实 `.xlsx` 文件，可转发保存用于分析。后端在反馈 Controller 新增 `GET /api/miniapp/outfit-feedback/export.xlsx`，用新依赖 `exceljs` 生成表格（8 列：北京时间、中文评价、文字反馈、需求语句、方案标题、方案理由、衣物ID列表、推荐来源），下载响应模式与衣橱备份导出一致，数据按当前微信用户隔离。已通过本地控制器单测（5 个）、`npm run test:miniapp` 和 `npm run build`。
+反馈数据导出 Excel 已完成本地开发：「我的」页面菜单新增「导出反馈数据」入口，小程序经 `wx.downloadFile` + `wx.openDocument` 下载并打开真实 `.xlsx` 文件，可转发保存用于分析。后端在反馈 Controller 新增 `GET /api/miniapp/outfit-feedback/export.xlsx`，用新依赖 `exceljs` 生成表格，并在原有“衣物ID列表”基础上补充“核心衣物对照”和“衣物ID对照”，方便看懂数字 ID 对应哪件衣服；下载响应模式与衣橱备份导出一致，数据按当前微信用户隔离。已通过本地控制器单测、`npm run test:miniapp` 和 `npm run build`。
+
+管理员库存导出已完成本地开发：新增 `GET /api/miniapp/admin/users`、`GET /api/miniapp/admin/users/:id/garments`、`GET /api/miniapp/admin/users/:id/garments/export.xlsx`，管理员可在小程序「我的」页进入「管理员库存导出」，查看用户列表并导出某位用户的当前库存 Excel，表格包含衣物 ID、名称、分类、颜色、状态、标签、备注等对照信息。管理员身份不新增数据库角色表，使用生产环境变量 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 配置白名单；未配置时入口不显示、接口拒绝访问。已通过本地管理员权限/导出单测、`npm run test:miniapp` 和 `npm run build`；**尚未部署服务器**，部署时必须同步配置管理员环境变量并上传小程序体验版。
 
 Stitch「我的」页面小程序落地已完成本地开发：新增 `miniprogram/pages/profile` 页面，并把底部自定义标签栏扩展为「衣橱 / 搭配 / 今日 / 我的」。页面按 Stitch HTML 的“个人资料 + 衣橱统计 + 入口菜单”结构实现，统计数字读取当前用户衣橱真实数据。本地已通过 `npm run test:miniapp` 和 `npm run build`；尚需在微信开发者工具里做视觉和 tab 跳转验收。
 
@@ -86,6 +88,8 @@ bd3316c fix(server): register daily outfit post update route
 - `miniprogram/pages/outfit/index.*`：AI 搭配
 - `miniprogram/pages/daily-outfit/index.*`：今日穿搭
 - `miniprogram/pages/add-outfit/index.*`：手动添加今日穿搭，全身照必填，衣柜单品可选
+- `miniprogram/pages/profile/index.*`：我的页面、反馈数据导出入口、管理员库存导出入口
+- `miniprogram/pages/admin-inventory/index.*`：管理员库存导出页面，按用户导出当前库存 Excel
 - `miniprogram/utils/api.js`：小程序登录、token 保存、所有 API 请求头
 
 后端入口：
@@ -96,6 +100,8 @@ bd3316c fix(server): register daily outfit post update route
 - `src/wardrobe/miniapp-wardrobe.controller.ts`：小程序衣物 API、AI 分析、备份导入导出
 - `src/wardrobe/miniapp-outfit.controller.ts`：小程序搭配推荐 API
 - `src/wardrobe/miniapp-daily-outfit.controller.ts`：小程序今日穿搭 API
+- `src/wardrobe/miniapp-admin.controller.ts`：小程序管理员用户列表 / 用户库存导出 API
+- `src/wardrobe/miniapp-admin.service.ts`：管理员白名单校验、用户列表、按用户读取库存
 - `src/wardrobe/miniapp-outfit-feedback.controller.ts`：AI 搭配反馈保存 / 导出 API
 - `src/wardrobe/outfit-feedback.service.ts`：反馈保存与按用户查询
 - `src/dal/entity/outfit-feedback.entity.ts`：反馈数据表实体
@@ -151,6 +157,7 @@ AI_VISION_TIMEOUT_MS
 ACCESS_TOKEN_SECRET
 WECHAT_MINIAPP_APP_ID
 WECHAT_MINIAPP_APP_SECRET
+MINIAPP_ADMIN_USER_IDS 或 MINIAPP_ADMIN_WECHAT_OPEN_IDS（管理员库存导出需要）
 BG_REMOVAL_PROVIDER
 ALIBABA_CLOUD_ACCESS_KEY_ID
 ALIBABA_CLOUD_ACCESS_KEY_SECRET
@@ -228,9 +235,10 @@ Failed to connect to github.com port 443
 WECHAT_MINIAPP_APP_ID=你的小程序AppID
 WECHAT_MINIAPP_APP_SECRET=你的小程序AppSecret
 ACCESS_TOKEN_SECRET=生产强随机字符串
+MINIAPP_ADMIN_WECHAT_OPEN_IDS=管理员微信openid
 ```
 
-否则体验版进入原生页面时会登录失败，衣橱接口拿不到当前微信用户。`WECHAT_MINIAPP_APP_SECRET` 不要写进代码或提交到 GitHub。
+否则体验版进入原生页面时会登录失败，衣橱接口拿不到当前微信用户；管理员库存导出入口也不会显示。`WECHAT_MINIAPP_APP_SECRET` 和管理员 `openid` 不要写进代码或提交到 GitHub。
 
 ## 本地工作区注意事项
 

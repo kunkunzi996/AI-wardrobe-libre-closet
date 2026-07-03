@@ -418,6 +418,23 @@
   border-top-style: dashed;
 }
 
+.row-admin {
+  position: relative;
+  border: 4rpx solid #6b6580;
+  border-radius: 8rpx;
+}
+
+.row-admin::after {
+  content: "";
+  position: absolute;
+  left: 7rpx;
+  right: 7rpx;
+  bottom: 7rpx;
+  height: 4rpx;
+  border-radius: 4rpx;
+  background: #6b6580;
+}
+
 .chevron {
   color: #c8c4d7;
   font-size: 48rpx;

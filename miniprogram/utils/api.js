@@ -430,6 +430,25 @@ module.exports = {
   feedbackExcelUrl: function () {
     return API_BASE_URL + '/api/miniapp/outfit-feedback/export.xlsx';
   },
+  getAdminUsers: function () {
+    return request('/api/miniapp/admin/users');
+  },
+  getAdminUserGarments: function (userId) {
+    return request('/api/miniapp/admin/users/' + userId + '/garments');
+  },
+  adminInventoryExcelUrl: function (userId) {
+    return (
+      API_BASE_URL +
+      '/api/miniapp/admin/users/' +
+      userId +
+      '/garments/export.xlsx'
+    );
+  },
+  adminExcelHeaders: function () {
+    return loginMiniapp().then(function () {
+      return tokenHeader();
+    });
+  },
   feedbackExcelHeaders: function () {
     return loginMiniapp().then(function () {
       return tokenHeader();
