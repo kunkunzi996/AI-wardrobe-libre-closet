@@ -1,6 +1,11 @@
 import { GarmentColor } from '../../wardrobe/garment-color.enum';
+import type { GarmentTaxonomySelection } from '../../wardrobe/garment-tag-taxonomy';
 
-export const GARMENT_FEATURE_PRESENCE_VALUES = ['yes', 'no', 'unknown'] as const;
+export const GARMENT_FEATURE_PRESENCE_VALUES = [
+  'yes',
+  'no',
+  'unknown',
+] as const;
 export type GarmentFeaturePresence =
   (typeof GARMENT_FEATURE_PRESENCE_VALUES)[number];
 
@@ -42,6 +47,8 @@ export interface GarmentVisionResult {
   sceneTags: string[];
   material?: string;
   thickness?: string;
+  fit?: string;
+  taxonomyTags: GarmentTaxonomySelection;
   pocketPresence: GarmentFeaturePresence;
   pocketPosition: GarmentPocketPosition;
   chestMarkPresence: GarmentFeaturePresence;

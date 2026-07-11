@@ -1,10 +1,12 @@
 # PROJECT_STATE
 
-更新时间：2026-06-29
+更新时间：2026-07-12
 
 ## 当前状态
 
-AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main` 已包含本阶段全部已验收功能。小程序微信登录和按微信用户隔离已完成部署后体验版验收：你和你老婆两个微信号可以管理各自衣橱，互相不混数据。Qwen 3.7 衣物图片识别升级已完成服务器部署和微信开发者工具验收。重复衣物入库提醒功能已完成验收并合入主分支，`main` 最新版本已同步到服务器并验收成功。重复判断结构化细化 V2 / V2.1 也已完成服务器部署和微信开发者工具体验版验收。`查看类似衣服` 小功能现已完成服务器部署和微信开发者工具体验版验收。
+AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main` 已包含本阶段全部已验收功能。小程序微信登录和按微信用户隔离已完成部署后体验版验收：你和你老婆两个微信号可以管理各自衣橱，互相不混数据。Qwen 3.7 衣物图片识别升级已完成服务器部署和微信开发者工具验收。重复衣物入库提醒功能已完成验收并合入主分支，`main` 最新版本已同步到服务器并验收成功。重复判断结构化细化 V2 / V2.1 也已完成服务器部署和微信开发者工具体验版验收。`查看类似衣服` 小功能现已完成服务器部署和微信开发者工具体验版验收。AI 搭配反馈导出、反馈衣物 ID 对照、管理员用户库存导出、库存照片嵌入 Excel 均已完成服务器部署和微信开发者工具验收。
+
+衣物结构化标签库已完成本地开发：后台新增从“季节”到“版型”的 12 组固定标签（不含“反馈”），衣物新增可选 `taxonomy_tags` JSON 字段；Qwen 识图提示词只能从后台白名单选择，模型返回后还会由代码二次过滤，库外标签不会保存。小程序上传页按标签组展示 AI 结果，保存后衣物详情可查看标签；添加/编辑表单现已补齐“天气、色彩感觉、穿着感、长度、版型”5 组可点选标签，并通过后端 `GET /api/miniapp/garments/taxonomy` 读取同一套白名单。SQLite / PostgreSQL 迁移已补齐，相关 4 个测试套件共 37 项、`npm run test:miniapp`、SQLite 迁移冒烟测试和 `npm run build` 均通过；**尚未提交、尚未部署服务器、尚未上传小程序体验版**。
 
 重复衣物入库提醒已完成：单件新增和批量导入识图后，如果与当前用户库存中的衣物相似，会弹窗提示“可能已经入库”，提醒用户避免重复保存。该功能已通过本地单测、构建、小程序结构校验和微信开发者工具体验版验收。
 
@@ -20,29 +22,29 @@ AI 衣橱 MVP 版本已完成并完成主要功能验收。当前主分支 `main
 
 今日穿搭修改功能已完成服务器部署和微信开发者工具验收：今日页长按穿搭卡片可选择“修改”，进入 `pages/edit-outfit` 后可编辑理由、场合、评分、反馈、关联衣物，并可重拍/重选全身照。后端新增详情接口 `GET /api/miniapp/daily-outfits/:id/detail` 和修改接口 `POST/PATCH /api/miniapp/daily-outfits/:id`；部署联调中已修复小程序 `PATCH` 兼容问题和 Nest 同方法多 HTTP 装饰器导致的 `Cannot POST` 路由问题。该功能已通过本地控制器单测、项目构建、服务器 Docker 重建和用户确认的微信开发者工具修改保存验收。
 
-AI 搭配反馈收集功能已完成本地开发和微信开发者工具前端验收：AI 搭配页每套推荐方案下方新增反馈区，用户可三选一评价（搭配得不错 / 一般 / 不喜欢）并填写文字理由（选填，最多 500 字）。提交后存入新数据表 `outfit_feedback`，快照包含评价、文字、当时的需求语句、方案标题/理由、衣物 id 列表、推荐来源（ai/fallback）、核心衣物 id 和归属用户，后端另提供 `GET /api/miniapp/outfit-feedback/export` 按当前用户导出全部反馈用于后期分析。新增 sqlite/postgres 迁移只建新表，不改旧表。已通过本地控制器单测（4 个）、`npm run test:miniapp`、`npm run build` 和建表 SQL 临时库实测；**尚未部署服务器**，部署后需在微信开发者工具真实提交一次反馈验收数据入库。
+AI 搭配反馈收集功能已完成服务器部署和微信开发者工具验收：AI 搭配页每套推荐方案下方新增反馈区，用户可三选一评价（搭配得不错 / 一般 / 不喜欢）并填写文字理由（选填，最多 500 字）。提交后存入新数据表 `outfit_feedback`，快照包含评价、文字、当时的需求语句、方案标题/理由、衣物 id 列表、推荐来源（ai/fallback）、核心衣物 id 和归属用户，后端另提供 `GET /api/miniapp/outfit-feedback/export` 按当前用户导出全部反馈用于后期分析。新增 sqlite/postgres 迁移只建新表，不改旧表。已通过本地控制器单测、`npm run test:miniapp`、`npm run build`、建表 SQL 临时库实测和部署后导出验收。
 
-反馈数据导出 Excel 已完成本地开发：「我的」页面菜单新增「导出反馈数据」入口，小程序经 `wx.downloadFile` + `wx.openDocument` 下载并打开真实 `.xlsx` 文件，可转发保存用于分析。后端在反馈 Controller 新增 `GET /api/miniapp/outfit-feedback/export.xlsx`，用新依赖 `exceljs` 生成表格，并在原有“衣物ID列表”基础上补充“核心衣物对照”和“衣物ID对照”，方便看懂数字 ID 对应哪件衣服；下载响应模式与衣橱备份导出一致，数据按当前微信用户隔离。已通过本地控制器单测、`npm run test:miniapp` 和 `npm run build`。
+反馈数据导出 Excel 已完成服务器部署和微信开发者工具验收：「我的」页面菜单新增「导出反馈数据」入口，小程序经 `wx.downloadFile` + `wx.openDocument` 下载并打开真实 `.xlsx` 文件，可转发保存用于分析。后端在反馈 Controller 新增 `GET /api/miniapp/outfit-feedback/export.xlsx`，用新依赖 `exceljs` 生成表格，并在原有“衣物ID列表”基础上补充“核心衣物对照”和“衣物ID对照”，方便看懂数字 ID 对应哪件衣服；下载响应模式与衣橱备份导出一致，数据按当前微信用户隔离。已通过本地控制器单测、`npm run test:miniapp`、`npm run build` 和部署后导出验收。
 
-管理员库存导出已完成本地开发：新增 `GET /api/miniapp/admin/users`、`GET /api/miniapp/admin/users/:id/garments`、`GET /api/miniapp/admin/users/:id/garments/export.xlsx`，管理员可在小程序「我的」页进入「管理员库存导出」，查看用户列表并导出某位用户的当前库存 Excel，表格包含衣物 ID、照片、名称、分类、颜色、状态、标签、备注等对照信息。管理员身份不新增数据库角色表，使用生产环境变量 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 配置白名单；未配置时入口不显示、接口拒绝访问。已通过本地管理员权限/导出单测、`npm run test:miniapp` 和 `npm run build`；**尚未部署服务器**，部署时必须同步配置管理员环境变量并上传小程序体验版。
+管理员库存导出已完成服务器部署和微信开发者工具验收：新增 `GET /api/miniapp/admin/users`、`GET /api/miniapp/admin/users/:id/garments`、`GET /api/miniapp/admin/users/:id/garments/export.xlsx`，管理员可在小程序「我的」页进入「管理员库存导出」，查看用户列表并导出某位用户的当前库存 Excel，表格包含衣物 ID、照片、名称、分类、颜色、状态、标签、备注等对照信息。管理员身份不新增数据库角色表，使用生产环境变量 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 配置白名单；未配置时入口不显示、接口拒绝访问。已通过本地管理员权限/导出单测、`npm run test:miniapp`、`npm run build`、服务器部署和用户确认的微信开发者工具导出验收。
 
 Stitch「我的」页面小程序落地已完成本地开发：新增 `miniprogram/pages/profile` 页面，并把底部自定义标签栏扩展为「衣橱 / 搭配 / 今日 / 我的」。页面按 Stitch HTML 的“个人资料 + 衣橱统计 + 入口菜单”结构实现，统计数字读取当前用户衣橱真实数据。本地已通过 `npm run test:miniapp` 和 `npm run build`；尚需在微信开发者工具里做视觉和 tab 跳转验收。
 
 最新已验收功能提交为：
 
 ```text
-bd3316c fix(server): register daily outfit post update route
+49e06ed feat: embed photos in admin inventory export
 ```
 
 最新主分支部署验收提交为：
 
 ```text
-bd3316c fix(server): register daily outfit post update route
+49e06ed feat: embed photos in admin inventory export
 ```
 
 ## 当前阶段
 
-阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收
+阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收 / AI 搭配反馈导出和管理员库存导出 已完成服务器部署和微信开发者工具验收 / 衣物结构化标签库 已完成本地开发（未部署）
 
 后端骨架验收状态：已验收（2026-06-19，后端验收官通过）
 
@@ -133,7 +135,7 @@ port: 127.0.0.1:3000->3000
 volume: ai_wardrobe_data:/app/data
 ```
 
-最近一次生产/测试服务器验收：2026-06-29，今日穿搭修改功能已部署到服务器并通过用户确认的微信开发者工具验收；`main` 已同步到 `bd3316c`，服务器日志和微信开发者工具确认 `POST /api/miniapp/daily-outfits/:id` 修改保存链路可用。
+最近一次生产/测试服务器验收：2026-07-04，AI 搭配反馈导出、反馈衣物 ID 对照、管理员用户库存导出、库存照片嵌入 Excel 已部署到服务器并通过用户确认的微信开发者工具验收；`main` 已同步到 `49e06ed`，管理员可在「我的」页进入「管理员库存导出」，导出包含衣物 ID、文字信息和照片的库存 Excel。
 
 GitHub Actions 自动部署已接入：新增 `.github/workflows/deploy-main.yml`，推送 `main` 后会先执行 `npm run test:miniapp` 和 `npm run build`；只有仓库变量 `AUTO_DEPLOY_MAIN=true` 时才会 SSH 到服务器自动拉取主分支、备份 `.env`、重建 Docker 并重启 `ai-wardrobe`。未开启变量时，仍可在 GitHub Actions 页面手动点击 `Run workflow` 部署。配置说明见 `docs/github-actions-auto-deploy.md`。
 
@@ -263,8 +265,8 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级、重复衣物入库提醒、重复判断结构化细化 V2 / V2.1、查看类似衣服、手动添加今日穿搭、今日穿搭删除、今日穿搭修改 均已通过微信开发者工具验收；`main` 与服务器已同步到 `bd3316c`。
+- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级、重复衣物入库提醒、重复判断结构化细化 V2 / V2.1、查看类似衣服、手动添加今日穿搭、今日穿搭删除、今日穿搭修改、AI 搭配反馈导出、管理员库存导出 均已通过微信开发者工具验收；`main` 与服务器已同步到 `49e06ed`。
 - 建议任务：继续收集真实试用反馈，优先修复影响保存、删除、识别、导入导出的关键问题；需要给体验版用户使用时，再在微信开发者工具上传体验版。
-- 继续文件：优先看 `PROJECT_STATE.md`、`docs/backend-architecture-source-of-truth.md`、`miniprogram/utils/api.js`、`miniprogram/pages/daily-outfit/index.*`、`miniprogram/pages/edit-outfit/index.*`、`src/wardrobe/miniapp-daily-outfit.controller.ts`。
+- 继续文件：优先看 `PROJECT_STATE.md`、`docs/backend-architecture-source-of-truth.md`、`miniprogram/utils/api.js`、`miniprogram/pages/profile/index.*`、`miniprogram/pages/admin-inventory/index.*`、`src/wardrobe/miniapp-admin.controller.ts`。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在。

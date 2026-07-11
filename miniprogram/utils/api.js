@@ -295,6 +295,9 @@ module.exports = {
   listGarments: function () {
     return request('/api/miniapp/garments');
   },
+  getGarmentTaxonomy: function () {
+    return request('/api/miniapp/garments/taxonomy');
+  },
   getGarment: function (id) {
     return request('/api/miniapp/garments/' + id);
   },

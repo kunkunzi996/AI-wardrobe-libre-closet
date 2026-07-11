@@ -8,6 +8,7 @@ import type {
 import { GarmentColor } from '../garment-color.enum';
 import { GarmentStatus } from '../garment-status.enum';
 import { TagInput } from './create-garment.dto';
+import type { GarmentTaxonomySelection } from '../garment-tag-taxonomy';
 
 export interface UpdateGarmentDto {
   name?: string;
@@ -28,6 +29,7 @@ export interface UpdateGarmentDto {
   chestMarkPosition?: GarmentChestMarkPosition;
   chestMarkText?: string | null;
   fit?: string;
+  taxonomyTags?: GarmentTaxonomySelection | string;
   status?: GarmentStatus;
   price?: number | string;
   purchaseDate?: Date | string;

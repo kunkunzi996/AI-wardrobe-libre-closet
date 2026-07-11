@@ -34,6 +34,12 @@ import {
   GarmentService,
   type SimilarGarmentCandidate,
 } from './garment.service';
+import {
+  GARMENT_TAG_GROUP_LABELS,
+  GARMENT_TAG_TAXONOMY,
+  type GarmentTagGroup,
+  type GarmentTaxonomySelection,
+} from './garment-tag-taxonomy';
 
 type MiniappRequest = FastifyRequest & {
   protocol?: string;
@@ -59,6 +65,7 @@ type MiniappCreateBody = {
   chestMarkType?: GarmentChestMarkType;
   chestMarkPosition?: GarmentChestMarkPosition;
   chestMarkText?: string;
+  taxonomyTags?: string;
 };
 
 type ZipEntry = {
@@ -83,6 +90,7 @@ type BackupManifestGarment = {
   chestMarkType?: GarmentChestMarkType | string;
   chestMarkPosition?: GarmentChestMarkPosition | string;
   chestMarkText?: string | null;
+  taxonomyTags?: GarmentTaxonomySelection;
   brand?: string;
   size?: string;
   notes?: string;
@@ -115,6 +123,19 @@ export class MiniappWardrobeController {
   async index(@Req() req: MiniappRequest) {
     const garments = await this.garmentService.findAll(this.userId(req), {});
     return { items: garments.map((garment) => this.toViewModel(garment, req)) };
+  }
+
+  @Get('taxonomy')
+  taxonomy() {
+    return {
+      groups: (Object.keys(GARMENT_TAG_TAXONOMY) as GarmentTagGroup[]).map(
+        (key) => ({
+          key,
+          label: GARMENT_TAG_GROUP_LABELS[key],
+          tags: [...GARMENT_TAG_TAXONOMY[key]],
+        }),
+      ),
+    };
   }
 
   @Get(':id')
@@ -164,7 +185,7 @@ export class MiniappWardrobeController {
       data: Buffer.from(
         JSON.stringify(
           {
-            backupVersion: 1,
+            backupVersion: 2,
             exportedAt,
             garmentCount: garments.length,
             photoCount: photoEntries.size,
@@ -180,6 +201,7 @@ export class MiniappWardrobeController {
               sceneTags: garment.sceneTags ?? [],
               material: garment.material ?? '',
               thickness: garment.thickness ?? '',
+              taxonomyTags: garment.taxonomyTags ?? {},
               pocketPresence: garment.pocketPresence ?? 'unknown',
               pocketPosition: garment.pocketPosition ?? 'unknown',
               chestMarkPresence: garment.chestMarkPresence ?? 'unknown',
@@ -255,14 +277,20 @@ export class MiniappWardrobeController {
           sceneTags: item.sceneTags,
           material: item.material,
           thickness: item.thickness,
-          pocketPresence: item.pocketPresence as GarmentFeaturePresence | undefined,
-          pocketPosition: item.pocketPosition as GarmentPocketPosition | undefined,
-          chestMarkPresence:
-            item.chestMarkPresence as GarmentFeaturePresence | undefined,
-          chestMarkType:
-            item.chestMarkType as GarmentChestMarkType | undefined,
-          chestMarkPosition:
-            item.chestMarkPosition as GarmentChestMarkPosition | undefined,
+          taxonomyTags: item.taxonomyTags,
+          pocketPresence: item.pocketPresence as
+            | GarmentFeaturePresence
+            | undefined,
+          pocketPosition: item.pocketPosition as
+            | GarmentPocketPosition
+            | undefined,
+          chestMarkPresence: item.chestMarkPresence as
+            | GarmentFeaturePresence
+            | undefined,
+          chestMarkType: item.chestMarkType as GarmentChestMarkType | undefined,
+          chestMarkPosition: item.chestMarkPosition as
+            | GarmentChestMarkPosition
+            | undefined,
           chestMarkText: item.chestMarkText ?? undefined,
           brand: item.brand,
           size: item.size,
@@ -300,6 +328,7 @@ export class MiniappWardrobeController {
         sceneTags: form.sceneTags,
         material: form.material,
         thickness: form.thickness,
+        taxonomyTags: form.taxonomyTags,
         pocketPresence: form.pocketPresence,
         pocketPosition: form.pocketPosition,
         chestMarkPresence: form.chestMarkPresence,
@@ -338,6 +367,7 @@ export class MiniappWardrobeController {
         sceneTags: body.sceneTags,
         material: body.material,
         thickness: body.thickness,
+        taxonomyTags: body.taxonomyTags,
         pocketPresence: body.pocketPresence,
         pocketPosition: body.pocketPosition,
         chestMarkPresence: body.chestMarkPresence,
@@ -431,6 +461,7 @@ export class MiniappWardrobeController {
       sceneTags: this.fieldValue(body.sceneTags, file, 'sceneTags'),
       material: this.fieldValue(body.material, file, 'material'),
       thickness: this.fieldValue(body.thickness, file, 'thickness'),
+      taxonomyTags: this.fieldValue(body.taxonomyTags, file, 'taxonomyTags'),
       pocketPresence: this.fieldValue(
         body.pocketPresence,
         file,
@@ -491,6 +522,10 @@ export class MiniappWardrobeController {
       sceneTags: garment.sceneTags ?? [],
       material: garment.material ?? '',
       thickness: garment.thickness ?? '',
+      taxonomyTags: garment.taxonomyTags ?? {},
+      taxonomyTagList: Array.from(
+        new Set(Object.values(garment.taxonomyTags ?? {}).flat()),
+      ),
       pocketPresence: garment.pocketPresence ?? 'unknown',
       pocketPosition: garment.pocketPosition ?? 'unknown',
       chestMarkPresence: garment.chestMarkPresence ?? 'unknown',

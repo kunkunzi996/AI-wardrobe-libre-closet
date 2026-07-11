@@ -57,6 +57,103 @@ const seasonValueMap = {
   'all-season': 'all-season',
 };
 
+const taxonomyGroupLabels = {
+  season: '季节',
+  weather: '天气',
+  thickness: '厚薄',
+  color: '颜色',
+  colorFeeling: '色彩感觉',
+  occasion: '场合',
+  style: '风格',
+  wearingFeel: '穿着感',
+  material: '材质',
+  category: '品类',
+  length: '长度',
+  fit: '版型',
+};
+
+const editableTaxonomyGroupKeys = [
+  'weather',
+  'colorFeeling',
+  'wearingFeel',
+  'length',
+  'fit',
+];
+
+function parseTaxonomySelection(selection) {
+  if (typeof selection === 'string') {
+    try {
+      return parseTaxonomySelection(JSON.parse(selection));
+    } catch (error) {
+      return {};
+    }
+  }
+  if (!selection || typeof selection !== 'object' || Array.isArray(selection)) {
+    return {};
+  }
+  return Object.keys(selection).reduce(function (result, key) {
+    if (Array.isArray(selection[key])) {
+      result[key] = selection[key].filter(Boolean);
+    }
+    return result;
+  }, {});
+}
+
+function selectableTaxonomyGroups(groups, selection) {
+  const selected = parseTaxonomySelection(selection);
+  return (groups || [])
+    .filter(function (group) {
+      return editableTaxonomyGroupKeys.includes(group.key);
+    })
+    .map(function (group) {
+      const tags = Array.isArray(group.tags)
+        ? group.tags
+        : (group.options || []).map(function (option) {
+            return option.label;
+          });
+      const selectedTags = selected[group.key] || [];
+      return {
+        key: group.key,
+        label: group.label || taxonomyGroupLabels[group.key] || group.key,
+        tags: tags,
+        options: tags.map(function (tag) {
+          return {
+            label: tag,
+            selected: selectedTags.includes(tag),
+          };
+        }),
+      };
+    });
+}
+
+function taxonomyGroups(selection) {
+  if (!selection || typeof selection !== 'object') return [];
+  return Object.keys(taxonomyGroupLabels)
+    .map(function (key) {
+      const tags = Array.isArray(selection[key])
+        ? selection[key].filter(Boolean)
+        : [];
+      return {
+        key: key,
+        label: taxonomyGroupLabels[key],
+        tags: tags,
+      };
+    })
+    .filter(function (group) {
+      return group.tags.length > 0;
+    });
+}
+
+function taxonomyJson(selection) {
+  try {
+    return JSON.stringify(
+      selection && typeof selection === 'object' ? selection : {},
+    );
+  } catch (error) {
+    return '{}';
+  }
+}
+
 const maxAnalyzePhotoEdge = 900;
 const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 
@@ -132,10 +229,14 @@ Page({
       sceneTags: '',
       material: '',
       thickness: '',
+      taxonomyTags: '{}',
       ...defaultVisionFields(),
     },
     recognizing: false,
     aiDraft: null,
+    aiTaxonomyGroups: [],
+    editableTaxonomyGroups: [],
+    taxonomyError: '',
     aiError: '',
     duplicateCandidates: [],
     duplicateWarningAcknowledged: false,
@@ -150,6 +251,7 @@ Page({
   },
 
   onLoad(options) {
+    this.loadTaxonomy();
     const id = options.id || '';
     const photoPath = options.photoPath
       ? decodeURIComponent(options.photoPath)
@@ -174,6 +276,24 @@ Page({
     this.setData({ id, isEdit: true });
     wx.setNavigationBarTitle({ title: '编辑衣物' });
     this.loadGarmentForEdit(id);
+  },
+
+  loadTaxonomy() {
+    const page = this;
+    api
+      .getGarmentTaxonomy()
+      .then(function (data) {
+        page.setData({
+          editableTaxonomyGroups: selectableTaxonomyGroups(
+            data.groups || [],
+            page.data.form.taxonomyTags,
+          ),
+          taxonomyError: '',
+        });
+      })
+      .catch(function () {
+        page.setData({ taxonomyError: '标签加载失败，请稍后重试' });
+      });
   },
 
   choosePhoto() {
@@ -297,6 +417,7 @@ Page({
       sceneTags: listText(garment.sceneTags),
       material: garment.material || '',
       thickness: garment.thickness || '',
+      taxonomyTags: taxonomyJson(garment.taxonomyTags),
       pocketPresence: garment.pocketPresence || 'unknown',
       pocketPosition: garment.pocketPosition || 'unknown',
       chestMarkPresence: garment.chestMarkPresence || 'unknown',
@@ -322,6 +443,10 @@ Page({
         seasonIndex >= 0
           ? seasonOptions[seasonIndex].label
           : this.data.seasonLabel,
+      editableTaxonomyGroups: selectableTaxonomyGroups(
+        this.data.editableTaxonomyGroups,
+        garment.taxonomyTags,
+      ),
     });
   },
 
@@ -337,6 +462,7 @@ Page({
       sceneTags: listText(draft.sceneTags),
       material: draft.material || '',
       thickness: draft.thickness || '',
+      taxonomyTags: taxonomyJson(draft.taxonomyTags),
       pocketPresence: draft.pocketPresence || 'unknown',
       pocketPosition: draft.pocketPosition || 'unknown',
       chestMarkPresence: draft.chestMarkPresence || 'unknown',
@@ -353,6 +479,7 @@ Page({
 
     this.setData({
       aiDraft: draft,
+      aiTaxonomyGroups: taxonomyGroups(draft.taxonomyTags),
       duplicateCandidates: duplicateCandidates || [],
       duplicateWarningAcknowledged: false,
       duplicateCompareVisible: false,
@@ -373,6 +500,10 @@ Page({
         seasonIndex >= 0
           ? seasonOptions[seasonIndex].label
           : this.data.seasonLabel,
+      editableTaxonomyGroups: selectableTaxonomyGroups(
+        this.data.editableTaxonomyGroups,
+        draft.taxonomyTags,
+      ),
     });
   },
 
@@ -440,8 +571,7 @@ Page({
     );
   },
 
-  noop() {
-  },
+  noop() {},
 
   onInput(event) {
     const field = event.currentTarget.dataset.field;
@@ -474,6 +604,30 @@ Page({
       seasonIndex: index,
       seasonLabel: seasonOptions[index].label,
       'form.season': seasonOptions[index].value,
+    });
+  },
+
+  toggleTaxonomyTag(event) {
+    const groupKey = event.currentTarget.dataset.group;
+    const tag = event.currentTarget.dataset.tag;
+    const groups = this.data.editableTaxonomyGroups || [];
+    const group = groups.find(function (item) {
+      return item.key === groupKey;
+    });
+    if (!group || !group.tags.includes(tag)) return;
+
+    const selection = parseTaxonomySelection(this.data.form.taxonomyTags);
+    const selectedTags = selection[groupKey] || [];
+    selection[groupKey] = selectedTags.includes(tag)
+      ? selectedTags.filter(function (item) {
+          return item !== tag;
+        })
+      : selectedTags.concat(tag);
+    if (!selection[groupKey].length) delete selection[groupKey];
+
+    this.setData({
+      'form.taxonomyTags': taxonomyJson(selection),
+      editableTaxonomyGroups: selectableTaxonomyGroups(groups, selection),
     });
   },
 

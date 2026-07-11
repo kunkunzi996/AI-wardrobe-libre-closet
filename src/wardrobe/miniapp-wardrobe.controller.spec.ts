@@ -72,6 +72,27 @@ describe('MiniappWardrobeController', () => {
       ...overrides,
     });
 
+  it('returns the fixed garment tag taxonomy for miniapp forms', () => {
+    const { controller } = makeController();
+
+    expect(controller.taxonomy()).toEqual({
+      groups: expect.arrayContaining([
+        expect.objectContaining({ key: 'weather', label: '天气' }),
+        expect.objectContaining({
+          key: 'colorFeeling',
+          label: '色彩感觉',
+        }),
+        expect.objectContaining({ key: 'wearingFeel', label: '穿着感' }),
+        expect.objectContaining({ key: 'length', label: '长度' }),
+        expect.objectContaining({ key: 'fit', label: '版型' }),
+      ]),
+    });
+    expect(controller.taxonomy().groups).toHaveLength(12);
+    expect(
+      controller.taxonomy().groups.find((group) => group.key === 'fit')?.tags,
+    ).toContain('宽松');
+  });
+
   it('returns garment list as miniapp JSON view models', async () => {
     const { controller, garmentService, req } = makeController();
     garmentService.findAll.mockResolvedValue([makeGarment()]);
@@ -356,6 +377,11 @@ describe('MiniappWardrobeController', () => {
         sceneTags: ['日常'],
         material: '牛仔',
         thickness: '中等',
+        taxonomyTags: {
+          color: ['蓝色'],
+          colorFeeling: ['冷色'],
+          occasion: ['日常'],
+        },
         pocketPresence: 'no',
         pocketPosition: 'unknown',
         chestMarkPresence: 'yes',
@@ -377,6 +403,11 @@ describe('MiniappWardrobeController', () => {
           sceneTags: '日常',
           material: '牛仔',
           thickness: '中等',
+          taxonomyTags: JSON.stringify({
+            color: ['蓝色'],
+            colorFeeling: ['冷色'],
+            occasion: ['日常'],
+          }),
           pocketPresence: 'no',
           pocketPosition: 'unknown',
           chestMarkPresence: 'yes',
@@ -397,6 +428,12 @@ describe('MiniappWardrobeController', () => {
         sceneTags: ['日常'],
         material: '牛仔',
         thickness: '中等',
+        taxonomyTags: {
+          color: ['蓝色'],
+          colorFeeling: ['冷色'],
+          occasion: ['日常'],
+        },
+        taxonomyTagList: ['蓝色', '冷色', '日常'],
         pocketPresence: 'no',
         pocketPosition: 'unknown',
         chestMarkPresence: 'yes',
@@ -416,6 +453,11 @@ describe('MiniappWardrobeController', () => {
         sceneTags: '日常',
         material: '牛仔',
         thickness: '中等',
+        taxonomyTags: JSON.stringify({
+          color: ['蓝色'],
+          colorFeeling: ['冷色'],
+          occasion: ['日常'],
+        }),
         pocketPresence: 'no',
         pocketPosition: 'unknown',
         chestMarkPresence: 'yes',

@@ -14,12 +14,13 @@
   <view wx:elif="{{aiError}}" class="notice">{{aiError}}</view>
   <view wx:elif="{{aiDraft}}" class="ai-panel">
     <text class="ai-title">✨ AI 识别建议</text>
-    <view class="ai-tags">
-      <text wx:if="{{form.subcategory}}" class="ai-tag">{{form.subcategory}}</text>
-      <text wx:if="{{form.material}}" class="ai-tag">{{form.material}}</text>
-      <text wx:if="{{form.thickness}}" class="ai-tag">{{form.thickness}}</text>
-      <text wx:for="{{aiDraft.styleTags}}" wx:key="*this" class="ai-tag">{{item}}</text>
-      <text wx:for="{{aiDraft.sceneTags}}" wx:key="*this" class="ai-tag">{{item}}</text>
+    <view class="ai-taxonomy">
+      <view wx:for="{{aiTaxonomyGroups}}" wx:key="key" class="ai-tag-row">
+        <text class="ai-tag-label">{{item.label}}</text>
+        <view class="ai-tags">
+          <text wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this" class="ai-tag">{{tag}}</text>
+        </view>
+      </view>
     </view>
   </view>
   <view wx:if="{{!isEdit && duplicateCandidates.length}}" class="duplicate-panel {{duplicateWarningAcknowledged ? 'duplicate-panel-ack' : ''}}">
@@ -76,6 +77,23 @@
       <text>场景标签</text>
       <input value="{{form.sceneTags}}" data-field="sceneTags" bindinput="onInput" placeholder="例如：日常、上班" />
     </label>
+    <view wx:if="{{editableTaxonomyGroups.length}}" class="taxonomy-fields">
+      <view wx:for="{{editableTaxonomyGroups}}" wx:key="key" wx:for-item="tagGroup" class="field taxonomy-field">
+        <text>{{tagGroup.label}}</text>
+        <view class="taxonomy-options">
+          <button
+            wx:for="{{tagGroup.options}}"
+            wx:key="label"
+            wx:for-item="tagOption"
+            class="taxonomy-chip {{tagOption.selected ? 'taxonomy-chip-selected' : ''}}"
+            data-group="{{tagGroup.key}}"
+            data-tag="{{tagOption.label}}"
+            bindtap="toggleTaxonomyTag"
+          >{{tagOption.label}}</button>
+        </view>
+      </view>
+    </view>
+    <view wx:elif="{{taxonomyError}}" class="taxonomy-error">{{taxonomyError}}</view>
     <label class="field">
       <text>品牌</text>
       <input value="{{form.brand}}" data-field="brand" bindinput="onInput" placeholder="可不填" />

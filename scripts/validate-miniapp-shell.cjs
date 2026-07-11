@@ -112,6 +112,7 @@ if (!wardrobeWxml.includes('retryLoad')) {
 }
 
 const formWxml = readRequiredFile('miniprogram/pages/garment-form/index.wxml');
+const formJs = readRequiredFile('miniprogram/pages/garment-form/index.js');
 if (!formWxml.includes('choosePhoto') || !formWxml.includes('submitGarment')) {
   throw new Error('garment form page must choose a photo and submit a garment');
 }
@@ -121,6 +122,55 @@ if (
   !formWxml.includes('onSeasonChange')
 ) {
   throw new Error('garment form page must expose category, color, and season pickers');
+}
+for (const tagGroup of ['天气', '色彩感觉', '穿着感', '长度', '版型']) {
+  if (!formJs.includes(tagGroup)) {
+    throw new Error(`garment form page must render the ${tagGroup} tag group`);
+  }
+}
+if (!formWxml.includes('toggleTaxonomyTag')) {
+  throw new Error('garment form taxonomy tags must be selectable');
+}
+
+let garmentFormPage;
+global.Page = function (definition) {
+  garmentFormPage = definition;
+};
+require(path.join(root, 'miniprogram/pages/garment-form/index.js'));
+delete global.Page;
+
+const taxonomyToggleContext = {
+  data: {
+    form: { taxonomyTags: '{}' },
+    editableTaxonomyGroups: [
+      {
+        key: 'fit',
+        label: '版型',
+        tags: ['修身', '宽松'],
+        options: [
+          { label: '修身', selected: false },
+          { label: '宽松', selected: false },
+        ],
+      },
+    ],
+  },
+  setData(nextData) {
+    if (nextData['form.taxonomyTags']) {
+      this.data.form.taxonomyTags = nextData['form.taxonomyTags'];
+    }
+    if (nextData.editableTaxonomyGroups) {
+      this.data.editableTaxonomyGroups = nextData.editableTaxonomyGroups;
+    }
+  },
+};
+garmentFormPage.toggleTaxonomyTag.call(taxonomyToggleContext, {
+  currentTarget: { dataset: { group: 'fit', tag: '宽松' } },
+});
+const selectedTaxonomy = JSON.parse(
+  taxonomyToggleContext.data.form.taxonomyTags,
+);
+if (!selectedTaxonomy.fit || !selectedTaxonomy.fit.includes('宽松')) {
+  throw new Error('selected garment taxonomy tags must be included in form data');
 }
 
 const detailWxml = readRequiredFile('miniprogram/pages/garment-detail/index.wxml');

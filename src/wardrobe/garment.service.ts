@@ -29,6 +29,7 @@ import {
   type GarmentPocketPosition,
   type GarmentVisionResult,
 } from '../ai/dto/garment-vision-result.dto';
+import { sanitizeGarmentTaxonomySelection } from './garment-tag-taxonomy';
 
 const CANONICAL_SIZES = [
   'XX-Small',
@@ -251,6 +252,7 @@ export class GarmentService {
         dto.chestMarkText,
       ),
       fit: dto.fit,
+      taxonomyTags: sanitizeGarmentTaxonomySelection(dto.taxonomyTags),
       status: dto.status ?? GarmentStatus.Wearable,
       price: this.normalizeNumber(dto.price),
       purchaseDate: this.normalizeDate(dto.purchaseDate),
@@ -352,7 +354,9 @@ export class GarmentService {
     if ('material' in dto) garment.material = dto.material;
     if ('thickness' in dto) garment.thickness = dto.thickness;
     if ('pocketPresence' in dto) {
-      garment.pocketPresence = this.normalizeFeaturePresence(dto.pocketPresence);
+      garment.pocketPresence = this.normalizeFeaturePresence(
+        dto.pocketPresence,
+      );
       garment.pocketPosition = this.normalizePocketPosition(
         dto.pocketPresence,
         'pocketPosition' in dto ? dto.pocketPosition : garment.pocketPosition,
@@ -402,6 +406,9 @@ export class GarmentService {
       }
     }
     if ('fit' in dto) garment.fit = dto.fit;
+    if ('taxonomyTags' in dto) {
+      garment.taxonomyTags = sanitizeGarmentTaxonomySelection(dto.taxonomyTags);
+    }
     if ('status' in dto) garment.status = dto.status ?? GarmentStatus.Wearable;
     if ('price' in dto) garment.price = this.normalizeNumber(dto.price);
     if ('purchaseDate' in dto)
@@ -613,7 +620,9 @@ export class GarmentService {
       score += 8;
       reasons.push('胸前标识位置相同');
     }
-    if (this.sameText(garment.chestMarkText, draft.chestMarkText ?? undefined)) {
+    if (
+      this.sameText(garment.chestMarkText, draft.chestMarkText ?? undefined)
+    ) {
       score += 15;
       reasons.push('胸前文字相同');
     }
@@ -688,7 +697,9 @@ export class GarmentService {
     const garmentPocketPresence = this.compareFeaturePresence(
       garment.pocketPresence,
     );
-    const draftPocketPresence = this.compareFeaturePresence(draft.pocketPresence);
+    const draftPocketPresence = this.compareFeaturePresence(
+      draft.pocketPresence,
+    );
     if (
       garmentPocketPresence &&
       draftPocketPresence &&
@@ -712,7 +723,9 @@ export class GarmentService {
     const garmentMarkPresence = this.compareFeaturePresence(
       garment.chestMarkPresence,
     );
-    const draftMarkPresence = this.compareFeaturePresence(draft.chestMarkPresence);
+    const draftMarkPresence = this.compareFeaturePresence(
+      draft.chestMarkPresence,
+    );
     if (
       garmentMarkPresence &&
       draftMarkPresence &&
@@ -921,13 +934,14 @@ export class GarmentService {
     );
   }
 
-  private structuredTextsDiffer(left?: string | null, right?: string | null): boolean {
+  private structuredTextsDiffer(
+    left?: string | null,
+    right?: string | null,
+  ): boolean {
     const normalizedLeft = this.normalizeComparisonText(left);
     const normalizedRight = this.normalizeComparisonText(right);
     return Boolean(
-      normalizedLeft &&
-        normalizedRight &&
-        normalizedLeft !== normalizedRight,
+      normalizedLeft && normalizedRight && normalizedLeft !== normalizedRight,
     );
   }
 

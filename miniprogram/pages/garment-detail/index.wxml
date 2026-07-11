@@ -16,9 +16,14 @@
       <text class="name">{{garment.name || garment.categoryLabel}}</text>
       <text class="meta">{{garment.categoryLabel}} · {{garment.colorLabel}} · {{garment.statusLabel}}</text>
 
-      <view wx:if="{{garment.styleTags.length || garment.sceneTags.length}}" class="tag-panel">
-        <text wx:for="{{garment.styleTags}}" wx:key="*this" class="tag tag-lavender">{{item}}</text>
-        <text wx:for="{{garment.sceneTags}}" wx:key="*this" class="tag tag-peach">{{item}}</text>
+      <view wx:if="{{garment.taxonomyTagList.length || garment.styleTags.length || garment.sceneTags.length}}" class="tag-panel">
+        <block wx:if="{{garment.taxonomyTagList.length}}">
+          <text wx:for="{{garment.taxonomyTagList}}" wx:key="*this" class="tag tag-lavender">{{item}}</text>
+        </block>
+        <block wx:else>
+          <text wx:for="{{garment.styleTags}}" wx:key="*this" class="tag tag-lavender">{{item}}</text>
+          <text wx:for="{{garment.sceneTags}}" wx:key="*this" class="tag tag-peach">{{item}}</text>
+        </block>
       </view>
 
       <view class="stat-grid">

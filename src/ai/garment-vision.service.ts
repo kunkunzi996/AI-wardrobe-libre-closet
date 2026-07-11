@@ -6,6 +6,12 @@ import sharp from 'sharp';
 import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from '../wardrobe/garment-color.enum';
 import {
+  GARMENT_TAG_TAXONOMY,
+  sanitizeGarmentTaxonomySelection,
+  type GarmentTagGroup,
+  type GarmentTaxonomySelection,
+} from '../wardrobe/garment-tag-taxonomy';
+import {
   GARMENT_CHEST_MARK_POSITION_VALUES,
   GARMENT_CHEST_MARK_TYPE_VALUES,
   GARMENT_FEATURE_PRESENCE_VALUES,
@@ -22,44 +28,106 @@ type FetchLike = typeof fetch;
 export const GARMENT_VISION_FETCH = 'GARMENT_VISION_FETCH';
 
 const CHINESE_LABELS: Record<string, string> = {
-  spring: '春',
-  summer: '夏',
-  autumn: '秋',
-  fall: '秋',
-  winter: '冬',
-  formal: '正式',
+  spring: '春季',
+  summer: '夏季',
+  autumn: '秋季',
+  fall: '秋季',
+  winter: '冬季',
+  formal: '商务',
   business: '商务',
   classic: '经典',
   casual: '休闲',
   commute: '通勤',
-  office: '办公室',
-  work: '上班',
+  office: '通勤',
+  work: '通勤',
   date: '约会',
-  weekend: '周末',
+  weekend: '日常',
   daily: '日常',
   outdoor: '户外',
   warm: '保暖',
-  basic: '基础款',
-  'wide-leg pants': '阔腿裤',
-  'wide leg pants': '阔腿裤',
+  basic: '简约',
+  'wide-leg pants': '裤装',
+  'wide leg pants': '裤装',
   'puffer jacket': '羽绒服',
   'down jacket': '羽绒服',
-  trousers: '西裤',
-  pants: '裤子',
-  jeans: '牛仔裤',
+  'white sneakers': '鞋履',
+  sneakers: '鞋履',
+  trousers: '裤装',
+  pants: '裤装',
+  jeans: '裤装',
   shirt: '衬衫',
   blouse: '衬衫',
-  blazer: '西装外套',
-  coat: '外套',
-  'wool blend': '羊毛混纺',
+  blazer: '西装',
+  coat: '大衣',
+  'wool blend': '混纺',
   wool: '羊毛',
   cotton: '棉',
   denim: '牛仔',
   leather: '皮革',
-  polyester: '聚酯纤维',
-  medium: '中等',
-  thin: '偏薄',
-  thick: '偏厚',
+  polyester: '涤纶',
+  medium: '适中',
+  thin: '薄款',
+  thick: '厚款',
+  上班: '通勤',
+  办公室: '通勤',
+  西装外套: '西装',
+  阔腿裤: '裤装',
+  牛仔裤: '裤装',
+  西裤: '裤装',
+  裤子: '裤装',
+  羊毛混纺: '混纺',
+  聚酯纤维: '涤纶',
+  中等: '适中',
+  偏薄: '薄款',
+  偏厚: '厚款',
+};
+
+const COLOR_LABEL_TO_VALUE: Record<string, GarmentColor> = {
+  黑色: GarmentColor.BLACK,
+  白色: GarmentColor.WHITE,
+  灰色: GarmentColor.GREY,
+  米色: GarmentColor.BEIGE,
+  棕色: GarmentColor.BROWN,
+  红色: GarmentColor.RED,
+  橙色: GarmentColor.ORANGE,
+  黄色: GarmentColor.YELLOW,
+  绿色: GarmentColor.GREEN,
+  蓝色: GarmentColor.BLUE,
+  紫色: GarmentColor.PURPLE,
+  粉色: GarmentColor.PINK,
+  金色: GarmentColor.GOLD,
+  银色: GarmentColor.SILVER,
+  彩色: GarmentColor.PATTERN,
+};
+
+const COLOR_VALUE_TO_LABEL = Object.fromEntries(
+  Object.entries(COLOR_LABEL_TO_VALUE).map(([label, value]) => [value, label]),
+) as Partial<Record<GarmentColor, string>>;
+
+const SEASON_LABEL_TO_VALUE: Record<string, string> = {
+  春季: 'spring',
+  夏季: 'summer',
+  秋季: 'autumn',
+  冬季: 'winter',
+  四季: 'all-season',
+};
+
+const SEASON_ALIASES: Record<string, string> = {
+  春: '春季',
+  春天: '春季',
+  spring: '春季',
+  夏: '夏季',
+  夏天: '夏季',
+  summer: '夏季',
+  秋: '秋季',
+  秋天: '秋季',
+  autumn: '秋季',
+  fall: '秋季',
+  冬: '冬季',
+  冬天: '冬季',
+  winter: '冬季',
+  四季: '四季',
+  'all-season': '四季',
 };
 
 const CATEGORY_ALIASES: Record<string, string> = {
@@ -353,7 +421,7 @@ export class GarmentVisionService {
         {
           role: 'system',
           content:
-            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。除 category、color 和结构化枚举字段必须使用给定枚举值外，subcategory、seasons、styleTags、sceneTags、material、thickness、notes 都必须使用简体中文。对于看不清、被遮挡或不确定的结构化字段，必须返回 unknown，不要猜。',
+            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。taxonomyTags 的每个值必须逐字选自 allowedTaxonomy，禁止创造新标签；不确定的标签组返回空数组。对于看不清、被遮挡或不确定的结构化字段，必须返回 unknown，不要猜。',
         },
         {
           role: 'user',
@@ -370,17 +438,12 @@ export class GarmentVisionService {
                   accessories:
                     'Use accessories for hats, caps, scarves, jewelry, belts, and small wearable items.',
                 },
-                allowedColors: Object.values(GarmentColor),
+                allowedTaxonomy: GARMENT_TAG_TAXONOMY,
                 requiredJson: {
                   category:
-                    'tops | bottoms | outerwear | dresses | footwear | bags | accessories | activewear | swimwear | underwear | lingerie | other',
-                  subcategory: 'string or null',
-                  color: 'one allowed color or null',
-                  seasons: ['春 | 夏 | 秋 | 冬'],
-                  styleTags: ['中文风格标签，例如：通勤、休闲、正式、法式'],
-                  sceneTags: ['中文场景标签，例如：上班、约会、周末、旅行'],
-                  material: 'string or null',
-                  thickness: 'string or null',
+                    'tops | bottoms | outerwear | dresses | footwear | bags | accessories | other',
+                  taxonomyTags:
+                    'object; keys must come from allowedTaxonomy; every array item must exactly match one value from that key',
                   pocketPresence: 'yes | no | unknown',
                   pocketPosition: 'chest | side | other | unknown',
                   chestMarkPresence: 'yes | no | unknown',
@@ -392,6 +455,8 @@ export class GarmentVisionService {
                   notes: 'short Chinese note',
                 },
                 rules: [
+                  'Do not return any taxonomy tag that is absent from allowedTaxonomy.',
+                  'Use one or more exact tags only when the image supports them; otherwise use an empty array.',
                   'Only return pocketPresence=yes when a pocket is clearly visible.',
                   'Only return pocketPresence=no when the chest/side area is clear and you are confident there is no pocket.',
                   'If pocket visibility or chest mark visibility is uncertain, return unknown.',
@@ -412,13 +477,15 @@ export class GarmentVisionService {
       ],
       response_format: { type: 'json_object' },
       temperature: 0,
-      max_tokens: 700,
+      max_tokens: 900,
       enable_thinking: false,
     };
   }
 
   private visionModel(): string {
-    return this.configService.get<string>('QWEN_VISION_MODEL') ?? 'qwen3.7-plus';
+    return (
+      this.configService.get<string>('QWEN_VISION_MODEL') ?? 'qwen3.7-plus'
+    );
   }
 
   private parseDraft(payload: any): Partial<GarmentVisionResult> {
@@ -447,16 +514,21 @@ export class GarmentVisionService {
     fileName: string,
     draft: Partial<GarmentVisionResult>,
   ): GarmentVisionResult {
+    const taxonomyTags = this.normalizeTaxonomyTags(draft);
     return {
       fileName,
       category: this.normalizeCategory(draft.category),
-      subcategory: this.localizedString(draft.subcategory),
-      color: this.normalizeColor(draft.color),
-      seasons: this.localizedArray(draft.seasons),
-      styleTags: this.localizedArray(draft.styleTags),
-      sceneTags: this.localizedArray(draft.sceneTags),
-      material: this.localizedString(draft.material),
-      thickness: this.localizedString(draft.thickness),
+      subcategory: taxonomyTags.category?.[0],
+      color: this.taxonomyColor(taxonomyTags),
+      seasons: (taxonomyTags.season ?? []).map(
+        (tag) => SEASON_LABEL_TO_VALUE[tag],
+      ),
+      styleTags: taxonomyTags.style ?? [],
+      sceneTags: taxonomyTags.occasion ?? [],
+      material: taxonomyTags.material?.[0],
+      thickness: taxonomyTags.thickness?.[0],
+      fit: taxonomyTags.fit?.[0],
+      taxonomyTags,
       pocketPresence: this.normalizePresence(draft.pocketPresence),
       pocketPosition: this.normalizePocketPosition(
         draft.pocketPresence,
@@ -476,8 +548,59 @@ export class GarmentVisionService {
         draft.chestMarkText,
       ),
       confidence: this.confidence(draft.confidence),
-      notes: this.localizedNotes(draft) ?? 'AI 已生成草稿，请确认后再保存。',
+      notes:
+        this.localizedNotes(draft, taxonomyTags) ??
+        'AI 已生成草稿，请确认后再保存。',
     };
+  }
+
+  private normalizeTaxonomyTags(
+    draft: Partial<GarmentVisionResult>,
+  ): GarmentTaxonomySelection {
+    const explicit = sanitizeGarmentTaxonomySelection(draft.taxonomyTags);
+    const normalizedColor = this.normalizeColor(draft.color);
+    const legacyStyleTags = this.localizedArray(draft.styleTags);
+    const legacySceneTags = this.localizedArray(draft.sceneTags);
+    const legacy = sanitizeGarmentTaxonomySelection({
+      season: this.taxonomySeasonTags(draft.seasons),
+      color: normalizedColor ? [COLOR_VALUE_TO_LABEL[normalizedColor]] : [],
+      style: legacyStyleTags,
+      wearingFeel: legacyStyleTags,
+      occasion: [...legacySceneTags, ...legacyStyleTags],
+      material: this.localizedString(draft.material),
+      thickness: this.localizedString(draft.thickness),
+      category: this.localizedString(draft.subcategory),
+      fit: this.localizedString(draft.fit),
+    });
+
+    const result: GarmentTaxonomySelection = {};
+    for (const group of Object.keys(
+      GARMENT_TAG_TAXONOMY,
+    ) as GarmentTagGroup[]) {
+      const tags = explicit[group] ?? legacy[group];
+      if (tags?.length) result[group] = tags;
+    }
+    return result;
+  }
+
+  private taxonomySeasonTags(value: unknown): string[] {
+    return this.localizedArray(value).flatMap((tag) => {
+      const direct = SEASON_ALIASES[tag];
+      if (direct) return [direct];
+      return [
+        tag.includes('春') ? '春季' : undefined,
+        tag.includes('夏') ? '夏季' : undefined,
+        tag.includes('秋') ? '秋季' : undefined,
+        tag.includes('冬') ? '冬季' : undefined,
+      ].filter((item): item is string => Boolean(item));
+    });
+  }
+
+  private taxonomyColor(
+    taxonomyTags: GarmentTaxonomySelection,
+  ): GarmentColor | undefined {
+    const label = taxonomyTags.color?.[0];
+    return label ? COLOR_LABEL_TO_VALUE[label] : undefined;
   }
 
   private normalizePresence(value: unknown): GarmentFeaturePresence {
@@ -522,10 +645,7 @@ export class GarmentVisionService {
     value: unknown,
   ): GarmentChestMarkPosition {
     if (this.normalizePresence(presence) !== 'yes') return 'unknown';
-    const normalized = this.normalizeAlias(
-      value,
-      CHEST_MARK_POSITION_ALIASES,
-    );
+    const normalized = this.normalizeAlias(value, CHEST_MARK_POSITION_ALIASES);
     return GARMENT_CHEST_MARK_POSITION_VALUES.includes(
       normalized as GarmentChestMarkPosition,
     )
@@ -580,16 +700,16 @@ export class GarmentVisionService {
 
   private localizedNotes(
     draft: Partial<GarmentVisionResult>,
+    taxonomyTags: GarmentTaxonomySelection,
   ): string | undefined {
     const notes = this.stringOrUndefined(draft.notes);
     if (!notes || !this.containsAsciiWord(notes)) return notes;
 
-    const colorPrefix = draft.color === GarmentColor.BLACK ? '黑色' : '';
+    const colorPrefix = taxonomyTags.color?.[0] ?? '';
     const subcategory =
-      this.localizedString(draft.subcategory) ??
-      this.categoryLabel(draft.category);
-    const style = this.localizedArray(draft.styleTags).slice(0, 2).join('');
-    const material = this.localizedString(draft.material);
+      taxonomyTags.category?.[0] ?? this.categoryLabel(draft.category);
+    const style = taxonomyTags.style?.slice(0, 2).join('');
+    const material = taxonomyTags.material?.[0];
     const details = [
       colorPrefix && subcategory ? `${colorPrefix}${subcategory}` : subcategory,
       style ? `适合${style}场合` : undefined,
@@ -668,6 +788,8 @@ export class GarmentVisionService {
       sceneTags: [],
       material: undefined,
       thickness: undefined,
+      fit: undefined,
+      taxonomyTags: {},
       pocketPresence: 'unknown',
       pocketPosition: 'unknown',
       chestMarkPresence: 'unknown',

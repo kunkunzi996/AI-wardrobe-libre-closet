@@ -82,6 +82,26 @@
   gap: 12rpx;
 }
 
+.ai-taxonomy {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.ai-tag-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+}
+
+.ai-tag-label {
+  min-width: 112rpx;
+  padding-top: 8rpx;
+  color: #6b5310;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
 .ai-tag {
   padding: 8rpx 18rpx;
   border-radius: 10rpx;
@@ -173,6 +193,55 @@ textarea {
   min-height: 140rpx;
   padding: 20rpx 24rpx;
   line-height: 1.5;
+}
+
+.taxonomy-fields {
+  margin-bottom: 4rpx;
+}
+
+.taxonomy-field {
+  margin-bottom: 22rpx;
+}
+
+.taxonomy-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.taxonomy-chip {
+  width: auto;
+  min-width: 104rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border-radius: 12rpx;
+  background: #f7f6fb;
+  color: #6b6580;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 64rpx;
+}
+
+.taxonomy-chip::after {
+  border: 2rpx solid #e4e1ee;
+  border-radius: 12rpx;
+}
+
+.taxonomy-chip-selected {
+  background: #6f5ae0;
+  color: #fff;
+}
+
+.taxonomy-chip-selected::after {
+  border-color: #6f5ae0;
+}
+
+.taxonomy-error {
+  margin-bottom: 24rpx;
+  color: #b23a78;
+  font-size: 24rpx;
 }
 
 .submit {

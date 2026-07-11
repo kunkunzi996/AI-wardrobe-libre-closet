@@ -50,6 +50,11 @@ describe('GarmentService', () => {
       chestMarkPosition: 'chest-left',
       chestMarkText: 'Outdoor',
       fit: '合身',
+      taxonomyTags: {
+        color: ['黑色', '透明色'],
+        colorFeeling: ['暖色', '赛博朋克'],
+        occasion: ['通勤'],
+      } as any,
       status: GarmentStatus.Wearable,
       price: '399.9',
       purchaseDate: '2026-05-01',
@@ -72,6 +77,11 @@ describe('GarmentService', () => {
         chestMarkPosition: 'chest-left',
         chestMarkText: 'Outdoor',
         fit: '合身',
+        taxonomyTags: {
+          color: ['黑色'],
+          colorFeeling: ['暖色'],
+          occasion: ['通勤'],
+        },
         status: GarmentStatus.Wearable,
         price: 399.9,
         purchaseChannel: '线下门店',

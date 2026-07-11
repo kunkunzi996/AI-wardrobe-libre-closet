@@ -39,6 +39,8 @@ describe('GarmentVisionService', () => {
       sceneTags: [],
       material: undefined,
       thickness: undefined,
+      fit: undefined,
+      taxonomyTags: {},
       ...defaultStructuredDraft,
       confidence: 0,
       notes: 'AI 识别服务暂不可用，请手动确认衣物信息。',
@@ -111,13 +113,23 @@ describe('GarmentVisionService', () => {
     expect(result).toEqual({
       fileName: 'coat.webp',
       category: 'outerwear',
-      subcategory: '西装外套',
+      subcategory: '西装',
       color: 'black',
-      seasons: ['春秋'],
+      seasons: ['spring', 'autumn'],
       styleTags: ['通勤'],
-      sceneTags: ['上班'],
+      sceneTags: ['通勤'],
       material: '羊毛',
-      thickness: '中等',
+      thickness: '适中',
+      fit: undefined,
+      taxonomyTags: {
+        season: ['春季', '秋季'],
+        thickness: ['适中'],
+        color: ['黑色'],
+        occasion: ['通勤'],
+        style: ['通勤'],
+        material: ['羊毛'],
+        category: ['西装'],
+      },
       pocketPresence: 'yes',
       pocketPosition: 'chest',
       chestMarkPresence: 'yes',
@@ -169,11 +181,17 @@ describe('GarmentVisionService', () => {
       category: 'tops',
       subcategory: undefined,
       color: undefined,
-      seasons: ['夏'],
+      seasons: ['summer'],
       styleTags: ['通勤'],
-      sceneTags: ['约会'],
+      sceneTags: ['约会', '通勤'],
       material: undefined,
       thickness: undefined,
+      fit: undefined,
+      taxonomyTags: {
+        season: ['夏季'],
+        occasion: ['约会', '通勤'],
+        style: ['通勤'],
+      },
       ...defaultStructuredDraft,
       confidence: 1,
       notes: 'AI 已生成草稿，请确认后再保存。',
@@ -222,16 +240,26 @@ describe('GarmentVisionService', () => {
     expect(result).toEqual({
       fileName: 'pants.webp',
       category: 'bottoms',
-      subcategory: '阔腿裤',
+      subcategory: '裤装',
       color: 'black',
-      seasons: ['春', '秋', '冬'],
-      styleTags: ['正式', '商务', '经典'],
-      sceneTags: ['办公室', '通勤'],
-      material: '羊毛混纺',
-      thickness: '中等',
+      seasons: ['spring', 'autumn', 'winter'],
+      styleTags: ['商务'],
+      sceneTags: ['通勤', '商务'],
+      material: '混纺',
+      thickness: '适中',
+      fit: undefined,
+      taxonomyTags: {
+        season: ['春季', '秋季', '冬季'],
+        thickness: ['适中'],
+        color: ['黑色'],
+        occasion: ['通勤', '商务'],
+        style: ['商务'],
+        material: ['混纺'],
+        category: ['裤装'],
+      },
       ...defaultStructuredDraft,
       confidence: 0.9,
-      notes: '黑色阔腿裤，适合正式商务场合，材质可能为羊毛混纺。',
+      notes: '黑色裤装，适合商务场合，材质可能为混纺。',
     });
   });
 
@@ -276,7 +304,7 @@ describe('GarmentVisionService', () => {
 
     expect(result.fileName).toBe('shoes.webp');
     expect(result.category).toBe('footwear');
-    expect(result.subcategory).toBe('white sneakers');
+    expect(result.subcategory).toBe('鞋履');
     expect(result.color).toBe('white');
     expect(result).toMatchObject(defaultStructuredDraft);
     expect(result.confidence).toBe(0.91);
@@ -326,11 +354,11 @@ describe('GarmentVisionService', () => {
       category: 'outerwear',
       subcategory: '羽绒服',
       color: 'beige',
-      seasons: ['秋', '冬'],
-      styleTags: ['休闲', '保暖', '基础款'],
+      seasons: ['autumn', 'winter'],
+      styleTags: ['休闲', '简约'],
       sceneTags: ['日常', '户外'],
-      material: '聚酯纤维',
-      thickness: '偏厚',
+      material: '涤纶',
+      thickness: '厚款',
       ...defaultStructuredDraft,
       notes: '浅米色羽绒服，适合秋冬季节保暖穿着',
     });
@@ -469,6 +497,42 @@ describe('GarmentVisionService', () => {
     const request = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(request.model).toBe('qwen3.7-plus');
     expect(request.enable_thinking).toBe(false);
+    const prompt = JSON.parse(request.messages[1].content[0].text);
+    expect(prompt.allowedTaxonomy.color).toContain('黑色');
+    expect(prompt.allowedTaxonomy).not.toHaveProperty('feedback');
+  });
+
+  it('drops AI-created tags that are not in the approved taxonomy', () => {
+    const service = new GarmentVisionService(
+      { get: jest.fn(() => undefined) } as any,
+      fileService as any,
+    );
+
+    const result = (service as any).normalizeResult('tagged.webp', {
+      category: 'tops',
+      taxonomyTags: {
+        color: ['黑色', '透明色'],
+        colorFeeling: ['暖色', '赛博朋克'],
+        occasion: ['通勤', '外太空'],
+        style: ['简约', '未来主义'],
+        category: ['T恤'],
+      },
+      ...defaultStructuredDraft,
+    });
+
+    expect(result).toMatchObject({
+      color: 'black',
+      subcategory: 'T恤',
+      styleTags: ['简约'],
+      sceneTags: ['通勤'],
+      taxonomyTags: {
+        color: ['黑色'],
+        colorFeeling: ['暖色'],
+        occasion: ['通勤'],
+        style: ['简约'],
+        category: ['T恤'],
+      },
+    });
   });
 
   it('falls back instead of hanging when the vision request times out', async () => {

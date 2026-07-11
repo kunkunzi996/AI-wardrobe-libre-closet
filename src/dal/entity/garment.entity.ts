@@ -20,6 +20,7 @@ import type {
   GarmentFeaturePresence,
   GarmentPocketPosition,
 } from '../../ai/dto/garment-vision-result.dto';
+import type { GarmentTaxonomySelection } from '../../wardrobe/garment-tag-taxonomy';
 
 export { GarmentColor };
 export { GarmentStatus };
@@ -85,6 +86,9 @@ export class Garment extends ShareableId {
 
   @Property({ nullable: true })
   public fit?: string;
+
+  @Property({ type: 'json', nullable: true })
+  public taxonomyTags?: GarmentTaxonomySelection;
 
   @Property({ default: GarmentStatus.Wearable })
   public status: GarmentStatus = GarmentStatus.Wearable;
