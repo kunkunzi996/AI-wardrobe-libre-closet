@@ -41,7 +41,7 @@ jobs:
     name: Deploy main
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     if: ${{ github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY_MAIN == 'true' }}
     env:
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
@@ -79,7 +79,7 @@ jobs:
           git log --oneline -3
           cp /root/ai-wardrobe.env.backup /root/AI-wardrobe-libre-closet/.env
 
-          docker build -f docker/Dockerfile -t ai-wardrobe:latest .
+          DOCKER_BUILDKIT=1 docker build --progress=plain -f docker/Dockerfile -t ai-wardrobe:latest .
           docker rm -f ai-wardrobe || true
           docker run -d \
             --name ai-wardrobe \
