@@ -46,6 +46,25 @@ jobs:
     env:
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build deployment image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          load: true
+          tags: ai-wardrobe:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Package deployment image
+        run: docker save ai-wardrobe:latest | gzip -1 > /tmp/ai-wardrobe.tar.gz
+
       - name: Configure SSH key
         run: |
           mkdir -p ~/.ssh
@@ -56,6 +75,7 @@ jobs:
 
       - name: Deploy on server
         run: |
+          scp -i ~/.ssh/deploy_key -P "${DEPLOY_PORT}" /tmp/ai-wardrobe.tar.gz "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/ai-wardrobe.tar.gz"
           ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" 'bash -s' <<'REMOTE_SCRIPT'
           set -euo pipefail
 
@@ -79,7 +99,8 @@ jobs:
           git log --oneline -3
           cp /root/ai-wardrobe.env.backup /root/AI-wardrobe-libre-closet/.env
 
-          DOCKER_BUILDKIT=1 docker build --progress=plain -f docker/Dockerfile -t ai-wardrobe:latest .
+          gzip -dc /tmp/ai-wardrobe.tar.gz | docker load
+          rm -f /tmp/ai-wardrobe.tar.gz
           docker rm -f ai-wardrobe || true
           docker run -d \
             --name ai-wardrobe \
