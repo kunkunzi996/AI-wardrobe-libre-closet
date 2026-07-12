@@ -39,6 +39,83 @@ const seasonOptions = [
   { label: '四季', value: 'all-season' },
 ];
 
+// 8 个老字段的折叠选择框配置。source: 'local' 用本页常量，'taxonomy' 用标签库接口对应组。
+const fieldSelectorConfigs = [
+  { key: 'category', label: '分类', formField: 'category', required: true, multi: false, source: 'local', options: categoryOptions },
+  { key: 'color', label: '颜色', formField: 'color', required: false, multi: false, source: 'local', options: colorOptions },
+  { key: 'season', label: '季节', formField: 'season', required: false, multi: true, source: 'local', options: seasonOptions.filter(function (option) { return option.value !== ''; }) },
+  { key: 'subcategory', label: '细分', formField: 'subcategory', required: false, multi: false, source: 'taxonomy', taxonomyKey: 'category' },
+  { key: 'material', label: '材质', formField: 'material', required: false, multi: false, source: 'taxonomy', taxonomyKey: 'material' },
+  { key: 'thickness', label: '厚薄', formField: 'thickness', required: false, multi: false, source: 'taxonomy', taxonomyKey: 'thickness' },
+  { key: 'styleTags', label: '风格标签', formField: 'styleTags', required: false, multi: true, source: 'taxonomy', taxonomyKey: 'style' },
+  { key: 'sceneTags', label: '场景标签', formField: 'sceneTags', required: false, multi: true, source: 'taxonomy', taxonomyKey: 'occasion' },
+];
+
+// 把 "商务、简约" 这样的拼接串拆回数组；和后端 normalizeTags 的分隔符保持一致
+function splitListText(value) {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(/[,，、]/)
+    .map(function (item) {
+      return item.trim();
+    })
+    .filter(Boolean);
+}
+
+// 根据当前表单值 + 标签库原始组，构建 8 个字段的选择框视图模型；expanded 从上一份视图模型继承
+function buildFieldGroups(form, taxonomyGroups, prevGroups) {
+  const prevByKey = {};
+  (prevGroups || []).forEach(function (group) {
+    prevByKey[group.key] = group;
+  });
+  const taxonomyByKey = {};
+  (taxonomyGroups || []).forEach(function (group) {
+    taxonomyByKey[group.key] = Array.isArray(group.tags) ? group.tags : [];
+  });
+  return fieldSelectorConfigs.map(function (config) {
+    const baseOptions =
+      config.source === 'local'
+        ? config.options.map(function (option) {
+            return { label: option.label, value: option.value };
+          })
+        : (taxonomyByKey[config.taxonomyKey] || []).map(function (tag) {
+            return { label: tag, value: tag };
+          });
+    const raw = form[config.formField];
+    const selectedValues = config.multi ? splitListText(raw) : raw ? [raw] : [];
+    // 当前值不在选项里（AI 识别的库外值 / 旧数据）时追加，保证能显示、能取消
+    selectedValues.forEach(function (value) {
+      const exists = baseOptions.some(function (option) {
+        return option.value === value;
+      });
+      if (!exists) baseOptions.push({ label: value, value: value });
+    });
+    const options = baseOptions.map(function (option) {
+      return {
+        label: option.label,
+        value: option.value,
+        selected: selectedValues.includes(option.value),
+      };
+    });
+    return {
+      key: config.key,
+      label: config.label,
+      required: config.required,
+      multi: config.multi,
+      expanded: prevByKey[config.key] ? prevByKey[config.key].expanded === true : false,
+      selectedText: options
+        .filter(function (option) {
+          return option.selected;
+        })
+        .map(function (option) {
+          return option.label;
+        })
+        .join('、'),
+      options: options,
+    };
+  });
+}
+
 const seasonValueMap = {
   春: 'spring',
   春天: 'spring',
@@ -115,6 +192,12 @@ function selectableTaxonomyGroups(groups, selection) {
       return {
         key: group.key,
         label: group.label || taxonomyGroupLabels[group.key] || group.key,
+        expanded: group.expanded === true,
+        selectedText: tags
+          .filter(function (tag) {
+            return selectedTags.includes(tag);
+          })
+          .join('、'),
         tags: tags,
         options: tags.map(function (tag) {
           return {
@@ -210,12 +293,10 @@ Page({
     categoryOptions,
     colorOptions,
     seasonOptions,
-    categoryIndex: 0,
-    colorIndex: 0,
-    seasonIndex: 0,
     categoryLabel: categoryOptions[0].label,
     colorLabel: colorOptions[0].label,
-    seasonLabel: seasonOptions[0].label,
+    seasonLabel: '',
+    fieldGroups: [],
     form: {
       name: '',
       category: categoryOptions[0].value,
@@ -251,6 +332,10 @@ Page({
   },
 
   onLoad(options) {
+    this.taxonomyGroupsRaw = [];
+    this.setData({
+      fieldGroups: buildFieldGroups(this.data.form, [], []),
+    });
     this.loadTaxonomy();
     const id = options.id || '';
     const photoPath = options.photoPath
@@ -283,10 +368,16 @@ Page({
     api
       .getGarmentTaxonomy()
       .then(function (data) {
+        page.taxonomyGroupsRaw = data.groups || [];
         page.setData({
           editableTaxonomyGroups: selectableTaxonomyGroups(
             data.groups || [],
             page.data.form.taxonomyTags,
+          ),
+          fieldGroups: buildFieldGroups(
+            page.data.form,
+            page.taxonomyGroupsRaw,
+            page.data.fieldGroups,
           ),
           taxonomyError: '',
         });
@@ -399,16 +490,17 @@ Page({
   },
 
   applyGarment(garment) {
-    const categoryIndex = optionIndex(categoryOptions, garment.category);
-    const colorIndex = optionIndex(colorOptions, garment.color);
-    const seasonValue = seasonValueMap[garment.season] || garment.season || '';
-    const seasonIndex = optionIndex(seasonOptions, seasonValue);
+    const seasonValues = (Array.isArray(garment.seasons) ? garment.seasons : [])
+      .map(function (item) {
+        return seasonValueMap[item] || item;
+      })
+      .filter(Boolean);
     const nextForm = {
       ...defaultVisionFields(),
       name: garment.name || '',
       category: garment.category || categoryOptions[0].value,
       color: garment.color || colorOptions[0].value,
-      season: seasonValue,
+      season: seasonValues.join('、'),
       brand: garment.brand || '',
       size: garment.size || '',
       notes: garment.notes || '',
@@ -429,23 +521,21 @@ Page({
     this.setData({
       photoPath: garment.photoUrl || '',
       form: nextForm,
-      categoryIndex:
-        categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
-      categoryLabel:
-        categoryIndex >= 0
-          ? categoryOptions[categoryIndex].label
-          : this.data.categoryLabel,
-      colorIndex: colorIndex >= 0 ? colorIndex : this.data.colorIndex,
-      colorLabel:
-        colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
-      seasonIndex: seasonIndex >= 0 ? seasonIndex : this.data.seasonIndex,
-      seasonLabel:
-        seasonIndex >= 0
-          ? seasonOptions[seasonIndex].label
-          : this.data.seasonLabel,
+      categoryLabel: optionLabel(categoryOptions, nextForm.category, this.data.categoryLabel),
+      colorLabel: optionLabel(colorOptions, nextForm.color, ''),
+      seasonLabel: seasonValues
+        .map(function (value) {
+          return optionLabel(seasonOptions, value, value);
+        })
+        .join('、'),
       editableTaxonomyGroups: selectableTaxonomyGroups(
         this.data.editableTaxonomyGroups,
         garment.taxonomyTags,
+      ),
+      fieldGroups: buildFieldGroups(
+        nextForm,
+        this.taxonomyGroupsRaw || [],
+        this.data.fieldGroups,
       ),
     });
   },
@@ -453,8 +543,11 @@ Page({
   applyAiDraft(draft, duplicateCandidates) {
     const categoryIndex = optionIndex(categoryOptions, draft.category);
     const colorIndex = optionIndex(colorOptions, draft.color);
-    const seasonValue = seasonValueMap[(draft.seasons || [])[0]] || '';
-    const seasonIndex = optionIndex(seasonOptions, seasonValue);
+    const seasonValues = (draft.seasons || [])
+      .map(function (item) {
+        return seasonValueMap[item] || item;
+      })
+      .filter(Boolean);
     const nextForm = Object.assign({}, this.data.form, {
       name: this.data.form.name || draft.subcategory || '',
       subcategory: draft.subcategory || '',
@@ -470,13 +563,12 @@ Page({
       chestMarkPosition: draft.chestMarkPosition || 'unknown',
       chestMarkText: draft.chestMarkText || '',
       notes: this.data.form.notes || draft.notes || '',
+      season: seasonValues.join('、'),
     });
 
     if (categoryIndex >= 0)
       nextForm.category = categoryOptions[categoryIndex].value;
     if (colorIndex >= 0) nextForm.color = colorOptions[colorIndex].value;
-    if (seasonIndex >= 0) nextForm.season = seasonOptions[seasonIndex].value;
-
     this.setData({
       aiDraft: draft,
       aiTaxonomyGroups: taxonomyGroups(draft.taxonomyTags),
@@ -486,23 +578,21 @@ Page({
       duplicateCompareSubmitOnConfirm: false,
       duplicateCurrentItem: null,
       form: nextForm,
-      categoryIndex:
-        categoryIndex >= 0 ? categoryIndex : this.data.categoryIndex,
-      categoryLabel:
-        categoryIndex >= 0
-          ? categoryOptions[categoryIndex].label
-          : this.data.categoryLabel,
-      colorIndex: colorIndex >= 0 ? colorIndex : this.data.colorIndex,
-      colorLabel:
-        colorIndex >= 0 ? colorOptions[colorIndex].label : this.data.colorLabel,
-      seasonIndex: seasonIndex >= 0 ? seasonIndex : this.data.seasonIndex,
-      seasonLabel:
-        seasonIndex >= 0
-          ? seasonOptions[seasonIndex].label
-          : this.data.seasonLabel,
+      categoryLabel: optionLabel(categoryOptions, nextForm.category, this.data.categoryLabel),
+      colorLabel: optionLabel(colorOptions, nextForm.color, ''),
+      seasonLabel: seasonValues
+        .map(function (value) {
+          return optionLabel(seasonOptions, value, value);
+        })
+        .join('、'),
       editableTaxonomyGroups: selectableTaxonomyGroups(
         this.data.editableTaxonomyGroups,
         draft.taxonomyTags,
+      ),
+      fieldGroups: buildFieldGroups(
+        nextForm,
+        this.taxonomyGroupsRaw || [],
+        this.data.fieldGroups,
       ),
     });
   },
@@ -518,7 +608,7 @@ Page({
       this.data.seasonLabel || optionLabel(seasonOptions, form.season, '');
     const detailText = [form.material, form.thickness]
       .concat(
-        seasonLabel && seasonLabel !== '不限定' ? ['适合' + seasonLabel] : [],
+        seasonLabel ? ['适合' + seasonLabel] : [],
       )
       .filter(Boolean)
       .join(' · ');
@@ -580,31 +670,85 @@ Page({
     this.setData(nextData);
   },
 
-  onCategoryChange(event) {
-    const index = Number(event.detail.value);
-    this.setData({
-      categoryIndex: index,
-      categoryLabel: categoryOptions[index].label,
-      'form.category': categoryOptions[index].value,
+  toggleFieldGroup(event) {
+    const groupKey = event.currentTarget.dataset.group;
+    const groups = this.data.fieldGroups || [];
+    const index = groups.findIndex(function (item) {
+      return item.key === groupKey;
     });
+    if (index < 0) return;
+    const nextData = {};
+    nextData['fieldGroups[' + index + '].expanded'] = !groups[index].expanded;
+    this.setData(nextData);
   },
 
-  onColorChange(event) {
-    const index = Number(event.detail.value);
-    this.setData({
-      colorIndex: index,
-      colorLabel: colorOptions[index].label,
-      'form.color': colorOptions[index].value,
+  toggleFieldOption(event) {
+    const groupKey = event.currentTarget.dataset.group;
+    const value = event.currentTarget.dataset.value;
+    const config = fieldSelectorConfigs.find(function (item) {
+      return item.key === groupKey;
     });
+    if (!config || value == null || value === undefined) return;
+
+    const currentRaw = this.data.form[config.formField];
+    let nextValue;
+    if (config.multi) {
+      const values = splitListText(currentRaw);
+      nextValue = (values.includes(value)
+        ? values.filter(function (item) {
+            return item !== value;
+          })
+        : values.concat(value)
+      ).join('、');
+    } else if (currentRaw === value) {
+      // 必填字段（分类）不允许取消成空；其它单选字段再点一次 = 清空
+      nextValue = config.required ? value : '';
+    } else {
+      nextValue = value;
+    }
+
+    const nextForm = Object.assign({}, this.data.form);
+    nextForm[config.formField] = nextValue;
+    const rebuilt = buildFieldGroups(
+      nextForm,
+      this.taxonomyGroupsRaw || [],
+      this.data.fieldGroups,
+    );
+    if (!config.multi) {
+      // 单选选完自动收起
+      rebuilt.forEach(function (group) {
+        if (group.key === groupKey) group.expanded = false;
+      });
+    }
+
+    const nextData = { fieldGroups: rebuilt };
+    nextData['form.' + config.formField] = nextValue;
+    // 相似衣物对比面板还在读这三个 label，跟着同步
+    if (groupKey === 'category') {
+      nextData.categoryLabel = optionLabel(categoryOptions, nextValue, this.data.categoryLabel);
+    }
+    if (groupKey === 'color') {
+      nextData.colorLabel = optionLabel(colorOptions, nextValue, '');
+    }
+    if (groupKey === 'season') {
+      nextData.seasonLabel = rebuilt.find(function (group) {
+        return group.key === 'season';
+      }).selectedText;
+    }
+    this.setData(nextData);
   },
 
-  onSeasonChange(event) {
-    const index = Number(event.detail.value);
-    this.setData({
-      seasonIndex: index,
-      seasonLabel: seasonOptions[index].label,
-      'form.season': seasonOptions[index].value,
+  toggleTaxonomyGroup(event) {
+    const groupKey = event.currentTarget.dataset.group;
+    const groups = this.data.editableTaxonomyGroups || [];
+    const index = groups.findIndex(function (item) {
+      return item.key === groupKey;
     });
+    if (index < 0) return;
+    const nextData = {};
+    nextData['editableTaxonomyGroups[' + index + '].expanded'] =
+      !groups[index].expanded;
+    this.setData(nextData);
   },
 
   toggleTaxonomyTag(event) {

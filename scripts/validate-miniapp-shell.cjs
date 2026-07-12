@@ -117,11 +117,11 @@ if (!formWxml.includes('choosePhoto') || !formWxml.includes('submitGarment')) {
   throw new Error('garment form page must choose a photo and submit a garment');
 }
 if (
-  !formWxml.includes('onCategoryChange') ||
-  !formWxml.includes('onColorChange') ||
-  !formWxml.includes('onSeasonChange')
+  !formWxml.includes('toggleFieldGroup') ||
+  !formWxml.includes('toggleFieldOption') ||
+  !formWxml.includes('fieldGroups')
 ) {
-  throw new Error('garment form page must expose category, color, and season pickers');
+  throw new Error('garment form page must expose collapsible field selectors');
 }
 for (const tagGroup of ['天气', '色彩感觉', '穿着感', '长度', '版型']) {
   if (!formJs.includes(tagGroup)) {

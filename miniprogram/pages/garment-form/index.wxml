@@ -39,48 +39,42 @@
       <text>名称</text>
       <input value="{{form.name}}" data-field="name" bindinput="onInput" placeholder="例如：黑色外套" />
     </label>
-    <view class="field">
-      <text>分类 *</text>
-      <picker range="{{categoryOptions}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
-        <view class="picker-value">{{categoryLabel}}</view>
-      </picker>
+    <view wx:for="{{fieldGroups}}" wx:key="key" wx:for-item="fieldGroup" class="field taxonomy-field">
+      <text>{{fieldGroup.label}}{{fieldGroup.required ? ' *' : ''}}</text>
+      <view
+        class="taxonomy-picker"
+        data-group="{{fieldGroup.key}}"
+        bindtap="toggleFieldGroup"
+      >
+        <text wx:if="{{fieldGroup.selectedText}}" class="taxonomy-picker-text">{{fieldGroup.selectedText}}</text>
+        <text wx:else class="taxonomy-picker-text taxonomy-picker-placeholder">点击选择</text>
+        <text class="taxonomy-picker-arrow {{fieldGroup.expanded ? 'taxonomy-picker-arrow-open' : ''}}">▾</text>
+      </view>
+      <view wx:if="{{fieldGroup.expanded}}" class="taxonomy-options">
+        <button
+          wx:for="{{fieldGroup.options}}"
+          wx:key="value"
+          wx:for-item="fieldOption"
+          class="taxonomy-chip {{fieldOption.selected ? 'taxonomy-chip-selected' : ''}}"
+          data-group="{{fieldGroup.key}}"
+          data-value="{{fieldOption.value}}"
+          bindtap="toggleFieldOption"
+        >{{fieldOption.label}}</button>
+      </view>
     </view>
-    <view class="field">
-      <text>颜色</text>
-      <picker range="{{colorOptions}}" range-key="label" value="{{colorIndex}}" bindchange="onColorChange">
-        <view class="picker-value">{{colorLabel}}</view>
-      </picker>
-    </view>
-    <view class="field">
-      <text>季节</text>
-      <picker range="{{seasonOptions}}" range-key="label" value="{{seasonIndex}}" bindchange="onSeasonChange">
-        <view class="picker-value">{{seasonLabel}}</view>
-      </picker>
-    </view>
-    <label class="field">
-      <text>细分</text>
-      <input value="{{form.subcategory}}" data-field="subcategory" bindinput="onInput" placeholder="例如：牛仔裤 / 衬衫" />
-    </label>
-    <label class="field">
-      <text>材质</text>
-      <input value="{{form.material}}" data-field="material" bindinput="onInput" placeholder="例如：牛仔 / 棉" />
-    </label>
-    <label class="field">
-      <text>厚薄</text>
-      <input value="{{form.thickness}}" data-field="thickness" bindinput="onInput" placeholder="例如：偏薄 / 中等 / 偏厚" />
-    </label>
-    <label class="field">
-      <text>风格标签</text>
-      <input value="{{form.styleTags}}" data-field="styleTags" bindinput="onInput" placeholder="例如：休闲、通勤" />
-    </label>
-    <label class="field">
-      <text>场景标签</text>
-      <input value="{{form.sceneTags}}" data-field="sceneTags" bindinput="onInput" placeholder="例如：日常、上班" />
-    </label>
     <view wx:if="{{editableTaxonomyGroups.length}}" class="taxonomy-fields">
       <view wx:for="{{editableTaxonomyGroups}}" wx:key="key" wx:for-item="tagGroup" class="field taxonomy-field">
         <text>{{tagGroup.label}}</text>
-        <view class="taxonomy-options">
+        <view
+          class="taxonomy-picker"
+          data-group="{{tagGroup.key}}"
+          bindtap="toggleTaxonomyGroup"
+        >
+          <text wx:if="{{tagGroup.selectedText}}" class="taxonomy-picker-text">{{tagGroup.selectedText}}</text>
+          <text wx:else class="taxonomy-picker-text taxonomy-picker-placeholder">点击选择</text>
+          <text class="taxonomy-picker-arrow {{tagGroup.expanded ? 'taxonomy-picker-arrow-open' : ''}}">▾</text>
+        </view>
+        <view wx:if="{{tagGroup.expanded}}" class="taxonomy-options">
           <button
             wx:for="{{tagGroup.options}}"
             wx:key="label"
