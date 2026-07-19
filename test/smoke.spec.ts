@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 const APP_NAME = process.env.APP_NAME || 'Boilerplate';
 
+test.use({ locale: 'zh-CN' });
+
 test('homepage loads with APP_NAME title and version', async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on('console', (msg) => {

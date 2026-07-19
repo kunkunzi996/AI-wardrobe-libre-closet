@@ -14,7 +14,7 @@
 - 红线：不覆盖已有标量或数组、不修改 `garment.category`、AI fallback/异常不写处理标记、每件衣物独立事务落库。
 - 已通过本地回归：管理员与迁移测试 3 组共 34 项、两个小程序 JS 语法检查、小程序结构校验、项目构建和 `git diff --check`；局部 ESLint 无 error，保留项目原有复杂度与 mock 警告。
 - 功能提交 `248dc5a` 和历史格式修复提交 `a4fdf25` 均已推送；尚未部署，也没有运行任何正式补标批次。部署前必须先完成数据库备份，并先对老婆账号执行 `limit=1` 试点。
-- 当前流水线运行状态：手动挡，`PR_CREATED`；工作区为 `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet-backfill-garment-tags`，分支为 `feature/backfill-garment-tags`，PR 为 `#1`。GitHub Playwright 检查已通过；`back-end-ci` 的 13 个历史格式问题已修复并推送，后续暴露的 65 个历史 ESLint 错误已逐项修复，本地全量只读 ESLint 为 0 error，36 个测试套件共 146 项、`npm run test:miniapp`、构建和本次 13 个文件的 Prettier 检查均通过。本机全量格式检查仍受 103 个未修改旧文件的 CRLF 行尾影响；等待提交并推送本轮 ESLint 修复，由 GitHub Linux/Node 22 CI 最终确认。数据库备份、部署后迁移日志确认和老婆账号 1 件人工试点均尚未开始。
+- 当前流水线运行状态：手动挡，`PR_CREATED`；工作区为 `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet-backfill-garment-tags`，分支为 `feature/backfill-garment-tags`，PR 为 `#1`。GitHub Playwright 检查已通过；`a4fdf25` 已修复 13 个历史格式问题，`ab03546` 已修复 65 个历史 ESLint 错误，GitHub Linux/Node 22 上的构建、格式、lint 和覆盖率测试均已通过。后端流程的本地端到端冒烟测试只因浏览器默认英文语言头与中文首页断言不一致而失败；已将该测试固定为 `zh-CN`，待推送后重新验证。数据库备份、部署后迁移日志确认和老婆账号 1 件人工试点均尚未开始。
 
 更新时间：2026-07-19
 
