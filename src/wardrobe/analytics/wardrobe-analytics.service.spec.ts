@@ -8,7 +8,7 @@ describe('WardrobeAnalyticsService', () => {
 
   const makeService = (garments: Garment[]) => {
     const garmentRepository = {
-      find: jest.fn(async () => garments),
+      find: jest.fn(() => Promise.resolve(garments)),
     };
     const service = new WardrobeAnalyticsService(garmentRepository as any);
     return { service, garmentRepository };

@@ -11,10 +11,17 @@ import { MiniappDailyOutfitController } from './miniapp-daily-outfit.controller'
 describe('MiniappDailyOutfitController', () => {
   it('registers POST route for miniapp daily outfit updates', () => {
     const prototype = MiniappDailyOutfitController.prototype;
-    expect(Reflect.getMetadata(PATH_METADATA, prototype.updateByPost)).toBe(
-      ':id',
+    const descriptor = Object.getOwnPropertyDescriptor(
+      prototype,
+      'updateByPost',
     );
-    expect(Reflect.getMetadata(METHOD_METADATA, prototype.updateByPost)).toBe(
+    if (!descriptor || typeof descriptor.value !== 'function') {
+      throw new Error('POST route handler is missing');
+    }
+    const updateByPost: object = descriptor.value;
+
+    expect(Reflect.getMetadata(PATH_METADATA, updateByPost)).toBe(':id');
+    expect(Reflect.getMetadata(METHOD_METADATA, updateByPost)).toBe(
       RequestMethod.POST,
     );
   });

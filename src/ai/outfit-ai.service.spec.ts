@@ -33,6 +33,11 @@ describe('OutfitAiService', () => {
       status: 'wearable',
     },
   ];
+  const mockJsonResponse = (payload: unknown) =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(payload),
+    });
 
   it('falls back to rule based recommendations when no API key is configured', async () => {
     const service = new OutfitAiService({
@@ -71,9 +76,8 @@ describe('OutfitAiService', () => {
   });
 
   it('removes invented, missing, and non-wearable garment ids from AI output', async () => {
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         output_text: JSON.stringify({
           recommendations: [
             {
@@ -85,7 +89,7 @@ describe('OutfitAiService', () => {
           ],
         }),
       }),
-    }));
+    );
     const service = new OutfitAiService(
       {
         get: jest.fn((key: string) => {
@@ -118,9 +122,8 @@ describe('OutfitAiService', () => {
     ]);
   });
   it('parses chat completions JSON content', async () => {
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -138,7 +141,7 @@ describe('OutfitAiService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new OutfitAiService(
       {
         get: jest.fn((key: string) => {
@@ -176,9 +179,8 @@ describe('OutfitAiService', () => {
   });
 
   it('sends the required core garment to the AI request', async () => {
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -196,7 +198,7 @@ describe('OutfitAiService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new OutfitAiService(
       {
         get: jest.fn((key: string) => {
@@ -224,9 +226,8 @@ describe('OutfitAiService', () => {
   });
 
   it('disables thinking output for Qwen JSON responses', async () => {
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -244,7 +245,7 @@ describe('OutfitAiService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new OutfitAiService(
       {
         get: jest.fn((key: string) => {

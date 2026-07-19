@@ -8,27 +8,27 @@ class TestFileService extends FileService {
   aliyunResult: Buffer | null = null;
   aliyunCalls = 0;
 
-  async storeImageFromFileUpload(): Promise<File> {
-    throw new Error('Not implemented');
+  storeImageFromFileUpload(): Promise<File> {
+    return Promise.reject(new Error('Not implemented'));
   }
 
   async delete(): Promise<void> {}
 
   async deleteById(): Promise<any> {}
 
-  async get(): Promise<Readable | undefined> {
-    return undefined;
+  get(): Promise<Readable | undefined> {
+    return Promise.resolve(undefined);
   }
 
-  async getByShareableId(): Promise<Readable | undefined> {
-    return undefined;
+  getByShareableId(): Promise<Readable | undefined> {
+    return Promise.resolve(undefined);
   }
 
   protected async store(): Promise<void> {}
 
-  protected async removeBackgroundWithAliyun(): Promise<Buffer | null> {
+  protected removeBackgroundWithAliyun(): Promise<Buffer | null> {
     this.aliyunCalls += 1;
-    return this.aliyunResult;
+    return Promise.resolve(this.aliyunResult);
   }
 
   async prepareForTest(imageBuffer: Buffer): Promise<Buffer> {

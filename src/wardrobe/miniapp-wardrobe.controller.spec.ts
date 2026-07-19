@@ -18,7 +18,7 @@ describe('MiniappWardrobeController', () => {
     const garmentService = {
       findAll: jest.fn(),
       findOne: jest.fn(),
-      findSimilarToDraft: jest.fn(async () => []),
+      findSimilarToDraft: jest.fn(() => Promise.resolve([])),
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -168,11 +168,13 @@ describe('MiniappWardrobeController', () => {
       send: jest.fn((payload) => payload),
     };
     const zip = (await controller.exportBackup(req, reply as any)) as Buffer;
-    req.file = jest.fn(async () => ({
-      filename: 'wardrobe-backup.zip',
-      mimetype: 'application/zip',
-      file: Readable.from(zip),
-    }));
+    req.file = jest.fn(() =>
+      Promise.resolve({
+        filename: 'wardrobe-backup.zip',
+        mimetype: 'application/zip',
+        file: Readable.from(zip),
+      }),
+    );
 
     await expect(controller.importBackup(req)).resolves.toEqual({
       imported: 1,
@@ -199,7 +201,7 @@ describe('MiniappWardrobeController', () => {
   it('creates a garment from miniapp multipart upload data', async () => {
     const { controller, garmentService, req } = makeController();
     const upload = { mimetype: 'image/jpeg' };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     garmentService.create.mockResolvedValue(makeGarment({ id: 9 }));
 
     await expect(
@@ -241,7 +243,7 @@ describe('MiniappWardrobeController', () => {
     const { controller, garmentService, req } = makeController();
     req.user = { userId: 42 };
     const upload = { mimetype: 'image/jpeg' };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     garmentService.create.mockResolvedValue(makeGarment({ id: 9 }));
 
     await controller.create({ name: 'White Shirt', category: 'tops' }, req);
@@ -260,7 +262,7 @@ describe('MiniappWardrobeController', () => {
     const { controller, garmentService, garmentVisionService, req } =
       makeController();
     const upload = { mimetype: 'image/jpeg' };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     garmentVisionService.analyzeImage.mockResolvedValue({
       fileName: 'coat.webp',
       category: 'bottoms',
@@ -310,7 +312,7 @@ describe('MiniappWardrobeController', () => {
       makeController();
     req.user = { userId: 42 };
     const upload = { mimetype: 'image/jpeg' };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     const draft = {
       fileName: 'miniapp-upload.webp',
       category: 'outerwear',
@@ -366,7 +368,7 @@ describe('MiniappWardrobeController', () => {
   it('saves user-confirmed AI draft fields from miniapp upload data', async () => {
     const { controller, garmentService, req } = makeController();
     const upload = { mimetype: 'image/jpeg' };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     garmentService.create.mockResolvedValue(
       makeGarment({
         id: 12,
@@ -550,7 +552,7 @@ describe('MiniappWardrobeController', () => {
         notes: { value: '' },
       },
     };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     garmentService.create.mockResolvedValue(makeGarment({ id: 10 }));
 
     await expect(controller.create({}, req)).resolves.toEqual({
@@ -582,7 +584,7 @@ describe('MiniappWardrobeController', () => {
         season: { value: 'summer' },
       },
     };
-    req.file = jest.fn(async () => upload);
+    req.file = jest.fn(() => Promise.resolve(upload));
     garmentService.create.mockResolvedValue(makeGarment({ id: 11 }));
 
     await expect(controller.create(undefined as any, req)).resolves.toEqual({
@@ -602,7 +604,7 @@ describe('MiniappWardrobeController', () => {
 
   it('rejects non-image uploads before creating a garment', async () => {
     const { controller, garmentService, req } = makeController();
-    req.file = jest.fn(async () => ({ mimetype: 'text/plain' }));
+    req.file = jest.fn(() => Promise.resolve({ mimetype: 'text/plain' }));
 
     await expect(
       controller.create({ name: 'Bad file', category: 'tops' }, req),

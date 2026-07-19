@@ -9,7 +9,7 @@ describe('OutfitGeneratorService', () => {
 
   const makeService = (garments: Garment[]) => {
     const garmentRepository = {
-      find: jest.fn(async () => garments),
+      find: jest.fn(() => Promise.resolve(garments)),
     };
     const service = new OutfitGeneratorService(garmentRepository as any);
     return { service, garmentRepository };
@@ -127,7 +127,7 @@ describe('OutfitGeneratorService', () => {
       }),
     };
     const garmentRepository = {
-      find: jest.fn(async () => [core, shirt, shorts]),
+      find: jest.fn(() => Promise.resolve([core, shirt, shorts])),
     };
     const service = new OutfitGeneratorService(
       garmentRepository as any,
@@ -175,7 +175,9 @@ describe('OutfitGeneratorService', () => {
         ],
       }),
     };
-    const garmentRepository = { find: jest.fn(async () => [core, pants]) };
+    const garmentRepository = {
+      find: jest.fn(() => Promise.resolve([core, pants])),
+    };
     const service = new OutfitGeneratorService(
       garmentRepository as any,
       outfitAiService as any,
@@ -213,7 +215,9 @@ describe('OutfitGeneratorService', () => {
         ],
       }),
     };
-    const garmentRepository = { find: jest.fn(async () => [core, pants]) };
+    const garmentRepository = {
+      find: jest.fn(() => Promise.resolve([core, pants])),
+    };
     const service = new OutfitGeneratorService(
       garmentRepository as any,
       outfitAiService as any,

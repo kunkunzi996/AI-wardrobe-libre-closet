@@ -13,7 +13,7 @@ describe('MiniappAuthService', () => {
       persistAndFlush: jest.fn(),
     };
     const jwtService = {
-      signAsync: jest.fn(async () => 'signed-token'),
+      signAsync: jest.fn(() => Promise.resolve('signed-token')),
     };
     const configService = {
       get: jest.fn((key: string) => {
@@ -42,10 +42,12 @@ describe('MiniappAuthService', () => {
   it('creates a miniapp user and returns a JWT token', async () => {
     const { service, userRepository, em, jwtService } = makeService();
     userRepository.findOne.mockResolvedValue(undefined);
-    global.fetch = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({ openid: 'openid-abc' }),
-    })) as any;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ openid: 'openid-abc' }),
+      }),
+    ) as any;
 
     await expect(service.loginWithCode(' wx-code ')).resolves.toEqual({
       accessToken: 'signed-token',
@@ -76,10 +78,12 @@ describe('MiniappAuthService', () => {
       password: 'miniapp:existing-password',
       wechatOpenId: 'openid-abc',
     });
-    global.fetch = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({ openid: 'openid-abc' }),
-    })) as any;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ openid: 'openid-abc' }),
+      }),
+    ) as any;
 
     await service.loginWithCode('wx-code');
 
@@ -97,10 +101,12 @@ describe('MiniappAuthService', () => {
       BadRequestException,
     );
 
-    global.fetch = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({ errcode: 40029, errmsg: 'invalid code' }),
-    })) as any;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ errcode: 40029, errmsg: 'invalid code' }),
+      }),
+    ) as any;
 
     await expect(service.loginWithCode('bad-code')).rejects.toBeInstanceOf(
       UnauthorizedException,
