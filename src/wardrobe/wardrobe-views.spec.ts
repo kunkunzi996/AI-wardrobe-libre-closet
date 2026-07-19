@@ -79,7 +79,9 @@ describe('wardrobe views', () => {
     const navbar = readProjectView('partials', 'navbar.hbs');
 
     expect(navbar).toContain('href="/wardrobe/ai-intake"');
-    expect(navbar).not.toContain('href="/wardrobe/new">{{t \'lang.PHOTO_INTAKE\'}}');
+    expect(navbar).not.toContain(
+      'href="/wardrobe/new">{{t \'lang.PHOTO_INTAKE\'}}',
+    );
   });
 
   it('offers both AI photo intake and manual entry from the empty wardrobe state', () => {

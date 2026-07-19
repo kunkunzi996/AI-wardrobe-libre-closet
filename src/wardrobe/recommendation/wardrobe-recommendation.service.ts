@@ -134,7 +134,9 @@ export class WardrobeRecommendationService {
     return { garment, score, reasons };
   }
 
-  private groupByCategory(scored: ScoredGarment[]): GarmentRecommendationGroup[] {
+  private groupByCategory(
+    scored: ScoredGarment[],
+  ): GarmentRecommendationGroup[] {
     const groups = new Map<string, ScoredGarment[]>();
     for (const item of scored) {
       const list = groups.get(item.garment.category) ?? [];

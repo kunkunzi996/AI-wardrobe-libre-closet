@@ -2,12 +2,7 @@ import { OutfitService } from './outfit.service';
 
 describe('OutfitService', () => {
   const makeService = () =>
-    new OutfitService(
-      null as any,
-      null as any,
-      null as any,
-      null as any,
-    );
+    new OutfitService(null as any, null as any, null as any, null as any);
 
   describe('parseSlotsFromBody', () => {
     it('parses comma-joined repeated fields into multiple outfit slots', () => {

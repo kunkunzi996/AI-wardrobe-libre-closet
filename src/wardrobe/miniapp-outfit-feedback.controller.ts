@@ -33,9 +33,7 @@ type SaveFeedbackBody = {
 @UseGuards(ConditionalAuthGuard)
 @Controller('api/miniapp/outfit-feedback')
 export class MiniappOutfitFeedbackController {
-  constructor(
-    private readonly outfitFeedbackService: OutfitFeedbackService,
-  ) {}
+  constructor(private readonly outfitFeedbackService: OutfitFeedbackService) {}
 
   @Post()
   async save(@Body() body: SaveFeedbackBody = {}, @Req() req: FastifyRequest) {
@@ -44,12 +42,9 @@ export class MiniappOutfitFeedbackController {
       throw new BadRequestException('请先选择一个评价选项');
     }
 
-    const comment =
-      typeof body.comment === 'string' ? body.comment.trim() : '';
+    const comment = typeof body.comment === 'string' ? body.comment.trim() : '';
     if (comment.length > MAX_COMMENT_LENGTH) {
-      throw new BadRequestException(
-        `文字反馈最多 ${MAX_COMMENT_LENGTH} 个字`,
-      );
+      throw new BadRequestException(`文字反馈最多 ${MAX_COMMENT_LENGTH} 个字`);
     }
 
     const feedback = await this.outfitFeedbackService.create(

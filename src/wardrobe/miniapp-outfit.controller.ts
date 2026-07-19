@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
@@ -119,7 +112,9 @@ export class MiniappOutfitController {
       categoryLabel: this.categoryLabel(garment.category),
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
-      photoUrl: photoFileName ? `${this.origin(req)}/file/${photoFileName}` : '',
+      photoUrl: photoFileName
+        ? `${this.origin(req)}/file/${photoFileName}`
+        : '',
     };
   }
 
@@ -166,6 +161,6 @@ export class MiniappOutfitController {
       pattern: '图案',
       other: '其他',
     };
-    return color ? labels[color] ?? color : '';
+    return color ? (labels[color] ?? color) : '';
   }
 }

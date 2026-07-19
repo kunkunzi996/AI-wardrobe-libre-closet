@@ -69,9 +69,7 @@ export class OutfitFeedbackService {
     garmentIds: number[],
   ): Promise<Map<number, Garment>> {
     const ids = Array.from(
-      new Set(
-        garmentIds.filter((id) => Number.isInteger(id) && id > 0),
-      ),
+      new Set(garmentIds.filter((id) => Number.isInteger(id) && id > 0)),
     );
     if (ids.length === 0) return new Map();
 

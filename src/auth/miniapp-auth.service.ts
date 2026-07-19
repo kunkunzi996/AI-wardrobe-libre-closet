@@ -83,7 +83,9 @@ export class MiniappAuthService {
   }
 
   private async findOrCreateMiniappUser(openid: string): Promise<User> {
-    const existing = await this.userRepository.findOne({ wechatOpenId: openid });
+    const existing = await this.userRepository.findOne({
+      wechatOpenId: openid,
+    });
     if (existing) return existing;
 
     const user = this.userRepository.create({

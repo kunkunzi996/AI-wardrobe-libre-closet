@@ -14,7 +14,7 @@
 - 红线：不覆盖已有标量或数组、不修改 `garment.category`、AI fallback/异常不写处理标记、每件衣物独立事务落库。
 - 已通过本地回归：管理员与迁移测试 3 组共 34 项、两个小程序 JS 语法检查、小程序结构校验、项目构建和 `git diff --check`；局部 ESLint 无 error，保留项目原有复杂度与 mock 警告。
 - 当前功能提交已创建、未 push、未部署，也没有运行任何正式补标批次；部署前必须先完成数据库备份，并先对老婆账号执行 `limit=1` 试点。
-- 当前流水线运行状态：手动挡，`COMMITTED`；工作区为 `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet-backfill-garment-tags`，分支为 `feature/backfill-garment-tags`，未创建 PR。停止点：等待用户确认是否推送、数据库备份、部署后迁移日志确认，以及老婆账号 1 件人工试点。
+- 当前流水线运行状态：手动挡，`PR_CREATED`；工作区为 `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet-backfill-garment-tags`，分支为 `feature/backfill-garment-tags`，PR 为 `#1`。`back-end-ci` 的 13 个历史 TypeScript 格式问题已定向修复，并通过本地 Prettier、补标签测试、小程序校验和构建；等待推送此格式修复提交以重新触发 CI。Playwright 检查已通过。数据库备份、部署后迁移日志确认和老婆账号 1 件人工试点均尚未开始。
 
 更新时间：2026-07-19
 

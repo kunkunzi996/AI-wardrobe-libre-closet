@@ -79,7 +79,9 @@ describe('WardrobeAnalyticsService', () => {
         { label: '通勤', count: 1 },
       ]),
     );
-    expect(result.advice).toContain('下装数量较少，可以后续考虑补一件适合春秋的基础下装。');
+    expect(result.advice).toContain(
+      '下装数量较少，可以后续考虑补一件适合春秋的基础下装。',
+    );
     expect(result.advice.join('')).not.toContain('购买链接');
   });
 

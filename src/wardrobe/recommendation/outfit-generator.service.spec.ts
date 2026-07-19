@@ -89,9 +89,9 @@ describe('OutfitGeneratorService', () => {
     await expect(service.generate({ coreGarmentId: 1 })).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    await expect(service.generate({ coreGarmentId: 99 })).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.generate({ coreGarmentId: 99 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('attaches AI recommendation garments for the template', async () => {
@@ -126,7 +126,9 @@ describe('OutfitGeneratorService', () => {
         ],
       }),
     };
-    const garmentRepository = { find: jest.fn(async () => [core, shirt, shorts]) };
+    const garmentRepository = {
+      find: jest.fn(async () => [core, shirt, shorts]),
+    };
     const service = new OutfitGeneratorService(
       garmentRepository as any,
       outfitAiService as any,
@@ -221,8 +223,7 @@ describe('OutfitGeneratorService', () => {
 
     expect(result.ai).toBeUndefined();
     expect(result.plans[0].garments.map((garment) => garment.id)).toEqual([
-      1,
-      2,
+      1, 2,
     ]);
   });
 
@@ -301,7 +302,9 @@ describe('OutfitGeneratorService', () => {
       expect.arrayContaining([1, 3, 4]),
     );
     expect(
-      plans.flatMap((plan) => plan.garments).some((garment) => garment.id === 2),
+      plans
+        .flatMap((plan) => plan.garments)
+        .some((garment) => garment.id === 2),
     ).toBe(false);
   });
 });
