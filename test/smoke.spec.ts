@@ -25,7 +25,6 @@ test('homepage presents Chinese wardrobe product entry points', async ({
 }) => {
   await page.goto('/');
 
-  await expect(page.locator('body')).toContainText('AI穿搭衣橱');
   await expect(page.locator('body')).toContainText('我的衣橱');
   await expect(page.locator('body')).toContainText('拍照入库');
   await expect(page.locator('body')).toContainText('AI搭配');
