@@ -1,4 +1,9 @@
 import { Readable } from 'node:stream';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { MiniappAdminController } from './miniapp-admin.controller';
 
 describe('MiniappAdminController', () => {
@@ -11,9 +16,10 @@ describe('MiniappAdminController', () => {
     const adminService = {
       listUsers: jest.fn(),
       findUserGarments: jest.fn(),
+      backfillUserGarmentTags: jest.fn(),
     };
     const fileService = {
-      get: jest.fn(async () => Readable.from(tinyPng)),
+      get: jest.fn(() => Promise.resolve(Readable.from(tinyPng))),
     };
     const controller = new MiniappAdminController(
       adminService as any,
@@ -77,5 +83,54 @@ describe('MiniappAdminController', () => {
       expect.stringContaining('user-12-garments-'),
     );
     expect(Buffer.isBuffer(reply.send.mock.calls[0][0])).toBe(true);
+  });
+
+  it('passes the current admin, target user, and requested limit to the service', async () => {
+    const { controller, adminService, req } = makeController();
+    adminService.backfillUserGarmentTags.mockResolvedValue({
+      targetUserId: 12,
+      effectiveLimit: 2,
+    });
+
+    await expect(
+      controller.backfillUserGarmentTags(12, { limit: 2 }, req),
+    ).resolves.toMatchObject({ targetUserId: 12, effectiveLimit: 2 });
+    expect(adminService.backfillUserGarmentTags).toHaveBeenCalledWith(7, 12, 2);
+
+    await controller.backfillUserGarmentTags(12, {}, req);
+    expect(adminService.backfillUserGarmentTags).toHaveBeenLastCalledWith(
+      7,
+      12,
+      3,
+    );
+  });
+
+  it.each([0, -1, 1.5, 4, '1', [], {}, NaN, Infinity])(
+    'rejects an invalid backfill limit: %p',
+    async (limit) => {
+      const { controller, adminService, req } = makeController();
+
+      await expect(
+        controller.backfillUserGarmentTags(12, { limit }, req),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(adminService.backfillUserGarmentTags).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps standard service authorization and concurrency errors intact', async () => {
+    const { controller, adminService, req } = makeController();
+    adminService.backfillUserGarmentTags.mockRejectedValueOnce(
+      new ForbiddenException(),
+    );
+    await expect(
+      controller.backfillUserGarmentTags(12, { limit: 1 }, req),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    adminService.backfillUserGarmentTags.mockRejectedValueOnce(
+      new ConflictException(),
+    );
+    await expect(
+      controller.backfillUserGarmentTags(12, { limit: 1 }, req),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

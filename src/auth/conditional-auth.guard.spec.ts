@@ -11,10 +11,12 @@ describe('ConditionalAuthGuard', () => {
 
   it('reads miniapp Bearer tokens even when normal web auth is disabled', async () => {
     const jwtService = {
-      verifyAsync: jest.fn(async () => ({
-        userId: 42,
-        pwf: 'finger',
-      })),
+      verifyAsync: jest.fn(() =>
+        Promise.resolve({
+          userId: 42,
+          pwf: 'finger',
+        }),
+      ),
     };
     const configService = {
       get: jest.fn((key: string) =>

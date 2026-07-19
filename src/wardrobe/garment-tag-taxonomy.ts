@@ -1,3 +1,82 @@
+import { GarmentColor } from './garment-color.enum';
+
+// Keep taxonomy labels and legacy garment fields on one shared mapping table.
+export const COLOR_LABEL_TO_VALUE: Record<string, GarmentColor> = {
+  黑色: GarmentColor.BLACK,
+  白色: GarmentColor.WHITE,
+  灰色: GarmentColor.GREY,
+  米色: GarmentColor.BEIGE,
+  棕色: GarmentColor.BROWN,
+  红色: GarmentColor.RED,
+  橙色: GarmentColor.ORANGE,
+  黄色: GarmentColor.YELLOW,
+  绿色: GarmentColor.GREEN,
+  蓝色: GarmentColor.BLUE,
+  紫色: GarmentColor.PURPLE,
+  粉色: GarmentColor.PINK,
+  金色: GarmentColor.GOLD,
+  银色: GarmentColor.SILVER,
+  彩色: GarmentColor.PATTERN,
+};
+
+export const COLOR_VALUE_TO_LABEL = Object.fromEntries(
+  Object.entries(COLOR_LABEL_TO_VALUE).map(([label, value]) => [value, label]),
+) as Partial<Record<GarmentColor, string>>;
+
+export const SEASON_LABEL_TO_VALUE: Record<string, string> = {
+  春季: 'spring',
+  夏季: 'summer',
+  秋季: 'autumn',
+  冬季: 'winter',
+  四季: 'all-season',
+};
+
+export const SEASON_ALIASES: Record<string, string> = {
+  春: '春季',
+  春天: '春季',
+  spring: '春季',
+  夏: '夏季',
+  夏天: '夏季',
+  summer: '夏季',
+  秋: '秋季',
+  秋天: '秋季',
+  autumn: '秋季',
+  fall: '秋季',
+  冬: '冬季',
+  冬天: '冬季',
+  winter: '冬季',
+  四季: '四季',
+  'all-season': '四季',
+};
+
+export function taxonomySeasonLabelsFromValues(input: unknown): string[] {
+  const values = Array.isArray(input) ? input : [input];
+  return Array.from(
+    new Set(
+      values.flatMap((value) => {
+        if (typeof value !== 'string') return [];
+        const trimmed = value.trim();
+        const label =
+          SEASON_ALIASES[trimmed.toLowerCase()] ?? SEASON_ALIASES[trimmed];
+        return label ? [label] : [];
+      }),
+    ),
+  );
+}
+
+export function garmentSeasonValuesFromTaxonomy(input: unknown): string[] {
+  const labels = Array.isArray(input) ? input : [input];
+  return Array.from(
+    new Set(
+      labels.flatMap((label) => {
+        if (typeof label !== 'string') return [];
+        const value = SEASON_LABEL_TO_VALUE[label.trim()];
+        return value ? [value] : [];
+      }),
+    ),
+  );
+}
+
 export const GARMENT_TAG_TAXONOMY = {
   season: ['春季', '夏季', '秋季', '冬季', '四季'],
   weather: [

@@ -191,7 +191,12 @@ export class CalendarService {
   /** 按 id 取一条日历记录，带 owner 校验，并预加载 outfit 及其照片，供删除清理用 */
   async findOwnedEntry(id: number, userId?: number): Promise<OutfitCalendar> {
     const entry = await this.calendarRepository.findOne(id, {
-      populate: ['outfit', 'outfit.photo', 'outfit.garments', 'outfit.garments.photo'],
+      populate: [
+        'outfit',
+        'outfit.photo',
+        'outfit.garments',
+        'outfit.garments.photo',
+      ],
     });
     if (!entry) throw new NotFoundException('Calendar entry not found');
 

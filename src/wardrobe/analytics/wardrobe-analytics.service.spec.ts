@@ -8,7 +8,7 @@ describe('WardrobeAnalyticsService', () => {
 
   const makeService = (garments: Garment[]) => {
     const garmentRepository = {
-      find: jest.fn(async () => garments),
+      find: jest.fn(() => Promise.resolve(garments)),
     };
     const service = new WardrobeAnalyticsService(garmentRepository as any);
     return { service, garmentRepository };
@@ -79,7 +79,9 @@ describe('WardrobeAnalyticsService', () => {
         { label: '通勤', count: 1 },
       ]),
     );
-    expect(result.advice).toContain('下装数量较少，可以后续考虑补一件适合春秋的基础下装。');
+    expect(result.advice).toContain(
+      '下装数量较少，可以后续考虑补一件适合春秋的基础下装。',
+    );
     expect(result.advice.join('')).not.toContain('购买链接');
   });
 

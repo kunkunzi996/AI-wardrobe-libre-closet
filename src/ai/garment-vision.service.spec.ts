@@ -13,6 +13,11 @@ describe('GarmentVisionService', () => {
     chestMarkPosition: 'unknown',
     chestMarkText: null,
   };
+  const mockJsonResponse = (payload: unknown) =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(payload),
+    });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,9 +56,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -79,7 +83,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) => {
@@ -145,9 +149,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -163,7 +166,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
@@ -202,9 +205,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -224,7 +226,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
@@ -267,9 +269,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -289,7 +290,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
@@ -314,9 +315,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -336,7 +336,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
@@ -368,9 +368,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -389,7 +388,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
@@ -420,9 +419,8 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [
           {
             message: {
@@ -441,7 +439,7 @@ describe('GarmentVisionService', () => {
           },
         ],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) =>
@@ -472,12 +470,11 @@ describe('GarmentVisionService', () => {
     fileService.get.mockResolvedValue(
       Readable.from(Buffer.from('image-bytes')),
     );
-    const fetchImpl = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchImpl = jest.fn(() =>
+      mockJsonResponse({
         choices: [{ message: { content: '{"category":"tops"}' } }],
       }),
-    }));
+    );
     const service = new GarmentVisionService(
       {
         get: jest.fn((key: string) => {

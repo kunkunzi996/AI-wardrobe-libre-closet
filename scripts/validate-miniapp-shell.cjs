@@ -24,6 +24,9 @@ const requiredFiles = [
   'miniprogram/pages/edit-outfit/index.wxml',
   'miniprogram/pages/edit-outfit/index.wxss',
   'miniprogram/pages/edit-outfit/index.js',
+  'miniprogram/pages/admin-inventory/index.wxml',
+  'miniprogram/pages/admin-inventory/index.wxss',
+  'miniprogram/pages/admin-inventory/index.js',
 ];
 
 const jsonFiles = [
@@ -78,6 +81,7 @@ const expectedPages = [
   'pages/garment-form/index',
   'pages/garment-detail/index',
   'pages/edit-outfit/index',
+  'pages/admin-inventory/index',
 ];
 if (!Array.isArray(appJson.pages)) {
   throw new Error('miniprogram/app.json must define pages');
@@ -101,6 +105,9 @@ if (!apiBaseMatch) {
 
 if (apiBaseMatch[1] !== 'https://aimatchwear.asia') {
   throw new Error('API_BASE_URL must be https://aimatchwear.asia');
+}
+if (!apiJs.includes('backfillAdminUserGarmentTags')) {
+  throw new Error('api.js must expose the administrator tag backfill request');
 }
 
 const wardrobeWxml = readRequiredFile('miniprogram/pages/wardrobe/index.wxml');
@@ -191,6 +198,32 @@ if (
   !editOutfitWxml.includes('save')
 ) {
   throw new Error('edit outfit page must render edit title, photo picker, and save action');
+}
+
+const adminInventoryWxml = readRequiredFile(
+  'miniprogram/pages/admin-inventory/index.wxml',
+);
+const adminInventoryJs = readRequiredFile(
+  'miniprogram/pages/admin-inventory/index.js',
+);
+if (
+  !adminInventoryWxml.includes('AI补标签') ||
+  !adminInventoryWxml.includes('backfillUserTags') ||
+  !adminInventoryWxml.includes('backfillResult')
+) {
+  throw new Error(
+    'admin inventory page must render the AI tag backfill action and result dialog',
+  );
+}
+if (
+  !adminInventoryJs.includes('backfillAdminUserGarmentTags') ||
+  !adminInventoryJs.includes('closeBackfillResult') ||
+  !adminInventoryJs.includes('showActionSheet') ||
+  !adminInventoryJs.includes('confirmBackfill')
+) {
+  throw new Error(
+    'admin inventory page must select, confirm, and close the tag backfill workflow',
+  );
 }
 
 console.log('Native mini-program validation passed.');

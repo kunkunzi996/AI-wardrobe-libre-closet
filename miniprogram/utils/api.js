@@ -77,6 +77,7 @@ function request(path, options) {
         method: options.method || 'GET',
         data: options.data,
         header: Object.assign({}, tokenHeader(), options.header || {}),
+        timeout: options.timeout,
         success(res) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(res.data);
@@ -438,6 +439,16 @@ module.exports = {
   },
   getAdminUserGarments: function (userId) {
     return request('/api/miniapp/admin/users/' + userId + '/garments');
+  },
+  backfillAdminUserGarmentTags: function (userId, limit) {
+    return request(
+      '/api/miniapp/admin/users/' + userId + '/garments/backfill-tags',
+      {
+        method: 'POST',
+        data: { limit: limit },
+        timeout: 120000,
+      },
+    );
   },
   adminInventoryExcelUrl: function (userId) {
     return (

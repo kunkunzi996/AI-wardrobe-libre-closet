@@ -1,7 +1,7 @@
 <view class="admin-page">
   <view class="header">
-    <text class="title">库存导出</text>
-    <text class="subtitle">用户当前库存与衣物ID</text>
+    <text class="title">库存管理</text>
+    <text class="subtitle">按用户查看库存、导出与补标签</text>
   </view>
 
   <view wx:if="{{error}}" class="notice error-card">
@@ -31,12 +31,82 @@
         <button
           class="export-btn"
           loading="{{exportingUserId === item.id}}"
+          disabled="{{backfillingUserId === item.id}}"
           data-id="{{item.id}}"
           bindtap="exportUserInventory"
         >
           导出
         </button>
+        <button
+          class="backfill-btn"
+          loading="{{backfillingUserId === item.id}}"
+          disabled="{{backfillingUserId !== null}}"
+          data-id="{{item.id}}"
+          bindtap="backfillUserTags"
+        >
+          AI补标签
+        </button>
       </view>
+    </view>
+  </view>
+
+  <view wx:if="{{backfillResult}}" class="result-mask">
+    <view class="result-dialog">
+      <view class="result-header">
+        <text class="result-title">本批补标签结果</text>
+        <text class="result-state">{{backfillResult.completionText}}</text>
+      </view>
+      <scroll-view scroll-y class="result-body">
+        <view class="result-grid">
+          <view class="result-metric">
+            <text class="result-value">{{backfillResult.analyzedThisRun}}</text>
+            <text class="result-label">本次分析</text>
+          </view>
+          <view class="result-metric">
+            <text class="result-value">{{backfillResult.filledFieldCount}}</text>
+            <text class="result-label">新增标签</text>
+          </view>
+          <view class="result-metric">
+            <text class="result-value">{{backfillResult.remainingUnattempted}}</text>
+            <text class="result-label">仍待处理</text>
+          </view>
+          <view class="result-metric">
+            <text class="result-value">{{backfillResult.unreadableCount + backfillResult.failedCount}}</text>
+            <text class="result-label">未识别或失败</text>
+          </view>
+        </view>
+        <view class="result-row">
+          <text>无照片：{{backfillResult.noPhotoCount}} 件</text>
+          <text>镜像冲突：{{backfillResult.mirrorConflictCount}} 项</text>
+        </view>
+        <view wx:if="{{backfillResult.deadlineReached}}" class="result-notice">
+          <text>本批已到时间预算，剩余衣物可再次处理。</text>
+        </view>
+        <view wx:if="{{backfillResult.noPhotoItems.length}}" class="result-list">
+          <text class="result-list-title">无照片衣物</text>
+          <text
+            wx:for="{{backfillResult.noPhotoItems}}"
+            wx:key="id"
+            class="result-list-item"
+          >
+            #{{item.id}} {{item.name}}
+          </text>
+          <text wx:if="{{backfillResult.noPhotoItemsTruncated}}" class="result-note">
+            清单超过 500 件，当前只显示前 500 件。
+          </text>
+        </view>
+        <view wx:if="{{backfillResult.failedItems.length}}" class="result-list">
+          <text class="result-list-title">未识别或失败</text>
+          <text
+            wx:for="{{backfillResult.failedItems}}"
+            wx:key="id"
+            class="result-list-item"
+          >
+            #{{item.id}} {{item.name}}：{{item.reasonLabel}}
+          </text>
+        </view>
+      </scroll-view>
+      <button class="result-close" bindtap="closeBackfillResult">关闭</button>
     </view>
   </view>
 </view>

@@ -121,11 +121,10 @@ describe('MiniappOutfitFeedbackController', () => {
     await controller.exportExcel(req, reply);
 
     expect(outfitFeedbackService.findAll).toHaveBeenCalledWith(7);
-    expect(outfitFeedbackService.findGarmentLookup).toHaveBeenCalledWith(7, [
-      1,
-      2,
-      1,
-    ]);
+    expect(outfitFeedbackService.findGarmentLookup).toHaveBeenCalledWith(
+      7,
+      [1, 2, 1],
+    );
     expect(reply.header).toHaveBeenCalledWith(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

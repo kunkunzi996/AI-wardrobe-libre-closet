@@ -15,12 +15,12 @@ describe('CalendarService', () => {
       create: jest.fn((data: Partial<OutfitCalendar>) =>
         Object.assign(new OutfitCalendar(), data),
       ),
-      find: jest.fn(async () => []),
-      findOne: jest.fn(async () => entry ?? null),
+      find: jest.fn(() => Promise.resolve([])),
+      findOne: jest.fn(() => Promise.resolve(entry ?? null)),
       getEntityManager: jest.fn(() => entityManager),
     };
     const outfitRepository = {
-      find: jest.fn(async () => []),
+      find: jest.fn(() => Promise.resolve([])),
       findOne: jest.fn(),
     };
     const userRepository = {

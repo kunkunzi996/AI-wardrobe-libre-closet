@@ -13,14 +13,14 @@ describe('GarmentService', () => {
       create: jest.fn((data: Partial<Garment>) =>
         Object.assign(new Garment(), data),
       ),
-      find: jest.fn(async () => []),
-      findOne: jest.fn(async () => existingGarment ?? null),
+      find: jest.fn(() => Promise.resolve([])),
+      findOne: jest.fn(() => Promise.resolve(existingGarment ?? null)),
       getEntityManager: jest.fn(() => entityManager),
     };
 
     const service = new GarmentService(
       garmentRepository as any,
-      { findOne: jest.fn(async () => null) } as any,
+      { findOne: jest.fn(() => Promise.resolve(null)) } as any,
       {} as any,
       {} as any,
     );

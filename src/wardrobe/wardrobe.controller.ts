@@ -318,10 +318,7 @@ export class WardrobeController {
     @Req() req: FastifyRequest,
     @I18n() i18n: I18nContext,
   ) {
-    const garment = await this.garmentService.findOne(
-      id,
-      this.userId(req),
-    );
+    const garment = await this.garmentService.findOne(id, this.userId(req));
     return {
       garment,
       categories: await this.categoryOptions(req, i18n),

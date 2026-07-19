@@ -84,11 +84,11 @@ type BackupManifestGarment = {
   sceneTags?: string[];
   material?: string;
   thickness?: string;
-  pocketPresence?: GarmentFeaturePresence | string;
-  pocketPosition?: GarmentPocketPosition | string;
-  chestMarkPresence?: GarmentFeaturePresence | string;
-  chestMarkType?: GarmentChestMarkType | string;
-  chestMarkPosition?: GarmentChestMarkPosition | string;
+  pocketPresence?: string;
+  pocketPosition?: string;
+  chestMarkPresence?: string;
+  chestMarkType?: string;
+  chestMarkPosition?: string;
   chestMarkText?: string | null;
   taxonomyTags?: GarmentTaxonomySelection;
   brand?: string;

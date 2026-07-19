@@ -28,11 +28,7 @@ export interface GeneratedOutfitResult {
   };
 }
 
-const PLAN_TITLES = [
-  '方案A：稳妥通勤',
-  '方案B：年轻活泼',
-  '方案C：舒适日常',
-];
+const PLAN_TITLES = ['方案A：稳妥通勤', '方案B：年轻活泼', '方案C：舒适日常'];
 
 const COMPLEMENTARY_CATEGORIES: Record<string, string[]> = {
   tops: ['bottoms', 'footwear', 'outerwear', 'bags', 'accessories'],
@@ -58,11 +54,11 @@ export class OutfitGeneratorService {
     return result.plans;
   }
 
-  async generateWithAi(input: GenerateOutfitInput): Promise<GeneratedOutfitResult> {
+  async generateWithAi(
+    input: GenerateOutfitInput,
+  ): Promise<GeneratedOutfitResult> {
     const garments = await this.garmentRepository.find(
-      input.userId != null
-        ? { owner: { id: input.userId } }
-        : { owner: null },
+      input.userId != null ? { owner: { id: input.userId } } : { owner: null },
       { populate: ['photo'], orderBy: { id: 'DESC' } },
     );
     const wearable = garments.filter(
@@ -72,7 +68,12 @@ export class OutfitGeneratorService {
     if (!core) throw new NotFoundException('Core garment not found');
 
     const plans = PLAN_TITLES.map((title, index) => {
-      const selected = this.pickGarments(core, wearable, input.requestText, index);
+      const selected = this.pickGarments(
+        core,
+        wearable,
+        input.requestText,
+        index,
+      );
       return {
         title,
         reason: this.reasonFor(title, core, input.requestText),
@@ -101,9 +102,10 @@ export class OutfitGeneratorService {
         })
       : undefined;
 
-    const ai = rawAi?.source === 'ai'
-      ? this.attachAiGarments(rawAi, garments, input.requestText, core)
-      : undefined;
+    const ai =
+      rawAi?.source === 'ai'
+        ? this.attachAiGarments(rawAi, garments, input.requestText, core)
+        : undefined;
 
     return { plans, ai };
   }
@@ -170,7 +172,9 @@ export class OutfitGeneratorService {
     requestText?: string,
     core?: Garment,
   ): GeneratedOutfitResult['ai'] {
-    const garmentById = new Map(garments.map((garment) => [garment.id, garment]));
+    const garmentById = new Map(
+      garments.map((garment) => [garment.id, garment]),
+    );
     return {
       ...ai,
       recommendations: ai.recommendations.map((recommendation) => {
@@ -245,23 +249,32 @@ export class OutfitGeneratorService {
   private isHotWeatherRequest(requestText?: string): boolean {
     if (!requestText) return false;
     const text = requestText.toLowerCase();
-    return ['热', '太热', '清爽', '凉快', '夏', '透气', 'light', 'cool', 'summer'].some(
-      (word) => text.includes(word),
-    );
+    return [
+      '热',
+      '太热',
+      '清爽',
+      '凉快',
+      '夏',
+      '透气',
+      'light',
+      'cool',
+      'summer',
+    ].some((word) => text.includes(word));
   }
 
   private overlaps(a?: string[], b?: string[]): boolean {
     return Boolean(
       a?.some((left) =>
-        b?.some((right) => left.trim().toLowerCase() === right.trim().toLowerCase()),
+        b?.some(
+          (right) => left.trim().toLowerCase() === right.trim().toLowerCase(),
+        ),
       ),
     );
   }
 
   private complementaryCategoriesFor(core: Garment): string[] {
     return (
-      COMPLEMENTARY_CATEGORIES[core.category] ??
-      COMPLEMENTARY_CATEGORIES.other
+      COMPLEMENTARY_CATEGORIES[core.category] ?? COMPLEMENTARY_CATEGORIES.other
     ).filter((category) => category !== core.category);
   }
 
@@ -295,7 +308,11 @@ export class OutfitGeneratorService {
     return tokens.some((token) => values.includes(token));
   }
 
-  private reasonFor(title: string, core: Garment, requestText?: string): string {
+  private reasonFor(
+    title: string,
+    core: Garment,
+    requestText?: string,
+  ): string {
     const coreName = core.name || '这件衣服';
     if (requestText?.trim()) {
       return `${title}围绕${coreName}，优先匹配“${requestText.trim()}”相关衣物。`;
