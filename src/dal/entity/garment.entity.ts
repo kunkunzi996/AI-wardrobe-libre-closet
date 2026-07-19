@@ -90,6 +90,9 @@ export class Garment extends ShareableId {
   @Property({ type: 'json', nullable: true })
   public taxonomyTags?: GarmentTaxonomySelection;
 
+  @Property({ nullable: true })
+  public tagsBackfilledAt?: Date;
+
   @Property({ default: GarmentStatus.Wearable })
   public status: GarmentStatus = GarmentStatus.Wearable;
 

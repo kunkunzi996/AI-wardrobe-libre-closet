@@ -6,7 +6,11 @@ import sharp from 'sharp';
 import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from '../wardrobe/garment-color.enum';
 import {
+  COLOR_LABEL_TO_VALUE,
+  COLOR_VALUE_TO_LABEL,
   GARMENT_TAG_TAXONOMY,
+  SEASON_ALIASES,
+  SEASON_LABEL_TO_VALUE,
   sanitizeGarmentTaxonomySelection,
   type GarmentTagGroup,
   type GarmentTaxonomySelection,
@@ -80,54 +84,6 @@ const CHINESE_LABELS: Record<string, string> = {
   中等: '适中',
   偏薄: '薄款',
   偏厚: '厚款',
-};
-
-const COLOR_LABEL_TO_VALUE: Record<string, GarmentColor> = {
-  黑色: GarmentColor.BLACK,
-  白色: GarmentColor.WHITE,
-  灰色: GarmentColor.GREY,
-  米色: GarmentColor.BEIGE,
-  棕色: GarmentColor.BROWN,
-  红色: GarmentColor.RED,
-  橙色: GarmentColor.ORANGE,
-  黄色: GarmentColor.YELLOW,
-  绿色: GarmentColor.GREEN,
-  蓝色: GarmentColor.BLUE,
-  紫色: GarmentColor.PURPLE,
-  粉色: GarmentColor.PINK,
-  金色: GarmentColor.GOLD,
-  银色: GarmentColor.SILVER,
-  彩色: GarmentColor.PATTERN,
-};
-
-const COLOR_VALUE_TO_LABEL = Object.fromEntries(
-  Object.entries(COLOR_LABEL_TO_VALUE).map(([label, value]) => [value, label]),
-) as Partial<Record<GarmentColor, string>>;
-
-const SEASON_LABEL_TO_VALUE: Record<string, string> = {
-  春季: 'spring',
-  夏季: 'summer',
-  秋季: 'autumn',
-  冬季: 'winter',
-  四季: 'all-season',
-};
-
-const SEASON_ALIASES: Record<string, string> = {
-  春: '春季',
-  春天: '春季',
-  spring: '春季',
-  夏: '夏季',
-  夏天: '夏季',
-  summer: '夏季',
-  秋: '秋季',
-  秋天: '秋季',
-  autumn: '秋季',
-  fall: '秋季',
-  冬: '冬季',
-  冬天: '冬季',
-  winter: '冬季',
-  四季: '四季',
-  'all-season': '四季',
 };
 
 const CATEGORY_ALIASES: Record<string, string> = {

@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   Get,
   Param,
   ParseIntPipe,
+  Post,
   Req,
   Res,
   UseGuards,
@@ -15,7 +18,15 @@ import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
 import { FileService } from '../file/file-service.abstract';
-import { MiniappAdminService } from './miniapp-admin.service';
+import {
+  BACKFILL_LIMIT_DEFAULT,
+  BACKFILL_LIMIT_MAX,
+  MiniappAdminService,
+} from './miniapp-admin.service';
+
+type BackfillTagsBody = {
+  limit?: unknown;
+};
 
 @UseGuards(ConditionalAuthGuard)
 @Controller('api/miniapp/admin')
@@ -41,6 +52,19 @@ export class MiniappAdminController {
       id,
     );
     return { items: garments.map((garment) => this.toItem(garment)) };
+  }
+
+  @Post('users/:id/garments/backfill-tags')
+  async backfillUserGarmentTags(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: BackfillTagsBody = {},
+    @Req() req: FastifyRequest,
+  ) {
+    return this.adminService.backfillUserGarmentTags(
+      this.userId(req),
+      id,
+      this.backfillLimit(body?.limit),
+    );
   }
 
   @Get('users/:id/garments/export.xlsx')
@@ -96,6 +120,22 @@ export class MiniappAdminController {
 
   private userId(req: FastifyRequest): number | undefined {
     return (req['user'] as Payload | undefined)?.userId;
+  }
+
+  private backfillLimit(value: unknown): number {
+    if (value === undefined) return BACKFILL_LIMIT_DEFAULT;
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      !Number.isInteger(value) ||
+      value < 1 ||
+      value > BACKFILL_LIMIT_MAX
+    ) {
+      throw new BadRequestException(
+        `limit 必须是 1 至 ${BACKFILL_LIMIT_MAX} 的整数`,
+      );
+    }
+    return value;
   }
 
   private toItem(garment: Garment) {

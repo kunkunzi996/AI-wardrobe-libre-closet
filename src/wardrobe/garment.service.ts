@@ -29,7 +29,16 @@ import {
   type GarmentPocketPosition,
   type GarmentVisionResult,
 } from '../ai/dto/garment-vision-result.dto';
-import { sanitizeGarmentTaxonomySelection } from './garment-tag-taxonomy';
+import {
+  COLOR_LABEL_TO_VALUE,
+  COLOR_VALUE_TO_LABEL,
+  GARMENT_TAG_TAXONOMY,
+  garmentSeasonValuesFromTaxonomy,
+  sanitizeGarmentTaxonomySelection,
+  taxonomySeasonLabelsFromValues,
+  type GarmentTagGroup,
+  type GarmentTaxonomySelection,
+} from './garment-tag-taxonomy';
 
 const CANONICAL_SIZES = [
   'XX-Small',
@@ -79,6 +88,335 @@ export interface SimilarGarmentCandidate {
   reasons: string[];
 }
 
+type BackfillArrayField = 'seasons' | 'styleTags' | 'sceneTags';
+type BackfillScalarField =
+  | 'color'
+  | 'material'
+  | 'thickness'
+  | 'fit'
+  | 'subcategory';
+
+const MIRRORED_TAXONOMY_GROUPS: Array<
+  Extract<
+    GarmentTagGroup,
+    | 'season'
+    | 'color'
+    | 'style'
+    | 'occasion'
+    | 'material'
+    | 'thickness'
+    | 'fit'
+    | 'category'
+  >
+> = [
+  'season',
+  'color',
+  'style',
+  'occasion',
+  'material',
+  'thickness',
+  'fit',
+  'category',
+];
+
+export interface GarmentTagBackfillPatch {
+  taxonomyTags?: GarmentTaxonomySelection;
+  seasons?: string[];
+  styleTags?: string[];
+  sceneTags?: string[];
+  color?: GarmentColor;
+  material?: string;
+  thickness?: string;
+  fit?: string;
+  subcategory?: string;
+}
+
+export interface GarmentTagBackfillOutcome {
+  changed: boolean;
+  addedFieldCount: number;
+  mirrorConflictCount: number;
+}
+
+function cleanedStrings(input: unknown): string[] {
+  const values = Array.isArray(input) ? input : input == null ? [] : [input];
+  return values.flatMap((value) =>
+    typeof value === 'string'
+      ? value
+          .split(/[,，、]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [],
+  );
+}
+
+function isEmptyScalar(value: unknown): boolean {
+  return value == null || (typeof value === 'string' && !value.trim());
+}
+
+function normalizedTagSet(values: string[]): Set<string> {
+  return new Set(values.map((value) => value.trim()));
+}
+
+function tagsConflict(left: string[], right: string[]): boolean {
+  const leftValues = normalizedTagSet(left);
+  return (
+    leftValues.size > 0 &&
+    right.length > 0 &&
+    !right.some((value) => leftValues.has(value.trim()))
+  );
+}
+
+function cloneTaxonomyTags(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+  return Object.fromEntries(
+    Object.entries(input as Record<string, unknown>).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? [...value] : value,
+    ]),
+  );
+}
+
+function appendUniqueValues(
+  current: unknown,
+  additions: string[],
+): { value: string[]; added: string[] } {
+  const value = Array.isArray(current)
+    ? [...current]
+    : current == null
+      ? []
+      : [current];
+  const seen = new Set(
+    value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim()),
+  );
+  const added: string[] = [];
+
+  for (const item of additions) {
+    const normalized = item.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    value.push(normalized);
+    added.push(normalized);
+  }
+
+  return { value: value as string[], added };
+}
+
+function sanitizedGroup(group: GarmentTagGroup, input: unknown): string[] {
+  return sanitizeGarmentTaxonomySelection({ [group]: input })[group] ?? [];
+}
+
+function taxonomyFromFlatFields(
+  garment: Pick<
+    Garment,
+    | 'color'
+    | 'seasons'
+    | 'styleTags'
+    | 'sceneTags'
+    | 'material'
+    | 'thickness'
+    | 'fit'
+    | 'subcategory'
+  >,
+): GarmentTaxonomySelection {
+  return sanitizeGarmentTaxonomySelection({
+    season: taxonomySeasonLabelsFromValues(garment.seasons),
+    color: garment.color ? [COLOR_VALUE_TO_LABEL[garment.color]] : [],
+    style: cleanedStrings(garment.styleTags),
+    occasion: cleanedStrings(garment.sceneTags),
+    material: garment.material,
+    thickness: garment.thickness,
+    fit: garment.fit,
+    category: garment.subcategory,
+  });
+}
+
+function taxonomyFromAnalysis(
+  analysis: Pick<
+    GarmentVisionResult,
+    | 'taxonomyTags'
+    | 'color'
+    | 'seasons'
+    | 'styleTags'
+    | 'sceneTags'
+    | 'material'
+    | 'thickness'
+    | 'fit'
+    | 'subcategory'
+  >,
+): GarmentTaxonomySelection {
+  const explicit = sanitizeGarmentTaxonomySelection(analysis.taxonomyTags);
+  const mirrored = sanitizeGarmentTaxonomySelection({
+    season: taxonomySeasonLabelsFromValues(analysis.seasons),
+    color: analysis.color ? [COLOR_VALUE_TO_LABEL[analysis.color]] : [],
+    style: cleanedStrings(analysis.styleTags),
+    occasion: cleanedStrings(analysis.sceneTags),
+    material: analysis.material,
+    thickness: analysis.thickness,
+    fit: analysis.fit,
+    category: analysis.subcategory,
+  });
+  const result: GarmentTaxonomySelection = {};
+
+  for (const group of Object.keys(GARMENT_TAG_TAXONOMY) as GarmentTagGroup[]) {
+    const values = Array.from(
+      new Set([...(explicit[group] ?? []), ...(mirrored[group] ?? [])]),
+    );
+    if (values.length > 0) result[group] = values;
+  }
+
+  return result;
+}
+
+export function buildGarmentTagBackfillPatch(
+  garment: Pick<
+    Garment,
+    | 'category'
+    | 'color'
+    | 'seasons'
+    | 'styleTags'
+    | 'sceneTags'
+    | 'material'
+    | 'thickness'
+    | 'fit'
+    | 'subcategory'
+    | 'taxonomyTags'
+  >,
+  analysis: Pick<
+    GarmentVisionResult,
+    | 'taxonomyTags'
+    | 'color'
+    | 'seasons'
+    | 'styleTags'
+    | 'sceneTags'
+    | 'material'
+    | 'thickness'
+    | 'fit'
+    | 'subcategory'
+  >,
+): { patch: GarmentTagBackfillPatch; outcome: GarmentTagBackfillOutcome } {
+  const currentTaxonomy = sanitizeGarmentTaxonomySelection(
+    garment.taxonomyTags,
+  );
+  const currentFlat = taxonomyFromFlatFields(garment);
+  const aiTaxonomy = taxonomyFromAnalysis(analysis);
+  const nextTaxonomy = cloneTaxonomyTags(garment.taxonomyTags);
+  const arrayState: Record<BackfillArrayField, unknown> = {
+    seasons: garment.seasons,
+    styleTags: garment.styleTags,
+    sceneTags: garment.sceneTags,
+  };
+  const scalarState: Record<BackfillScalarField, unknown> = {
+    color: garment.color,
+    material: garment.material,
+    thickness: garment.thickness,
+    fit: garment.fit,
+    subcategory: garment.subcategory,
+  };
+  const patch: GarmentTagBackfillPatch = {};
+  let addedFieldCount = 0;
+  let mirrorConflictCount = 0;
+  let taxonomyChanged = false;
+
+  const appendTaxonomy = (group: GarmentTagGroup, values: unknown) => {
+    const validValues = sanitizedGroup(group, values);
+    if (validValues.length === 0) return;
+    const merged = appendUniqueValues(nextTaxonomy[group], validValues);
+    if (merged.added.length === 0) return;
+    nextTaxonomy[group] = merged.value;
+    taxonomyChanged = true;
+    addedFieldCount += merged.added.length;
+  };
+
+  const taxonomyValues = (group: GarmentTagGroup): string[] =>
+    sanitizeGarmentTaxonomySelection(nextTaxonomy)[group] ?? [];
+
+  const appendArray = (field: BackfillArrayField, values: string[]) => {
+    const merged = appendUniqueValues(arrayState[field], values);
+    if (merged.added.length === 0) return;
+    arrayState[field] = merged.value;
+    patch[field] = merged.value;
+    addedFieldCount += merged.added.length;
+  };
+
+  const setScalarIfEmpty = (field: BackfillScalarField, value: unknown) => {
+    if (isEmptyScalar(value) || !isEmptyScalar(scalarState[field])) return;
+    scalarState[field] = value;
+    (patch as Record<string, unknown>)[field] = value;
+    addedFieldCount += 1;
+  };
+
+  for (const group of MIRRORED_TAXONOMY_GROUPS) {
+    const taxonomyValuesForGroup = currentTaxonomy[group] ?? [];
+    const flatValuesForGroup = currentFlat[group] ?? [];
+    if (tagsConflict(taxonomyValuesForGroup, flatValuesForGroup)) {
+      mirrorConflictCount += 1;
+    }
+    if (taxonomyValuesForGroup.length === 0 && flatValuesForGroup.length > 0) {
+      appendTaxonomy(group, flatValuesForGroup);
+    }
+  }
+
+  if ((currentFlat.season ?? []).length === 0) {
+    appendArray(
+      'seasons',
+      garmentSeasonValuesFromTaxonomy(taxonomyValues('season')),
+    );
+  }
+  if ((currentFlat.style ?? []).length === 0) {
+    appendArray('styleTags', taxonomyValues('style'));
+  }
+  if ((currentFlat.occasion ?? []).length === 0) {
+    appendArray('sceneTags', taxonomyValues('occasion'));
+  }
+  if ((currentFlat.color ?? []).length === 0) {
+    setScalarIfEmpty('color', COLOR_LABEL_TO_VALUE[taxonomyValues('color')[0]]);
+  }
+  if ((currentFlat.material ?? []).length === 0) {
+    setScalarIfEmpty('material', taxonomyValues('material')[0]);
+  }
+  if ((currentFlat.thickness ?? []).length === 0) {
+    setScalarIfEmpty('thickness', taxonomyValues('thickness')[0]);
+  }
+  if ((currentFlat.fit ?? []).length === 0) {
+    setScalarIfEmpty('fit', taxonomyValues('fit')[0]);
+  }
+  if ((currentFlat.category ?? []).length === 0) {
+    setScalarIfEmpty('subcategory', taxonomyValues('category')[0]);
+  }
+
+  for (const group of Object.keys(GARMENT_TAG_TAXONOMY) as GarmentTagGroup[]) {
+    appendTaxonomy(group, aiTaxonomy[group]);
+  }
+
+  appendArray('seasons', garmentSeasonValuesFromTaxonomy(aiTaxonomy.season));
+  appendArray('styleTags', aiTaxonomy.style ?? []);
+  appendArray('sceneTags', aiTaxonomy.occasion ?? []);
+  const aiColorLabel = aiTaxonomy.color?.[0];
+  setScalarIfEmpty(
+    'color',
+    aiColorLabel ? COLOR_LABEL_TO_VALUE[aiColorLabel] : undefined,
+  );
+  setScalarIfEmpty('material', aiTaxonomy.material?.[0]);
+  setScalarIfEmpty('thickness', aiTaxonomy.thickness?.[0]);
+  setScalarIfEmpty('fit', aiTaxonomy.fit?.[0]);
+  setScalarIfEmpty('subcategory', aiTaxonomy.category?.[0]);
+
+  if (taxonomyChanged) {
+    patch.taxonomyTags = nextTaxonomy;
+  }
+
+  return {
+    patch,
+    outcome: {
+      changed: addedFieldCount > 0,
+      addedFieldCount,
+      mirrorConflictCount,
+    },
+  };
+}
+
 @Injectable()
 export class GarmentService {
   private readonly logger = new Logger(GarmentService.name);
@@ -103,25 +441,7 @@ export class GarmentService {
 
   resolveColorLabel(color?: string): string {
     if (!color) return '';
-    const labels: Record<GarmentColor, string> = {
-      [GarmentColor.RED]: '红色',
-      [GarmentColor.PINK]: '粉色',
-      [GarmentColor.ORANGE]: '橙色',
-      [GarmentColor.YELLOW]: '黄色',
-      [GarmentColor.GREEN]: '绿色',
-      [GarmentColor.BLUE]: '蓝色',
-      [GarmentColor.PURPLE]: '紫色',
-      [GarmentColor.BLACK]: '黑色',
-      [GarmentColor.WHITE]: '白色',
-      [GarmentColor.GREY]: '灰色',
-      [GarmentColor.BEIGE]: '米色',
-      [GarmentColor.BROWN]: '棕色',
-      [GarmentColor.GOLD]: '金色',
-      [GarmentColor.SILVER]: '银色',
-      [GarmentColor.PATTERN]: '图案',
-      [GarmentColor.OTHER]: '其他',
-    };
-    return labels[color as GarmentColor] ?? color;
+    return COLOR_VALUE_TO_LABEL[color as GarmentColor] ?? color;
   }
 
   resolveStatusLabel(status?: string): string {
@@ -204,6 +524,44 @@ export class GarmentService {
     );
     if (!garment) throw new NotFoundException('Garment not found');
     return garment;
+  }
+
+  async backfillTagsFromAi(
+    garmentId: number,
+    targetUserId: number,
+    analysis: Pick<
+      GarmentVisionResult,
+      | 'taxonomyTags'
+      | 'color'
+      | 'seasons'
+      | 'styleTags'
+      | 'sceneTags'
+      | 'material'
+      | 'thickness'
+      | 'fit'
+      | 'subcategory'
+    >,
+  ): Promise<GarmentTagBackfillOutcome> {
+    const entityManager = this.garmentRepository.getEntityManager().fork();
+
+    return entityManager.transactional(async (transactionalEntityManager) => {
+      const garment = await transactionalEntityManager.findOne(Garment, {
+        id: garmentId,
+        owner: { id: targetUserId },
+      });
+      if (!garment) {
+        throw new NotFoundException('衣物不存在或不属于目标用户');
+      }
+
+      const { patch, outcome } = buildGarmentTagBackfillPatch(
+        garment,
+        analysis,
+      );
+      Object.assign(garment, patch);
+      garment.tagsBackfilledAt = new Date();
+      await transactionalEntityManager.flush();
+      return outcome;
+    });
   }
 
   async create(dto: CreateGarmentDto, userId?: number): Promise<Garment> {
@@ -825,9 +1183,7 @@ export class GarmentService {
   ): GarmentFeaturePresence | undefined {
     const normalized = this.normalizeComparisonText(value);
     if (!normalized) return undefined;
-    return GARMENT_FEATURE_PRESENCE_VALUES.find(
-      (item) => item === normalized,
-    ) as GarmentFeaturePresence | undefined;
+    return GARMENT_FEATURE_PRESENCE_VALUES.find((item) => item === normalized);
   }
 
   private normalizePocketPosition(

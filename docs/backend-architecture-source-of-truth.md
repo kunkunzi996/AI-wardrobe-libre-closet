@@ -57,6 +57,7 @@
 ## 7. 业务规则放置位置
 
 - 与衣物库存、入库、更新、查询有关的规则放 `GarmentService`。
+- 管理员存量衣物 AI 补标签的合并、镜像字段同步和单件事务落库也放 `GarmentService`；`MiniappAdminService` 只负责管理员校验、批次、超时和并发锁。
 - 与小程序请求格式、multipart 字段读取、返回给小程序的 view model 有关的规则放 `MiniappWardrobeController`。
 - 与今日穿搭 multipart 读取、全身照校验、返回给小程序的今日穿搭 view model 有关的规则放 `MiniappDailyOutfitController`。
 - 今日穿搭整体照片保存归 `FileService.storeOriginalImageFromFileUpload`，不走衣物抠图；`Outfit.photo` 关联归 `OutfitService`；场合、评分、反馈等口味字段归 `CalendarService`。
@@ -69,6 +70,7 @@
 - `Outfit` 可通过 `photo_id` 关联一张整体穿搭照片；读取今日穿搭时需要 populate `outfit.photo`，否则小程序看不到全身照。
 - 小程序用户隔离必须带 `userId`，有登录用户时查 `owner.id`，无登录模式只查 `owner=null`。
 - 管理员库存导出不新增角色表，使用 `MINIAPP_ADMIN_USER_IDS` / `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 环境变量做白名单；管理员接口读取其他用户库存时必须先校验当前 JWT 用户是否在白名单内。
+- 管理员补标签接口为 `POST /api/miniapp/admin/users/:id/garments/backfill-tags`。它只允许白名单管理员调用，按目标用户隔离并对同一目标用户加进程内运行锁；本版本的正式试点范围仅为老婆账号。
 
 ## 9. 接口响应规则
 
@@ -109,6 +111,7 @@
 - 小程序登录通过 `/api/miniapp/auth/login` 换取 JWT。
 - 后续小程序请求必须带 `Authorization: Bearer ...`，Guard 会把 `request.user.userId` 写入请求。
 - 小程序管理员接口统一放在 `MiniappAdminController`，入口为 `/api/miniapp/admin/*`，只允许配置白名单里的管理员访问。
+- 管理员补标签接口在 Controller 手动校验 `limit` 必须是 1 至 3 的整数；项目没有全局 `ValidationPipe`，不能只依赖 DTO 装饰器。
 
 ## 13. 配置读取规则
 
@@ -173,6 +176,7 @@ docker exec ai-wardrobe sh -c 'echo "QWEN_VISION_MODEL=$QWEN_VISION_MODEL"'
 - 不要把小程序业务规则直接写进 `miniprogram` 前端绕过后端。
 - 不要在 Controller 里堆数据库查询和复杂算法。
 - 不要让 AI 识图结果直接保存入库，必须先让用户确认。
+- 普通新增/编辑衣物仍必须由用户确认 AI 结果。只有管理员对指定存量衣物执行补标签时，才允许在一次明确确认的批处理里自动追加白名单内的缺失标签；该例外不得覆盖已有标量或数组标签，也不得修改 `garment.category`。
 - 不要破坏微信用户隔离，所有衣橱查询和保存都必须考虑 `userId`。
 - 不要提交 `.env`、微信 AppSecret、Qwen Key。
 

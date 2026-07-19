@@ -7,6 +7,15 @@
 - V2 已明确：处理标记的真实含义、镜像字段合并规则、批次超时与并发锁、失败回滚、迁移测试、数据库备份和人工试点。
 - 下一步只有在用户确认自动批量写入例外、目标用户范围和 feature/backfill-garment-tags 分支后，才能进入开工门禁。
 
+## 2026-07-19 存量衣物 AI 补标签（已开发，待人工试点）
+
+- 用户已确认：使用 `feature/backfill-garment-tags` 独立工作区，管理员自动追加缺失标签是明确例外，当前正式试点仅处理老婆账号。
+- 本轮新增 `tags_backfilled_at` SQLite/PostgreSQL 迁移、管理员批处理接口和管理员库存页操作入口；普通新增/编辑衣物仍保持 AI 结果人工确认。
+- 红线：不覆盖已有标量或数组、不修改 `garment.category`、AI fallback/异常不写处理标记、每件衣物独立事务落库。
+- 已通过本地回归：管理员与迁移测试 3 组共 34 项、两个小程序 JS 语法检查、小程序结构校验、项目构建和 `git diff --check`；局部 ESLint 无 error，保留项目原有复杂度与 mock 警告。
+- 当前功能提交已创建、未 push、未部署，也没有运行任何正式补标批次；部署前必须先完成数据库备份，并先对老婆账号执行 `limit=1` 试点。
+- 当前流水线运行状态：手动挡，`COMMITTED`；工作区为 `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet-backfill-garment-tags`，分支为 `feature/backfill-garment-tags`，未创建 PR。停止点：等待用户确认是否推送、数据库备份、部署后迁移日志确认，以及老婆账号 1 件人工试点。
+
 更新时间：2026-07-19
 
 ## 当前状态
