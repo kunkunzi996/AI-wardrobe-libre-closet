@@ -489,7 +489,7 @@ describe('MiniappAdminService', () => {
       config: {
         MINIAPP_ADMIN_USER_IDS: '7',
         QWEN_API_KEY: 'test-key',
-        AI_VISION_TIMEOUT_MS: '30000',
+        AI_VISION_TIMEOUT_MS: '40000',
       },
       garments: [makeGarment({ id: 1 }), makeGarment({ id: 2 })],
     });
@@ -497,6 +497,27 @@ describe('MiniappAdminService', () => {
       service.backfillUserGarmentTags(7, 12, 3),
     ).resolves.toMatchObject({
       effectiveLimit: 2,
+    });
+  });
+
+  it('runs a full batch at the production vision timeout', async () => {
+    const { service } = makeService({
+      config: {
+        MINIAPP_ADMIN_USER_IDS: '7',
+        QWEN_API_KEY: 'test-key',
+        AI_VISION_TIMEOUT_MS: '30000',
+      },
+      garments: [
+        makeGarment({ id: 1 }),
+        makeGarment({ id: 2 }),
+        makeGarment({ id: 3 }),
+      ],
+    });
+    await expect(
+      service.backfillUserGarmentTags(7, 12, 3),
+    ).resolves.toMatchObject({
+      requestedLimit: 3,
+      effectiveLimit: 3,
     });
   });
 
@@ -514,7 +535,7 @@ describe('MiniappAdminService', () => {
       config: {
         MINIAPP_ADMIN_USER_IDS: '7',
         QWEN_API_KEY: 'test-key',
-        AI_VISION_TIMEOUT_MS: '80000',
+        AI_VISION_TIMEOUT_MS: '100000',
       },
       garments: [makeGarment()],
     });
@@ -565,7 +586,7 @@ describe('MiniappAdminService', () => {
 
   it('stops before starting another image at the batch deadline', async () => {
     const now = jest.spyOn(Date, 'now');
-    now.mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(60_001);
+    now.mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(75_001);
     const { service, garmentVisionService } = makeService({
       config: { MINIAPP_ADMIN_USER_IDS: '7', QWEN_API_KEY: 'test-key' },
       garments: [makeGarment({ id: 1 }), makeGarment({ id: 2 })],

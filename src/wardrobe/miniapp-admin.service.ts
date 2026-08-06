@@ -17,7 +17,11 @@ import { GARMENT_TAG_TAXONOMY } from './garment-tag-taxonomy';
 
 export const BACKFILL_LIMIT_DEFAULT = 3;
 export const BACKFILL_LIMIT_MAX = 3;
-const BACKFILL_TIME_BUDGET_MS = 90_000;
+// 单批总预算。可用时长（预算 - 保留）除以单图识别超时，决定一批最多能分析几件，
+// 因此预算必须够 BACKFILL_LIMIT_MAX 件跑满，否则界面上的「3 件」会被悄悄压到更少。
+// 上限受调用方约束：小程序补标请求超时与 Nginx proxy_read_timeout 均为 120 秒，
+// 最坏情况下最后一件在「开始 + 预算 - 保留」前结束，需给响应留出余量。
+const BACKFILL_TIME_BUDGET_MS = 105_000;
 const BACKFILL_TIME_RESERVE_MS = 15_000;
 const BACKFILL_NO_PHOTO_ITEMS_MAX = 500;
 
