@@ -81,7 +81,8 @@ jobs:
 
           cd /root/AI-wardrobe-libre-closet
 
-          cp .env /root/ai-wardrobe.env.backup
+          # 生产密钥存放在仓库外的 /root/ai-wardrobe.env，git 操作碰不到它，
+          # 因此这里不再需要备份并恢复仓库内的 .env。
           for attempt in $(seq 1 5); do
             if git fetch --depth=20 origin +refs/heads/main:refs/remotes/origin/main; then
               echo "git fetch succeeded on attempt ${attempt}."
@@ -97,7 +98,6 @@ jobs:
           git switch main
           git merge --ff-only origin/main
           git log --oneline -3
-          cp /root/ai-wardrobe.env.backup /root/AI-wardrobe-libre-closet/.env
 
           gzip -dc /tmp/ai-wardrobe.tar.gz | docker load
           rm -f /tmp/ai-wardrobe.tar.gz
@@ -105,7 +105,7 @@ jobs:
           docker run -d \
             --name ai-wardrobe \
             -p 127.0.0.1:3000:3000 \
-            --env-file /root/AI-wardrobe-libre-closet/.env \
+            --env-file /root/ai-wardrobe.env \
             -v ai_wardrobe_data:/app/data \
             ai-wardrobe:latest
 

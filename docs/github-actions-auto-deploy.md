@@ -72,13 +72,19 @@ AUTO_DEPLOY_MAIN=true
 /root/AI-wardrobe-libre-closet
 ```
 
-并且里面有生产 `.env`：
+并且**在仓库目录之外**有生产密钥文件：
 
 ```bash
-/root/AI-wardrobe-libre-closet/.env
+/root/ai-wardrobe.env
 ```
 
-部署会保留 `.env`，并使用现有 Docker 规则：
+> **为什么放在仓库外（2026-08-06 起）**：仓库内的 `.env` 是被 git 跟踪的文件，只放上游默认值（`APP_NAME` 和一对 VAPID 密钥）。真实密钥若写在这里，一是 `git switch/merge` 会覆盖它（每次部署都得备份再恢复，漏一次就丢），二是本仓库是公开仓库，一次 `git add -A` 就会把微信 AppSecret、阿里云密钥等推上公网。挪到 `/root/ai-wardrobe.env` 后 git 永远碰不到它，两个问题一起消失。
+>
+> 该文件权限应为 `600`，且**不要**放进任何 git 工作区。
+
+容器启动时通过 `--env-file /root/ai-wardrobe.env` 注入。真实环境变量的优先级高于镜像内的 `.env`，因此镜像里那份只是兜底。
+
+部署使用现有 Docker 规则：
 
 ```text
 image: ai-wardrobe:latest
@@ -94,7 +100,13 @@ volume: ai_wardrobe_data:/app/data
 - `Verify before deploy` 失败：代码检查或构建失败，先修代码。
 - `Configure SSH key` 失败：Secrets 配错，重点检查服务器 IP、用户、SSH 私钥、端口。
 - `Deploy on server` 失败或长时间卡住：`git fetch` 已内置最多 5 次重试；如果出现 `GnuTLS recv error (-110)`，是服务器到 GitHub 网络不稳。
-  另有一种**不报错、只挂起**的形态：`scp` 已把镜像包完整传到服务器（`/tmp/ai-wardrobe.tar.gz` 达到完整大小且不再增长），但连接迟迟不收尾，后续远程脚本永远不执行。判断方法是登录服务器看 `/root/ai-wardrobe.env.backup` 的时间戳——远程脚本第一步就是备份 `.env`，时间戳没更新即代表脚本从未启动。这种情况直接取消工作流，改走服务器本地构建。
+  另有一种**不报错、只挂起**的形态：`scp` 已把镜像包完整传到服务器（`/tmp/ai-wardrobe.tar.gz` 达到完整大小且不再增长），但连接迟迟不收尾，后续远程脚本永远不执行。判断方法是登录服务器看 `.git/FETCH_HEAD` 的时间戳——远程脚本第一个动作就是 `git fetch`，时间戳没更新即代表脚本从未启动：
+
+  ```bash
+  stat -c %y /root/AI-wardrobe-libre-closet/.git/FETCH_HEAD
+  ```
+
+  这种情况直接取消工作流，改走服务器本地构建。
 
 ## 已知网络约束（2026-08-06 实测）
 
@@ -116,10 +128,8 @@ volume: ai_wardrobe_data:/app/data
 ```bash
 ssh <服务器>
 cd /root/AI-wardrobe-libre-closet
-cp .env /root/ai-wardrobe.env.backup
 git fetch --depth=20 origin +refs/heads/main:refs/remotes/origin/main
 git switch main && git merge --ff-only origin/main
-cp /root/ai-wardrobe.env.backup .env
 docker tag ai-wardrobe:latest ai-wardrobe:rollback-$(git rev-parse --short HEAD@{1})
 docker build -f docker/Dockerfile -t ai-wardrobe:candidate-$(git rev-parse --short HEAD) .
 ```
@@ -130,8 +140,17 @@ docker build -f docker/Dockerfile -t ai-wardrobe:candidate-$(git rev-parse --sho
 docker tag ai-wardrobe:candidate-<sha> ai-wardrobe:latest
 docker rm -f ai-wardrobe
 docker run -d --name ai-wardrobe -p 127.0.0.1:3000:3000 \
-  --env-file /root/AI-wardrobe-libre-closet/.env \
+  --env-file /root/ai-wardrobe.env \
   -v ai_wardrobe_data:/app/data ai-wardrobe:latest
+```
+
+切换后**必须验证密钥真的读到了**，只看首页 200 不够——密钥缺失时应用照样启动，只在调用 AI 或微信登录时才 500：
+
+```bash
+for k in $(grep -oE '^[A-Za-z_]+=' /root/ai-wardrobe.env | tr -d '='); do
+  v=$(docker exec ai-wardrobe printenv "$k" 2>/dev/null)
+  [ -n "$v" ] && echo "OK   $k" || echo "MISS $k"
+done
 ```
 
 注意事项：

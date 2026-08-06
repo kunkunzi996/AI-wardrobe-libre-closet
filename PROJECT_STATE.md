@@ -158,12 +158,19 @@ volume: ai_wardrobe_data:/app/data
 
 GitHub Actions 自动部署工作流 `.github/workflows/deploy-main.yml` 仍然可用：推送 `main` 会先执行 `npm run test:miniapp` 和 `npm run build`；部署环节由 `if: github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY_MAIN == 'true'` 控制。镜像在 GitHub runner 上构建后 `docker save` 打包传到服务器 `docker load`，服务器不重新构建。配置与排查见 `docs/github-actions-auto-deploy.md`。
 
-部署时必须保留 `.env`：
+### 生产密钥的位置（2026-08-06 起变更）
+
+真实密钥存放在**仓库目录之外**：
 
 ```bash
-cp .env /root/ai-wardrobe.env.backup
-cp /root/ai-wardrobe.env.backup /root/AI-wardrobe-libre-closet/.env
+/root/ai-wardrobe.env      # 19 个键，权限 600，git 永远碰不到
 ```
+
+仓库内的 `.env` 是被 git 跟踪的文件，只保留上游默认值（`APP_NAME` 和一对 VAPID 密钥，共 3 个键），**不要往里面写任何真实密钥**。
+
+变更原因：真实密钥原本写在仓库内的 `.env` 里，带来两个风险——`git switch/merge` 会覆盖它（每次部署都要备份再恢复，漏一次就丢密钥），而且本仓库是**公开仓库**，一次 `git add -A` 就会把微信 AppSecret、阿里云密钥等推上公网。挪出仓库后两个风险一起消失，部署脚本里的备份/恢复步骤也已删除。
+
+容器通过 `--env-file /root/ai-wardrobe.env` 注入。真实环境变量优先级高于镜像内的 `.env`，镜像里那份只是兜底。
 
 ## 必需环境变量
 
@@ -212,23 +219,36 @@ docker exec ai-wardrobe sh -c 'test -n "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" && ech
 ```bash
 sudo -i
 cd /root/AI-wardrobe-libre-closet
-cp .env /root/ai-wardrobe.env.backup
 git fetch --depth=20 origin +refs/heads/main:refs/remotes/origin/main
 git switch main
 git merge --ff-only origin/main
 git log --oneline -3
-cp /root/ai-wardrobe.env.backup /root/AI-wardrobe-libre-closet/.env
-docker build -f docker/Dockerfile -t ai-wardrobe:latest .
-docker stop ai-wardrobe
-docker rm ai-wardrobe
+docker tag ai-wardrobe:latest ai-wardrobe:rollback-$(git rev-parse --short HEAD@{1})
+docker build -f docker/Dockerfile -t ai-wardrobe:candidate-$(git rev-parse --short HEAD) .
+```
+
+构建成功后再切换容器（先构建到 `candidate-<sha>`，失败时线上不受影响）：
+
+```bash
+docker tag ai-wardrobe:candidate-$(git rev-parse --short HEAD) ai-wardrobe:latest
+docker rm -f ai-wardrobe
 docker run -d \
   --name ai-wardrobe \
   -p 127.0.0.1:3000:3000 \
-  --env-file /root/AI-wardrobe-libre-closet/.env \
+  --env-file /root/ai-wardrobe.env \
   -v ai_wardrobe_data:/app/data \
   ai-wardrobe:latest
 docker ps
 curl https://aimatchwear.asia/api/miniapp/garments
+```
+
+切换后必须逐键验证密钥读到了，只看接口 200 不够：
+
+```bash
+for k in $(grep -oE '^[A-Za-z_]+=' /root/ai-wardrobe.env | tr -d '='); do
+  v=$(docker exec ai-wardrobe printenv "$k" 2>/dev/null)
+  [ -n "$v" ] && echo "OK   $k" || echo "MISS $k"
+done
 ```
 
 如果 GitHub 连接失败，常见报错：
