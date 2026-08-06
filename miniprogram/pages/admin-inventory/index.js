@@ -113,7 +113,8 @@ Page({
     wx.showActionSheet({
       itemList: ['先试点分析 1 件（推荐）', '常规分析 3 件'],
       success: function (selection) {
-        const limit = selection.tapIndex === 0 ? 1 : 3;
+        // 只有明确选择第二项才允许扩大到 3 件，异常回调默认保留试点边界。
+        const limit = Number(selection && selection.tapIndex) === 1 ? 3 : 1;
         page.confirmBackfill(userId, displayName, garmentCount, limit);
       },
     });

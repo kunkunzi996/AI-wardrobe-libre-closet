@@ -226,4 +226,72 @@ if (
   );
 }
 
+let adminInventoryPage;
+global.Page = function (definition) {
+  adminInventoryPage = definition;
+};
+require(path.join(root, 'miniprogram/pages/admin-inventory/index.js'));
+delete global.Page;
+
+const originalWx = global.wx;
+let actionSheetOptions;
+const selectedBackfillRuns = [];
+const adminInventoryContext = {
+  data: {
+    backfillingUserId: null,
+    users: [{ id: 3, displayName: '老婆账号', garmentCount: 143 }],
+  },
+  confirmBackfill(userId, displayName, garmentCount, limit) {
+    selectedBackfillRuns.push({ userId, displayName, garmentCount, limit });
+  },
+};
+
+function selectBackfillLimit(tapIndex) {
+  actionSheetOptions = null;
+  adminInventoryPage.backfillUserTags.call(adminInventoryContext, {
+    currentTarget: { dataset: { id: 3 } },
+  });
+
+  if (!actionSheetOptions || typeof actionSheetOptions.success !== 'function') {
+    throw new Error(
+      'admin inventory page must show a selectable backfill action sheet',
+    );
+  }
+
+  actionSheetOptions.success({ tapIndex });
+  return selectedBackfillRuns.pop();
+}
+
+try {
+  global.wx = {
+    showActionSheet(options) {
+      actionSheetOptions = options;
+    },
+  };
+
+  for (const [tapIndex, expectedLimit] of [
+    [0, 1],
+    [undefined, 1],
+    [1, 3],
+  ]) {
+    const selectedRun = selectBackfillLimit(tapIndex);
+    if (
+      !selectedRun ||
+      selectedRun.userId !== 3 ||
+      selectedRun.garmentCount !== 143 ||
+      selectedRun.limit !== expectedLimit
+    ) {
+      throw new Error(
+        `admin inventory backfill selection must use limit ${expectedLimit} for tapIndex ${tapIndex}`,
+      );
+    }
+  }
+} finally {
+  if (originalWx === undefined) {
+    delete global.wx;
+  } else {
+    global.wx = originalWx;
+  }
+}
+
 console.log('Native mini-program validation passed.');
