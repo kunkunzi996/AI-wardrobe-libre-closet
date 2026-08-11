@@ -37,6 +37,15 @@ import { AiModule } from './ai/ai.module';
         };
         return {
           pinoHttp: {
+            redact: {
+              paths: [
+                'req.headers.authorization',
+                'req.headers.cookie',
+                'req.headers["proxy-authorization"]',
+                'req.headers["set-cookie"]',
+              ],
+              censor: '[Redacted]',
+            },
             transport: {
               targets: [
                 {
