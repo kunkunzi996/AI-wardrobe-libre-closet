@@ -17,6 +17,10 @@
 
 本轮尚未部署、尚未运行真实 AI 单件试点，也未做数据库迁移或历史标签清洗。下一步是部署合并后的 `main`，再执行单件真实 AI 试点和 Excel 人工核对。
 
+历史流水线状态：`DEPLOYMENT_BLOCKED`（由 `PRIMARY_SYNCED` 进入阻塞）。功能分支 `feature/ai-objective-tag-whitelist` 已通过 PR [#2](https://github.com/kunkunzi996/AI-wardrobe-libre-closet/pull/2) 合并到 `main`，合并提交为 `e1fd372`；GitHub `back-end-ci` 与 Playwright `test` 均通过，本地主工作区已同步。2026-08-11 生产持久构建重试退出码为 `1`：生产阶段 `npm ci` 中 `better-sqlite3` 预编译下载超时，随后 `node-gyp rebuild` 因找不到 Python 失败；候选镜像 `ai-wardrobe:candidate-e1fd372` 不存在。旧容器 `ai-wardrobe` 仍 running，镜像为 `sha256:29f998fa...`，公网首页与 `/api/miniapp/garments/taxonomy` 均实测 `200`，线上当前健康。未创建当日备份、未停止或切换容器、未执行真实 AI。恢复入口：等待用户确认可行的构建环境/方案后，从 `main@e1fd372` 重新建立候选镜像并重新走部署前门禁；本次不自行选择方案、不重复盲目重试。
+
+当前流水线运行状态：Docker 构建修复候选已验证，尚未部署、尚未 Git 保存。本地分支为 `fix/docker-native-dependency-build`，仅修改 `docker/Dockerfile`；不走 GitHub Actions。腾讯云唯一正式候选构建耗时 `511.3s`，产出 `ai-wardrobe:candidate-dockerfix-e1fd372`，镜像 ID 为 `sha256:223b39b8822ab07deae228392b42c684d9df4dda79cfa031006a92c445fc76d3`（inspect 大小 544,134,468 bytes）。无数据卷运行容器内 `better-sqlite3` 并执行内存 SQLite `SELECT 1` 已 PASS；线上旧 `ai-wardrobe:latest` 容器仍 running，`https://aimatchwear.asia/` 与 `/api/miniapp/garments/taxonomy` 均返回 `200`。未切换或重启线上容器、未修改生产数据、未执行真实 AI。下一步：先对该分支完成 commit、push、merge，随后再按部署门禁切换候选镜像。
+
 ## 2026-08-06 补标数量边界与时间预算修复（已部署验收）
 
 本轮两个提交，均已合入 `main` 并推送，`bd8882c` 已部署生产。

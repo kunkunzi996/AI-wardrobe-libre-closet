@@ -30,9 +30,12 @@ FROM node:22-slim
 
 WORKDIR /app
 
+# Keep the package files for the production start script. Dependencies are
+# installed once in the builder, where native modules can use the build tools.
 COPY package*.json ./
-COPY patches ./patches
-RUN npm ci
+# Reuse the exact, already-patched dependency tree so the slim image does not
+# download native prebuilds a second time or need a compiler toolchain.
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
