@@ -2,7 +2,7 @@
 
 > 本文件只写**当前事实**。已完结的历史记录和功能验收明细归档在 `docs/PROJECT_LOG.md`。
 
-## 2026-08-11 AI 客观标签白名单施工（本地完成，未部署）
+## 2026-08-11 AI 客观标签白名单施工（已部署，单件数据与安全验收通过）
 
 功能代码已完成并通过本地验证。已实现 AI 专用标签白名单、两道 AI 结果过滤、提示词约束、拒绝项安全日志，以及历史标签兼容和处理标记测试；未改数据库、API 或小程序页面。
 
@@ -15,11 +15,33 @@
 - `npx prettier --check ...`：首次因 5 个授权文件格式问题 FAIL，修正后复跑 PASS；
 - `git diff --check`：PASS，退出码 0。
 
-本轮尚未部署、尚未运行真实 AI 单件试点，也未做数据库迁移或历史标签清洗。下一步是部署合并后的 `main`，再执行单件真实 AI 试点和 Excel 人工核对。
+生产部署和真实 AI 单件试点均已完成；未做数据库迁移或历史标签清洗。2026-08-11 19:19（北京时间）通过微信开发者工具管理员库存页，仅对困困子账号（用户 ID 1）执行一次 `limit=1`：服务端返回 `requestedLimit=1`、`effectiveLimit=1`、`attemptedThisRun=1`、`analyzedThisRun=1`、`filledGarmentCount=1`、`filledFieldCount=16`、失败 0、镜像冲突 0、剩余 11 件。实际处理衣物为 `#77 短裤`；落库结构化标签不含 `wearingFeel`，没有舒适、亲肤、透气、束缚、紧身、修身、合身或宽松，版型为 AI 白名单内的客观轮廓“廓形”。数据库核对显示已补标总数由 3 增至 4，`#70/#73/#75` 三件试点前后整行 SHA-256 完全一致。
+
+补标后管理员库存 Excel 已重新导出并读取：`#77` 行的版型为“廓形”，结构化标签无“穿着感”，AI 补标时间为 `2026-08-11 19:19:10`；其余 11 件仍无补标时间。页面结果弹窗、生产数据库和 Excel 三层证据一致。
+
+该次人工验收曾进入 `ACCEPTANCE_BLOCKED`：只读检查生产日志时发现请求日志会记录完整 `Authorization: Bearer ...` 访问令牌。按“发现日志泄露立即停止”的验收门禁，本轮没有处理第 2 件，也没有扩大到 3 件。后续已完成请求日志脱敏、生产部署、双日志哨兵验证和 `ACCESS_TOKEN_SECRET` 轮换，当前安全验收状态见下方最终生产收口。
 
 历史流水线状态：`DEPLOYMENT_BLOCKED`（由 `PRIMARY_SYNCED` 进入阻塞）。功能分支 `feature/ai-objective-tag-whitelist` 已通过 PR [#2](https://github.com/kunkunzi996/AI-wardrobe-libre-closet/pull/2) 合并到 `main`，合并提交为 `e1fd372`；GitHub `back-end-ci` 与 Playwright `test` 均通过，本地主工作区已同步。2026-08-11 生产持久构建重试退出码为 `1`：生产阶段 `npm ci` 中 `better-sqlite3` 预编译下载超时，随后 `node-gyp rebuild` 因找不到 Python 失败；候选镜像 `ai-wardrobe:candidate-e1fd372` 不存在。旧容器 `ai-wardrobe` 仍 running，镜像为 `sha256:29f998fa...`，公网首页与 `/api/miniapp/garments/taxonomy` 均实测 `200`，线上当前健康。未创建当日备份、未停止或切换容器、未执行真实 AI。恢复入口：等待用户确认可行的构建环境/方案后，从 `main@e1fd372` 重新建立候选镜像并重新走部署前门禁；本次不自行选择方案、不重复盲目重试。
 
-当前流水线运行状态：Docker 构建修复候选已验证，尚未部署、尚未 Git 保存。本地分支为 `fix/docker-native-dependency-build`，仅修改 `docker/Dockerfile`；不走 GitHub Actions。腾讯云唯一正式候选构建耗时 `511.3s`，产出 `ai-wardrobe:candidate-dockerfix-e1fd372`，镜像 ID 为 `sha256:223b39b8822ab07deae228392b42c684d9df4dda79cfa031006a92c445fc76d3`（inspect 大小 544,134,468 bytes）。无数据卷运行容器内 `better-sqlite3` 并执行内存 SQLite `SELECT 1` 已 PASS；线上旧 `ai-wardrobe:latest` 容器仍 running，`https://aimatchwear.asia/` 与 `/api/miniapp/garments/taxonomy` 均返回 `200`。未切换或重启线上容器、未修改生产数据、未执行真实 AI。下一步：先对该分支完成 commit、push、merge，随后再按部署门禁切换候选镜像。
+历史流水线状态（首次白名单部署后）：`ACCEPTANCE_BLOCKED`（部署层为 `SMOKE_GREEN`）。生产已部署合并提交 `819121ca2c4e1e7df114852f7f964a35d155c3ec`（PR [#3](https://github.com/kunkunzi996/AI-wardrobe-libre-closet/pull/3)，`back-end-ci` 与 Playwright `test` 均 SUCCESS；未走 GitHub Actions 部署工作流）。服务器通过 bundle 同步 `main` 后，从仓库 Dockerfile 构建 `ai-wardrobe:candidate-819121c`，耗时约 `511.3s`；candidate 与 `ai-wardrobe:latest` 当时均指向镜像 `sha256:223b39b8822ab07deae228392b42c684d9df4dda79cfa031006a92c445fc76d3`，旧版本回滚标签为 `ai-wardrobe:rollback-819121c`（`sha256:29f998fa...`）。切换前已完成停机备份：`/root/ai-wardrobe-backup-20260811-171042`，245 个文件、486M，SQLite `integrity_check=ok`；旧容器停止 `2026-08-11T09:10:49.499Z`，新容器启动 `2026-08-11T09:13:34.362Z`，停机约 `164.863s`。上线冒烟全部通过：容器 running、启动日志 `Nest application successfully started`、必需环境变量逐键均 OK、`ai_wardrobe_data:/app/data` 与生产 DB 存在、只读 `integrity_check=ok` 且 `garment_count=168`、构建产物含 `AI_GARMENT_TAG_TAXONOMY`、公网首页与 `/api/miniapp/garments/taxonomy` 均 `200`、核心 GET `/api/miniapp/garments` 返回 `200`。真实 AI 单件数据与 Excel 核对通过，但生产请求日志泄露完整访问令牌，因而进入后续安全修复。
+
+本轮安全修复发布过程曾进入 `DEPLOYMENT_BLOCKED`。请求日志脱敏修复已通过 PR [#4](https://github.com/kunkunzi996/AI-wardrobe-libre-closet/pull/4) 合并，merge 提交为 `4bc13bcd1b50ccb408ffa64f2d4713b0fac5f490`；服务器仓库已同步到该提交。首次候选构建运行约 12 分 29 秒无产物后已 TERM 终止，当时未生成候选镜像、未切换容器或轮换密钥；后续恢复和最终部署结果见下方记录。
+
+本轮唯一受控构建重试（2026-08-11 UTC 12:45）使用独立日志 `/tmp/ai-wardrobe-build-4bc13bc-retry-20260811T124513493446784Z.log` 和服务器端 20 分钟硬超时，退出码 `125`、日志 353 bytes、候选镜像仍不存在。安全摘要定位为 Docker CLI 不接受本次命令的 `--progress` 参数（`unknown flag`），未见 Docker daemon、网络、磁盘、内存或内核 OOM 证据；未创建本轮新备份，未停止旧容器，未进入部署/脱敏/密钥轮换。恢复入口：需用户另行确认后修正构建命令并重新走全部门禁；本轮不再重试。
+
+最终构建与部署门禁（2026-08-11 UTC 12:52 起）：移除不兼容参数后的唯一构建成功（exit `0`），候选 `ai-wardrobe:candidate-4bc13bc` 已生成；无数据卷原生依赖查询和构建产物脱敏配置检查均 PASS。已建立回滚标签 `ai-wardrobe:rollback-4bc13bc-20260811T125713Z`。按门禁停止旧容器并完成新备份 `/root/ai-wardrobe-backup-20260811T125749Z`（三个 SQLite 文件、245 个文件）；候选只读 integrity 检查因操作命令路径引号错误未得到结果，立即停止切换并直接启动原旧容器恢复，旧镜像未变，公网首页、taxonomy、garments 均返回 `200`。候选未切换、脱敏未上线、`ACCESS_TOKEN_SECRET` 未轮换，未运行 AI 或修改衣物数据；备份、构建日志及回滚标签均保留。恢复入口：需用户另行确认后修正完整性检查命令并重新走部署门禁；本轮不再继续。
+
+在旧容器恢复运行期间，对既有备份再次执行完整性门禁：候选镜像与备份只读挂载的 Node 代码结构预检为 `PASS`，实际只读 integrity 命令结果为 `integrity_check=FAIL`（未输出错误原文）。按门禁立即停止，未停止旧容器、未切换候选、未轮换密钥、未运行 AI 或修改数据；具体失败原因未知，不再尝试。恢复入口：需用户另行确认后进行独立的完整性诊断，再重新走全部部署门禁。
+
+备份副本只读诊断（2026-08-11）：旧容器与公网三接口均健康，备份 `sqlite3.db`、`-wal`、`-shm` 均存在且非空，hash 前后保持一致。`node -e` 参数索引/退出码结构预检为 `PASS`；唯一实际结构化脚本因内联载荷截断返回 `node_script=FAIL|hash_unchanged=PASS`，未得到 SQLite 打开、WAL、quick_check 或 integrity_check 结论。该证据支持“脚本/参数失败”，不支持推断数据库损坏；按门禁不再重试、不接触 live volume、不修改任何生产或备份文件。恢复入口：需用户另行确认后采用已审计脚本进行独立诊断。
+
+Codex 独立只读复核（2026-08-11）：使用单独上传并校验哈希的诊断脚本，以无网络、备份目录只读挂载、脚本只读挂载的候选容器检查 `/root/ai-wardrobe-backup-20260811T125749Z`。首次脚本明确返回 `MODULE_NOT_FOUND`，确认此前笼统 `FAIL` 的根因是脚本位于 `/diagnose.js` 时无法解析 `/app/node_modules/better-sqlite3`，不是数据库损坏；改用 `/app/package.json` 解析镜像依赖后，数据库只读打开 `PASS`、`journal_mode=wal`、`quick_check=PASS`、`integrity_check=PASS`、`garment_count=168`。三个 SQLite 文件诊断前后哈希完全一致。生产容器全程未停止，复核后仍 running，公网首页、taxonomy、garments 均为 `200`；未部署脱敏、未轮换密钥、未运行 AI 或修改生产数据。恢复入口：数据库完整性阻塞已排除，若继续上线，须重新从部署前门禁开始完成最终停机备份、候选切换、日志 sentinel 和密钥轮换。
+
+安全修复最终生产收口（2026-08-11）：当前状态为 `SECURITY_ACCEPTED` / `SMOKE_GREEN`。部署前新建停机备份 `/root/ai-wardrobe-backup-20260811T-final-codex`，245 个文件、486M；备份副本只读检查为 `journal_mode=wal`、`quick_check=PASS`、`integrity_check=PASS`、`garment_count=168`，三个 SQLite 文件哈希前后不变。生产已切换至 PR [#4](https://github.com/kunkunzi996/AI-wardrobe-libre-closet/pull/4) 的脱敏镜像 `sha256:c0a6043b...`，`ai-wardrobe:latest` 与 `candidate-4bc13bc` 指向同一镜像；当前容器 running，挂载仍为 `ai_wardrobe_data:/app/data`。切换前及密钥轮换后各执行一次 synthetic Bearer 哨兵：公网 taxonomy 均为 `200`，Docker 日志和持久 `app.log` 中原始哨兵命中均为 `0`、`[Redacted]` 均命中，脱敏验证 PASS。
+
+生产 `ACCESS_TOKEN_SECRET` 已原子轮换：密钥值已改变，其他环境配置哈希保持一致，文件权限仍为 `600`，新容器已验证加载新密钥；未读取、输出或保存密钥值。轮换后数据库 `integrity_check=ok`、衣物数仍为 `168`，公网首页、taxonomy、garments 均为 `200`，启动日志成功且近期错误计数为 `0`。旧 JWT 已不再被当前生产服务接受，你和你老婆需要在小程序重新登录；衣橱数据不受影响。本轮未再次运行 AI、未修改衣物数据。
+
+为保证可回滚且遵守不删除规则，服务器暂时保留两个 stopped 容器：`ai-wardrobe-pre-redaction-4bc13bc-20260811`（旧镜像）与 `ai-wardrobe-pre-secret-rotation-4bc13bc-20260811`（新版镜像、旧密钥环境快照），以及 rollback 镜像、两份备份、构建/诊断临时文件。它们均未运行，不影响当前服务；后续如需彻底清理旧密钥痕迹，须逐个明确授权删除对应停止容器，不得批量删除。
 
 ## 2026-08-06 补标数量边界与时间预算修复（已部署验收）
 
