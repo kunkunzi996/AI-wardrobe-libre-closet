@@ -2,6 +2,21 @@
 
 > 本文件只写**当前事实**。已完结的历史记录和功能验收明细归档在 `docs/PROJECT_LOG.md`。
 
+## 2026-08-11 AI 客观标签白名单施工（本地完成，未部署）
+
+功能代码已完成并通过本地验证。已实现 AI 专用标签白名单、两道 AI 结果过滤、提示词约束、拒绝项安全日志，以及历史标签兼容和处理标记测试；未改数据库、API 或小程序页面。
+
+本地验证均已完成：
+
+- `npm test -- --runInBand src/wardrobe/garment-tag-taxonomy.spec.ts src/ai/garment-vision.service.spec.ts src/wardrobe/miniapp-admin.service.spec.ts`：PASS，3 个套件、45 项测试；
+- `npm run test:miniapp`：PASS；
+- `npm test -- --runInBand`：PASS，36 个套件、158 项测试；
+- `npm run build`：PASS，退出码 0；
+- `npx prettier --check ...`：首次因 5 个授权文件格式问题 FAIL，修正后复跑 PASS；
+- `git diff --check`：PASS，退出码 0。
+
+本轮尚未部署、尚未运行真实 AI 单件试点，也未做数据库迁移或历史标签清洗。下一步是部署合并后的 `main`，再执行单件真实 AI 试点和 Excel 人工核对。
+
 ## 2026-08-06 补标数量边界与时间预算修复（已部署验收）
 
 本轮两个提交，均已合入 `main` 并推送，`bd8882c` 已部署生产。

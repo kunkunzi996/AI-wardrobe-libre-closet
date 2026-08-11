@@ -306,7 +306,8 @@ describe('MiniappAdminService', () => {
           occasion: ['日常', '旅行'],
           material: ['羊毛'],
           thickness: ['厚款'],
-          fit: ['宽松'],
+          wearingFeel: ['舒适'],
+          fit: ['宽松', 'A字'],
           category: ['衬衫'],
         },
       }) as any,
@@ -328,10 +329,79 @@ describe('MiniappAdminService', () => {
       occasion: ['日常', '旅行'],
       material: ['棉', '羊毛'],
       thickness: ['薄款', '厚款'],
-      fit: ['合身', '宽松'],
+      fit: ['合身', 'A字'],
       category: ['T恤', '衬衫'],
     });
+    expect(patch.taxonomyTags).not.toHaveProperty('wearingFeel');
     expect(outcome.changed).toBe(true);
+  });
+
+  it('keeps legal AI tags from mixed subjective input and rejects the rest', () => {
+    const { patch, outcome, rejectedAiTags } = buildGarmentTagBackfillPatch(
+      {
+        category: 'tops',
+        taxonomyTags: {},
+      } as any,
+      validAnalysis({
+        taxonomyTags: {
+          wearingFeel: ['舒适'],
+          fit: ['宽松', '直筒'],
+        },
+        fit: undefined,
+      }) as any,
+    );
+
+    expect(patch.taxonomyTags).toMatchObject({ fit: ['直筒'] });
+    expect(patch.taxonomyTags).not.toHaveProperty('wearingFeel');
+    expect(patch.fit).toBe('直筒');
+    expect(outcome.changed).toBe(true);
+    expect(rejectedAiTags).toEqual([
+      { group: 'wearingFeel', tag: '舒适' },
+      { group: 'fit', tag: '宽松' },
+    ]);
+  });
+
+  it('does not let a subjective scalar fit bypass the AI whitelist', () => {
+    const { patch, outcome, rejectedAiTags } = buildGarmentTagBackfillPatch(
+      {
+        category: 'tops',
+        taxonomyTags: {},
+      } as any,
+      validAnalysis({
+        taxonomyTags: {},
+        seasons: [],
+        styleTags: [],
+        sceneTags: [],
+        fit: '合身',
+      }) as any,
+    );
+
+    expect(patch.fit).toBeUndefined();
+    expect(patch.taxonomyTags).toBeUndefined();
+    expect(outcome.changed).toBe(false);
+    expect(rejectedAiTags).toEqual([{ group: 'fit', tag: '合身' }]);
+  });
+
+  it('returns no AI patch when all incoming tags are subjective', () => {
+    const { patch, outcome } = buildGarmentTagBackfillPatch(
+      {
+        category: 'tops',
+        taxonomyTags: {},
+      } as any,
+      validAnalysis({
+        taxonomyTags: { wearingFeel: ['舒适'], fit: ['宽松'] },
+        seasons: [],
+        styleTags: [],
+        sceneTags: [],
+        fit: '宽松',
+      }) as any,
+    );
+
+    expect(patch).toEqual({});
+    expect(outcome).toMatchObject({
+      changed: false,
+      addedFieldCount: 0,
+    });
   });
 
   it('fills empty legacy fields from taxonomy and empty taxonomy groups from legacy fields', () => {
@@ -469,6 +539,54 @@ describe('MiniappAdminService', () => {
       occasion: ['日常'],
     });
     expect(outcome).toMatchObject({ changed: true, addedFieldCount: 6 });
+  });
+
+  it('keeps the processed marker and flushes once when all AI tags are rejected', async () => {
+    const garment = makeGarment({
+      taxonomyTags: {},
+      seasons: [],
+      styleTags: [],
+      sceneTags: [],
+    });
+    const transactionalEntityManager = {
+      findOne: jest.fn(() => Promise.resolve(garment)),
+      flush: jest.fn(() => Promise.resolve()),
+    };
+    const forkedEntityManager = {
+      transactional: jest.fn((callback) =>
+        callback(transactionalEntityManager),
+      ),
+    };
+    const garmentRepository = {
+      getEntityManager: jest.fn(() => ({
+        fork: jest.fn(() => forkedEntityManager),
+      })),
+    };
+    const garmentService = new GarmentService(
+      garmentRepository as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const outcome = await garmentService.backfillTagsFromAi(
+      1,
+      12,
+      validAnalysis({
+        taxonomyTags: { wearingFeel: ['舒适'], fit: ['宽松'] },
+        seasons: [],
+        styleTags: [],
+        sceneTags: [],
+        fit: '宽松',
+      }) as any,
+    );
+
+    expect(outcome).toMatchObject({
+      changed: false,
+      addedFieldCount: 0,
+    });
+    expect(garment.tagsBackfilledAt).toBeInstanceOf(Date);
+    expect(transactionalEntityManager.flush).toHaveBeenCalledTimes(1);
   });
 
   it('honors requested limits and reduces the batch when the configured timeout requires it', async () => {

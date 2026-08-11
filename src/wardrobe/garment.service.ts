@@ -30,14 +30,17 @@ import {
   type GarmentVisionResult,
 } from '../ai/dto/garment-vision-result.dto';
 import {
+  AI_GARMENT_TAG_TAXONOMY,
   COLOR_LABEL_TO_VALUE,
   COLOR_VALUE_TO_LABEL,
-  GARMENT_TAG_TAXONOMY,
+  filterAiGarmentTaxonomySelection,
   garmentSeasonValuesFromTaxonomy,
   sanitizeGarmentTaxonomySelection,
   taxonomySeasonLabelsFromValues,
+  type AiGarmentTagGroup,
   type GarmentTagGroup,
   type GarmentTaxonomySelection,
+  type RejectedAiGarmentTag,
 } from './garment-tag-taxonomy';
 
 const CANONICAL_SIZES = [
@@ -245,9 +248,12 @@ function taxonomyFromAnalysis(
     | 'fit'
     | 'subcategory'
   >,
-): GarmentTaxonomySelection {
-  const explicit = sanitizeGarmentTaxonomySelection(analysis.taxonomyTags);
-  const mirrored = sanitizeGarmentTaxonomySelection({
+): {
+  selection: GarmentTaxonomySelection;
+  rejectedAiTags: RejectedAiGarmentTag[];
+} {
+  const explicit = filterAiGarmentTaxonomySelection(analysis.taxonomyTags);
+  const mirrored = filterAiGarmentTaxonomySelection({
     season: taxonomySeasonLabelsFromValues(analysis.seasons),
     color: analysis.color ? [COLOR_VALUE_TO_LABEL[analysis.color]] : [],
     style: cleanedStrings(analysis.styleTags),
@@ -259,14 +265,22 @@ function taxonomyFromAnalysis(
   });
   const result: GarmentTaxonomySelection = {};
 
-  for (const group of Object.keys(GARMENT_TAG_TAXONOMY) as GarmentTagGroup[]) {
+  for (const group of Object.keys(
+    AI_GARMENT_TAG_TAXONOMY,
+  ) as AiGarmentTagGroup[]) {
     const values = Array.from(
-      new Set([...(explicit[group] ?? []), ...(mirrored[group] ?? [])]),
+      new Set([
+        ...(explicit.selection[group] ?? []),
+        ...(mirrored.selection[group] ?? []),
+      ]),
     );
     if (values.length > 0) result[group] = values;
   }
 
-  return result;
+  return {
+    selection: result,
+    rejectedAiTags: [...explicit.rejected, ...mirrored.rejected],
+  };
 }
 
 export function buildGarmentTagBackfillPatch(
@@ -295,12 +309,17 @@ export function buildGarmentTagBackfillPatch(
     | 'fit'
     | 'subcategory'
   >,
-): { patch: GarmentTagBackfillPatch; outcome: GarmentTagBackfillOutcome } {
+): {
+  patch: GarmentTagBackfillPatch;
+  outcome: GarmentTagBackfillOutcome;
+  rejectedAiTags: RejectedAiGarmentTag[];
+} {
   const currentTaxonomy = sanitizeGarmentTaxonomySelection(
     garment.taxonomyTags,
   );
   const currentFlat = taxonomyFromFlatFields(garment);
-  const aiTaxonomy = taxonomyFromAnalysis(analysis);
+  const { selection: aiTaxonomy, rejectedAiTags } =
+    taxonomyFromAnalysis(analysis);
   const nextTaxonomy = cloneTaxonomyTags(garment.taxonomyTags);
   const arrayState: Record<BackfillArrayField, unknown> = {
     seasons: garment.seasons,
@@ -386,7 +405,9 @@ export function buildGarmentTagBackfillPatch(
     setScalarIfEmpty('subcategory', taxonomyValues('category')[0]);
   }
 
-  for (const group of Object.keys(GARMENT_TAG_TAXONOMY) as GarmentTagGroup[]) {
+  for (const group of Object.keys(
+    AI_GARMENT_TAG_TAXONOMY,
+  ) as AiGarmentTagGroup[]) {
     appendTaxonomy(group, aiTaxonomy[group]);
   }
 
@@ -414,6 +435,7 @@ export function buildGarmentTagBackfillPatch(
       addedFieldCount,
       mirrorConflictCount,
     },
+    rejectedAiTags,
   };
 }
 
@@ -553,15 +575,28 @@ export class GarmentService {
         throw new NotFoundException('衣物不存在或不属于目标用户');
       }
 
-      const { patch, outcome } = buildGarmentTagBackfillPatch(
+      const { patch, outcome, rejectedAiTags } = buildGarmentTagBackfillPatch(
         garment,
         analysis,
       );
+      this.logRejectedAiTags(rejectedAiTags);
       Object.assign(garment, patch);
       garment.tagsBackfilledAt = new Date();
       await transactionalEntityManager.flush();
       return outcome;
     });
+  }
+
+  private logRejectedAiTags(rejected: RejectedAiGarmentTag[]): void {
+    const unique = Array.from(
+      new Map(
+        rejected.map((item) => [`${item.group}\u0000${item.tag}`, item]),
+      ).values(),
+    ).slice(0, 20);
+    if (unique.length === 0) return;
+    this.logger.warn(
+      `AI garment backfill rejected taxonomy tags: ${JSON.stringify(unique)}`,
+    );
   }
 
   async create(dto: CreateGarmentDto, userId?: number): Promise<Garment> {

@@ -496,6 +496,17 @@ describe('GarmentVisionService', () => {
     expect(request.enable_thinking).toBe(false);
     const prompt = JSON.parse(request.messages[1].content[0].text);
     expect(prompt.allowedTaxonomy.color).toContain('黑色');
+    expect(prompt.allowedTaxonomy).not.toHaveProperty('wearingFeel');
+    expect(prompt.allowedTaxonomy.fit).toEqual([
+      '直筒',
+      '廓形',
+      'A字',
+      'H型',
+      'X型',
+      'O型',
+      '茧型',
+      '喇叭',
+    ]);
     expect(prompt.allowedTaxonomy).not.toHaveProperty('feedback');
   });
 
@@ -530,6 +541,60 @@ describe('GarmentVisionService', () => {
         category: ['T恤'],
       },
     });
+  });
+
+  it('filters subjective AI taxonomy tags while preserving legal objective tags', () => {
+    const service = new GarmentVisionService(
+      { get: jest.fn(() => undefined) } as any,
+      fileService as any,
+    );
+
+    const result = (service as any).normalizeResult('tagged.webp', {
+      category: 'tops',
+      color: 'black',
+      taxonomyTags: {
+        wearingFeel: ['舒适'],
+        fit: ['宽松', 'A字'],
+        color: ['黑色'],
+      },
+      ...defaultStructuredDraft,
+    });
+
+    expect(result).toMatchObject({
+      color: 'black',
+      fit: 'A字',
+      taxonomyTags: {
+        color: ['黑色'],
+        fit: ['A字'],
+      },
+    });
+    expect(result.taxonomyTags).not.toHaveProperty('wearingFeel');
+  });
+
+  it('returns an empty taxonomy when every AI tag is rejected and logs only bounded tag details', () => {
+    const service = new GarmentVisionService(
+      { get: jest.fn(() => undefined) } as any,
+      fileService as any,
+    );
+    const warn = jest.spyOn((service as any).logger, 'warn');
+
+    const result = (service as any).normalizeResult('tagged.webp', {
+      category: 'tops',
+      taxonomyTags: {
+        wearingFeel: ['舒适', '亲肤'],
+        fit: ['宽松', '紧身'],
+      },
+      ...defaultStructuredDraft,
+    });
+
+    expect(result.taxonomyTags).toEqual({});
+    expect(result.fit).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('"group":"wearingFeel"'),
+    );
+    const warning = warn.mock.calls.at(-1)?.[0] as string;
+    expect(warning).not.toContain('tagged.webp');
+    expect(warning).not.toContain('base64');
   });
 
   it('falls back instead of hanging when the vision request times out', async () => {

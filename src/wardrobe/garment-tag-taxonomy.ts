@@ -249,9 +249,35 @@ export const GARMENT_TAG_TAXONOMY = {
   ],
 } as const;
 
+export const AI_GARMENT_FIT_TAGS = [
+  '直筒',
+  '廓形',
+  'A字',
+  'H型',
+  'X型',
+  'O型',
+  '茧型',
+  '喇叭',
+] as const;
+
+export const AI_GARMENT_TAG_TAXONOMY = Object.fromEntries(
+  Object.entries(GARMENT_TAG_TAXONOMY)
+    .filter(([group]) => group !== 'wearingFeel')
+    .map(([group, tags]) => [
+      group,
+      group === 'fit' ? AI_GARMENT_FIT_TAGS : tags,
+    ]),
+) as Omit<typeof GARMENT_TAG_TAXONOMY, 'wearingFeel'> & {
+  fit: typeof AI_GARMENT_FIT_TAGS;
+};
+
 export type GarmentTagGroup = keyof typeof GARMENT_TAG_TAXONOMY;
+export type AiGarmentTagGroup = keyof typeof AI_GARMENT_TAG_TAXONOMY;
 export type GarmentTaxonomySelection = Partial<
   Record<GarmentTagGroup, string[]>
+>;
+export type AiGarmentTaxonomySelection = Partial<
+  Record<AiGarmentTagGroup, string[]>
 >;
 
 export const GARMENT_TAG_GROUP_LABELS: Record<GarmentTagGroup, string> = {
@@ -311,4 +337,77 @@ export function sanitizeGarmentTaxonomySelection(
     if (tags.length > 0) result[group] = tags;
   }
   return result;
+}
+
+export interface RejectedAiGarmentTag {
+  group: string;
+  tag: string;
+}
+
+export interface AiGarmentTaxonomyFilterResult {
+  selection: AiGarmentTaxonomySelection;
+  rejected: RejectedAiGarmentTag[];
+}
+
+const MAX_REJECTED_AI_TAGS = 20;
+const MAX_REJECTED_AI_TAG_LENGTH = 80;
+
+function limitedRejectedValue(value: string): string {
+  return value.slice(0, MAX_REJECTED_AI_TAG_LENGTH);
+}
+
+export function filterAiGarmentTaxonomySelection(
+  input: unknown,
+): AiGarmentTaxonomyFilterResult {
+  const selection = parseSelection(input);
+  if (!selection) return { selection: {}, rejected: [] };
+
+  const result: AiGarmentTaxonomySelection = {};
+  const acceptedByGroup: Partial<Record<AiGarmentTagGroup, string[]>> = {};
+  const rejected: RejectedAiGarmentTag[] = [];
+  const rejectedKeys = new Set<string>();
+
+  const reject = (group: string, tag: string) => {
+    const limitedGroup = limitedRejectedValue(group);
+    const limitedTag = limitedRejectedValue(tag);
+    const key = `${limitedGroup}\u0000${limitedTag}`;
+    if (rejectedKeys.has(key) || rejected.length >= MAX_REJECTED_AI_TAGS) {
+      return;
+    }
+    rejectedKeys.add(key);
+    rejected.push({ group: limitedGroup, tag: limitedTag });
+  };
+
+  for (const [group, rawValue] of Object.entries(selection)) {
+    const values = valuesFrom(rawValue);
+    const allowed = (
+      AI_GARMENT_TAG_TAXONOMY as Record<string, readonly string[]>
+    )[group];
+    if (!allowed) {
+      values.forEach((tag) => reject(group, tag));
+      continue;
+    }
+
+    const allowedValues = new Set(allowed);
+    const accepted: string[] = [];
+    for (const tag of values) {
+      if (allowedValues.has(tag)) {
+        if (!accepted.includes(tag)) accepted.push(tag);
+      } else {
+        reject(group, tag);
+      }
+    }
+    if (accepted.length > 0) {
+      acceptedByGroup[group as AiGarmentTagGroup] = accepted;
+    }
+  }
+
+  for (const group of Object.keys(
+    AI_GARMENT_TAG_TAXONOMY,
+  ) as AiGarmentTagGroup[]) {
+    const accepted = acceptedByGroup[group];
+    if (accepted?.length) result[group] = accepted;
+  }
+
+  return { selection: result, rejected };
 }

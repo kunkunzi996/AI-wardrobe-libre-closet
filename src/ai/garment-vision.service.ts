@@ -6,13 +6,12 @@ import sharp from 'sharp';
 import { FileService } from '../file/file-service.abstract';
 import { GarmentColor } from '../wardrobe/garment-color.enum';
 import {
+  AI_GARMENT_TAG_TAXONOMY,
   COLOR_LABEL_TO_VALUE,
   COLOR_VALUE_TO_LABEL,
-  GARMENT_TAG_TAXONOMY,
+  filterAiGarmentTaxonomySelection,
   SEASON_ALIASES,
   SEASON_LABEL_TO_VALUE,
-  sanitizeGarmentTaxonomySelection,
-  type GarmentTagGroup,
   type GarmentTaxonomySelection,
 } from '../wardrobe/garment-tag-taxonomy';
 import {
@@ -377,7 +376,7 @@ export class GarmentVisionService {
         {
           role: 'system',
           content:
-            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。taxonomyTags 的每个值必须逐字选自 allowedTaxonomy，禁止创造新标签；不确定的标签组返回空数组。对于看不清、被遮挡或不确定的结构化字段，必须返回 unknown，不要猜。',
+            '你是中文衣橱入库助手。只根据图片识别衣物信息，返回严格 JSON，不要返回 Markdown。taxonomyTags 的每个值必须逐字选自 allowedTaxonomy，禁止创造新标签；不确定的标签组返回空数组。对于看不清、被遮挡或不确定的结构化字段，必须返回 unknown，不要猜。不得返回任何穿着体验；不得用紧身、修身、合身、宽松描述版型；版型只表示图片可见的衣物轮廓；图片依据不足时返回空数组。',
         },
         {
           role: 'user',
@@ -394,7 +393,7 @@ export class GarmentVisionService {
                   accessories:
                     'Use accessories for hats, caps, scarves, jewelry, belts, and small wearable items.',
                 },
-                allowedTaxonomy: GARMENT_TAG_TAXONOMY,
+                allowedTaxonomy: AI_GARMENT_TAG_TAXONOMY,
                 requiredJson: {
                   category:
                     'tops | bottoms | outerwear | dresses | footwear | bags | accessories | other',
@@ -413,6 +412,8 @@ export class GarmentVisionService {
                 rules: [
                   'Do not return any taxonomy tag that is absent from allowedTaxonomy.',
                   'Use one or more exact tags only when the image supports them; otherwise use an empty array.',
+                  '不得返回任何穿着体验；不得用紧身、修身、合身、宽松描述版型。',
+                  '版型只表示图片可见的衣物轮廓；图片依据不足时返回空数组。',
                   'Only return pocketPresence=yes when a pocket is clearly visible.',
                   'Only return pocketPresence=no when the chest/side area is clear and you are confident there is no pocket.',
                   'If pocket visibility or chest mark visibility is uncertain, return unknown.',
@@ -513,15 +514,14 @@ export class GarmentVisionService {
   private normalizeTaxonomyTags(
     draft: Partial<GarmentVisionResult>,
   ): GarmentTaxonomySelection {
-    const explicit = sanitizeGarmentTaxonomySelection(draft.taxonomyTags);
+    const explicit = filterAiGarmentTaxonomySelection(draft.taxonomyTags);
     const normalizedColor = this.normalizeColor(draft.color);
     const legacyStyleTags = this.localizedArray(draft.styleTags);
     const legacySceneTags = this.localizedArray(draft.sceneTags);
-    const legacy = sanitizeGarmentTaxonomySelection({
+    const legacy = filterAiGarmentTaxonomySelection({
       season: this.taxonomySeasonTags(draft.seasons),
       color: normalizedColor ? [COLOR_VALUE_TO_LABEL[normalizedColor]] : [],
       style: legacyStyleTags,
-      wearingFeel: legacyStyleTags,
       occasion: [...legacySceneTags, ...legacyStyleTags],
       material: this.localizedString(draft.material),
       thickness: this.localizedString(draft.thickness),
@@ -530,13 +530,28 @@ export class GarmentVisionService {
     });
 
     const result: GarmentTaxonomySelection = {};
-    for (const group of Object.keys(
-      GARMENT_TAG_TAXONOMY,
-    ) as GarmentTagGroup[]) {
-      const tags = explicit[group] ?? legacy[group];
+    this.logRejectedAiTags([...explicit.rejected, ...legacy.rejected]);
+    for (const group of Object.keys(AI_GARMENT_TAG_TAXONOMY)) {
+      const tags =
+        explicit.selection[group as keyof typeof AI_GARMENT_TAG_TAXONOMY] ??
+        legacy.selection[group as keyof typeof AI_GARMENT_TAG_TAXONOMY];
       if (tags?.length) result[group] = tags;
     }
     return result;
+  }
+
+  private logRejectedAiTags(
+    rejected: Array<{ group: string; tag: string }>,
+  ): void {
+    const unique = Array.from(
+      new Map(
+        rejected.map((item) => [`${item.group}\u0000${item.tag}`, item]),
+      ).values(),
+    ).slice(0, 20);
+    if (unique.length === 0) return;
+    this.logger.warn(
+      `AI garment vision rejected taxonomy tags: ${JSON.stringify(unique)}`,
+    );
   }
 
   private taxonomySeasonTags(value: unknown): string[] {
