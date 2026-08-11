@@ -90,3 +90,12 @@ AI 搭配反馈收集功能已完成服务器部署和微信开发者工具验�
 管理员库存导出已完成服务器部署和微信开发者工具验收：新增 `GET /api/miniapp/admin/users`、`GET /api/miniapp/admin/users/:id/garments`、`GET /api/miniapp/admin/users/:id/garments/export.xlsx`，管理员可在小程序「我的」页进入「管理员库存导出」，查看用户列表并导出某位用户的当前库存 Excel，表格包含衣物 ID、照片、名称、分类、颜色、状态、标签、备注等对照信息。管理员身份不新增数据库角色表，使用生产环境变量 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 配置白名单；未配置时入口不显示、接口拒绝访问。已通过本地管理员权限/导出单测、`npm run test:miniapp`、`npm run build`、服务器部署和用户确认的微信开发者工具导出验收。
 
 Stitch「我的」页面小程序落地已完成本地开发：新增 `miniprogram/pages/profile` 页面，并把底部自定义标签栏扩展为「衣橱 / 搭配 / 今日 / 我的」。页面按 Stitch HTML 的“个人资料 + 衣橱统计 + 入口菜单”结构实现，统计数字读取当前用户衣橱真实数据。本地已通过 `npm run test:miniapp` 和 `npm run build`；尚需在微信开发者工具里做视觉和 tab 跳转验收。
+
+## 2026-08-11 AI 客观标签白名单与日志安全收口
+
+- AI 补标改为使用专用标签白名单，保留历史完整标签库供人工选择；版型仅表示 A 字、直筒、H 型等客观轮廓，紧身、修身、合身、宽松和舒适度等穿着体验不允许 AI 自动写入。
+- 生产真实试点仅新增处理 1 件衣物（`#77 短裤`），版型为“廓形”，结构化标签不含 `wearingFeel`；加上此前 3 件，困困子账号共完成 4 件，剩余 11 件。页面结果、生产数据库和管理员库存 Excel 三层核对一致。
+- 请求日志已对 Authorization、Cookie、Proxy-Authorization 和 Set-Cookie 做统一脱敏。修复通过 PR `#4` 合入 `main`，生产部署业务基线为 `4bc13bcd`，镜像为 `sha256:c0a6043b...`。
+- 部署前备份 `/root/ai-wardrobe-backup-20260811T-final-codex` 的 SQLite WAL、`quick_check`、`integrity_check` 和三个数据库文件哈希均通过；上线后数据库仍有 168 件衣物，公网首页、taxonomy、garments 均为 200。
+- 生产 `ACCESS_TOKEN_SECRET` 已原子轮换，其他环境配置未变，新容器已确认加载新密钥。Docker 日志与持久 `app.log` 在轮换前后两次 synthetic Bearer 哨兵测试中原文命中均为 0、`[Redacted]` 均命中。
+- 两个包含旧密钥环境快照的 stopped 容器已按用户授权逐个删除；rollback 镜像、生产备份和构建/诊断临时文件继续保留。

@@ -64,6 +64,8 @@ AUTO_DEPLOY_MAIN=true
 
 **当前取值：`AUTO_DEPLOY_MAIN=false`（2026-08-06 起）。** 关闭原因见下方「已知网络约束」，推 `main` 不再自动部署，改为按需手动触发或走服务器本地构建。
 
+> **2026-08-11 洁癖门审计提醒**：当前工作流的生产脚本仍会直接执行 `docker rm -f ai-wardrobe`，且没有覆盖 SQLite WAL 停机备份、候选镜像原生依赖验证、回滚标签确认和日志脱敏哨兵。`AUTO_DEPLOY_MAIN` 应继续保持 `false`；在单独完成工作流安全加固和真实验收前，不要重新开启 push 自动部署。
+
 ## 服务器侧前提
 
 服务器上必须已经存在项目目录：
@@ -112,12 +114,12 @@ volume: ai_wardrobe_data:/app/data
 
 生产服务器到 GitHub 的链路**基本不通**，这是选择部署方式时的首要约束：
 
-| 链路 | 实测结果 |
-|---|---|
-| 服务器 → `github.com` | ❌ 连测 3 次全部 20 秒超时（TCP 能连上，之后无响应） |
-| 服务器 → `registry.npmjs.org` | ✅ 正常，0.7~1.3 秒，下载约 140 KB/s |
-| 本机 → `github.com` | ✅ 正常，1~3 秒 |
-| GitHub runner → 服务器 | ⚠️ 143MB 镜像包传输曾耗时 34 分钟，并在收尾阶段挂起 |
+| 链路                          | 实测结果                                             |
+| ----------------------------- | ---------------------------------------------------- |
+| 服务器 → `github.com`         | ❌ 连测 3 次全部 20 秒超时（TCP 能连上，之后无响应） |
+| 服务器 → `registry.npmjs.org` | ✅ 正常，0.7~1.3 秒，下载约 140 KB/s                 |
+| 本机 → `github.com`           | ✅ 正常，1~3 秒                                      |
+| GitHub runner → 服务器        | ⚠️ 143MB 镜像包传输曾耗时 34 分钟，并在收尾阶段挂起  |
 
 推论：**npm 依赖下载没问题，卡住的是所有需要访问 GitHub 的环节**（Releases 上的预编译二进制、`git fetch`、镜像包传输）。
 
@@ -155,7 +157,7 @@ done
 
 注意事项：
 
-- **首次构建约 47 分钟**，主要耗在安装后脚本重试 GitHub 下载（`sharp`、`better-sqlite3` 的预编译二进制托管在 GitHub Releases）。后续构建若 `package-lock.json` 未变会命中 Docker 层缓存，大幅加快。
+- 2026-08-11 起，`docker/Dockerfile` 只在 builder 阶段执行一次 `npm ci`，production 阶段直接复用 builder 的 `node_modules`，不再第二次下载或编译 `better-sqlite3` 等原生依赖；已有缓存的候选构建已在数分钟内完成，冷缓存耗时尚未重新测量。
 - 因此**不要执行 `docker builder prune`**，那会清掉这层缓存；清理垃圾用 `docker image prune`（只删无标签镜像）即可。
 - 服务器为 2 核 / 1.9GB 内存，已配置 4GB swapfile（`swappiness=10`）。实测构建期间 Swap 峰值约 185MB，未发生 OOM。
 - 切换容器实测停机约 5 秒。
