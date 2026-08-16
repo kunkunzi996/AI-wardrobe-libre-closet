@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { OutfitTemperatureContext } from '../weather/tencent-weather.service';
 
 export interface OutfitAiGarment {
   id: number;
@@ -10,6 +11,8 @@ export interface OutfitAiGarment {
   styleTags?: string[];
   sceneTags?: string[];
   status: string;
+  tagsByGroup?: Record<string, string[]>;
+  sourceByGroup?: Record<string, 'taxonomy' | 'legacy'>;
 }
 
 export interface OutfitAiRecommendation {
@@ -23,6 +26,8 @@ export interface OutfitAiInput {
   requestText: string;
   availableGarments: OutfitAiGarment[];
   coreGarmentId?: number;
+  mode?: 'miniapp-taxonomy-v1';
+  temperatureContext?: OutfitTemperatureContext;
 }
 
 export interface OutfitAiResult {
@@ -103,6 +108,7 @@ export class OutfitAiService {
   }
 
   private buildRequest(input: OutfitAiInput) {
+    const miniappMode = input.mode === 'miniapp-taxonomy-v1';
     const coreGarment = input.coreGarmentId
       ? input.availableGarments.find(
           (garment) => garment.id === input.coreGarmentId,
@@ -119,15 +125,29 @@ export class OutfitAiService {
         {
           role: 'user',
           content: JSON.stringify({
+            ...(miniappMode
+              ? {
+                  mode: input.mode,
+                  temperatureContext: input.temperatureContext,
+                }
+              : {}),
             requestText: input.requestText,
             requiredCoreGarmentId: input.coreGarmentId,
             coreGarment,
-            rules: [
-              'Every recommendation must include requiredCoreGarmentId when it is provided.',
-              'Treat coreGarment as the main item. Other garments should complement it.',
-              'Do not replace the core garment with another garment in the same category.',
-              'Mention the core garment by name or category in the reason.',
-            ],
+            rules: miniappMode
+              ? [
+                  '每个有效标签组等权，只能在同一组内计分一次，不能重复累加新旧字段。',
+                  '色彩关系必须根据整套衣物动态判断，不能把单件色彩感觉当固定关系。',
+                  '遵守天气温度边界和用户明确的冷热反向需求；标签缺失时不推断。',
+                  '可从所有库存状态中选择，但非可穿状态必须在 cautions 中明确提醒。',
+                  '每套必须包含核心单品（若提供），最多返回三套且衣物 id 集合不得重复。',
+                ]
+              : [
+                  'Every recommendation must include requiredCoreGarmentId when it is provided.',
+                  'Treat coreGarment as the main item. Other garments should complement it.',
+                  'Do not replace the core garment with another garment in the same category.',
+                  'Mention the core garment by name or category in the reason.',
+                ],
             availableGarments: input.availableGarments,
             requiredShape: {
               recommendations: [
@@ -189,6 +209,9 @@ export class OutfitAiService {
     recommendations: OutfitAiRecommendation[],
     input: OutfitAiInput,
   ): OutfitAiRecommendation[] {
+    if (input.mode === 'miniapp-taxonomy-v1') {
+      return this.guardMiniappRecommendations(recommendations, input);
+    }
     const garments = input.availableGarments;
     const wearableIds = new Set(
       garments
@@ -227,7 +250,63 @@ export class OutfitAiService {
       .filter((recommendation) => recommendation.garmentIds.length > 0);
   }
 
+  private guardMiniappRecommendations(
+    recommendations: OutfitAiRecommendation[],
+    input: OutfitAiInput,
+  ): OutfitAiRecommendation[] {
+    const garmentById = new Map(
+      input.availableGarments.map((garment) => [garment.id, garment]),
+    );
+    const requiredCoreGarmentId = input.coreGarmentId
+      ? garmentById.has(input.coreGarmentId)
+        ? input.coreGarmentId
+        : undefined
+      : undefined;
+    const seenPlans = new Set<string>();
+    return recommendations
+      .map((recommendation) => {
+        const originalIds = recommendation.garmentIds ?? [];
+        const seen = new Set<number>();
+        const garmentIds = originalIds.filter((id) => {
+          if (!garmentById.has(id) || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        if (
+          requiredCoreGarmentId &&
+          !garmentIds.includes(requiredCoreGarmentId)
+        ) {
+          garmentIds.unshift(requiredCoreGarmentId);
+        }
+        const removedCount = originalIds.length - garmentIds.length;
+        const dedupeKey = [...garmentIds].sort((a, b) => a - b).join(',');
+        if (seenPlans.has(dedupeKey)) return undefined;
+        seenPlans.add(dedupeKey);
+        return {
+          title: recommendation.title || 'AI搭配方案',
+          garmentIds,
+          reason: recommendation.reason || '根据你的衣橱和需求生成。',
+          cautions: Array.from(
+            new Set([
+              ...(recommendation.cautions ?? []),
+              ...(removedCount > 0 ? ['已移除不存在或重复的衣物。'] : []),
+            ]),
+          ),
+        };
+      })
+      .filter(
+        (
+          recommendation,
+        ): recommendation is NonNullable<typeof recommendation> =>
+          Boolean(recommendation && recommendation.garmentIds.length > 0),
+      )
+      .slice(0, 3);
+  }
+
   private fallback(input: OutfitAiInput): OutfitAiResult {
+    if (input.mode === 'miniapp-taxonomy-v1') {
+      return this.miniappFallback(input);
+    }
     const wearable = input.availableGarments.filter(
       (garment) => garment.status === 'wearable',
     );
@@ -263,6 +342,14 @@ export class OutfitAiService {
             },
           ]
         : [],
+    };
+  }
+
+  private miniappFallback(input: OutfitAiInput): OutfitAiResult {
+    return {
+      source: 'fallback',
+      message: 'AI暂时不可用，先为你按衣橱标签筛选出这些单品。',
+      recommendations: [],
     };
   }
 

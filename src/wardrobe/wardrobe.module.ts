@@ -9,6 +9,7 @@ import { File } from '../dal/entity/file.entity';
 import { FileModule } from '../file/file.module';
 import { AuthModule } from '../auth/auth.module';
 import { AiModule } from '../ai/ai.module';
+import { WeatherModule } from '../weather/weather.module';
 import { GarmentService } from './garment.service';
 import { OutfitService } from './outfit.service';
 import { CalendarService } from './calendar.service';
@@ -33,6 +34,7 @@ import { MiniappAdminService } from './miniapp-admin.service';
   imports: [
     AuthModule,
     AiModule,
+    WeatherModule,
     FileModule,
     MikroOrmModule.forFeature([
       Garment,

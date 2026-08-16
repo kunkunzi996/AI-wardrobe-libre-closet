@@ -314,8 +314,9 @@ module.exports = {
       data: {},
     });
   },
-  recommendOutfit: function (requestText, coreGarmentId) {
+  recommendOutfit: function (requestText, coreGarmentId, weather) {
     const data = { requestText: requestText };
+    data.weather = weather || { mode: 'unavailable' };
     if (coreGarmentId) {
       data.coreGarmentId = coreGarmentId;
     }

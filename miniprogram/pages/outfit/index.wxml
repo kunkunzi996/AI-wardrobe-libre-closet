@@ -5,6 +5,50 @@
   </view>
 
   <view class="panel">
+    <view class="weather-card">
+      <view class="weather-head">
+        <text class="title">天气依据</text>
+        <text
+          wx:if="{{weatherPreference.mode === 'manual'}}"
+          class="weather-city"
+          >手动城市：{{weatherPreference.city || '未设置'}}</text
+        >
+        <text wx:else class="weather-city">自动定位</text>
+      </view>
+      <view class="weather-modes">
+        <button
+          class="weather-mode {{weatherPreference.mode === 'auto' ? 'active' : ''}}"
+          data-mode="auto"
+          bindtap="switchWeatherMode"
+        >
+          自动定位
+        </button>
+        <button
+          class="weather-mode {{weatherPreference.mode === 'manual' ? 'active' : ''}}"
+          data-mode="manual"
+          bindtap="switchWeatherMode"
+        >
+          手动城市
+        </button>
+      </view>
+      <view wx:if="{{weather.status === 'available'}}" class="weather-basis">
+        <text>{{weather.city}} · 当前温度 {{weather.currentC}}℃</text>
+        <text class="weather-hourly-title">未来八小时</text>
+        <view class="weather-hourly">
+          <view
+            wx:for="{{weather.hourly}}"
+            wx:key="timestamp"
+            class="weather-hour"
+          >
+            <text>{{item.timeLabel}}</text>
+            <text>{{item.temperatureC}}℃</text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="weather-unavailable"
+        >{{weather.reason || '本次未使用实时温度'}}</view
+      >
+    </view>
     <text class="title">想穿去哪</text>
     <textarea
       class="prompt"
@@ -12,7 +56,9 @@
       bindinput="onInput"
       placeholder="例如：明天上班穿什么 / 周末约会轻松一点"
     />
-    <button class="primary" loading="{{loading}}" bindtap="generateOutfit">生成搭配</button>
+    <button class="primary" loading="{{loading}}" bindtap="generateOutfit">
+      生成搭配
+    </button>
   </view>
 
   <view wx:if="{{error}}" class="notice error">{{error}}</view>
@@ -37,10 +83,24 @@
         data-id="{{garment.id}}"
         bindtap="goToGarment"
       >
-        <image wx:if="{{garment.photoUrl}}" class="photo" src="{{garment.photoUrl}}" mode="aspectFill" />
+        <image
+          wx:if="{{garment.photoUrl}}"
+          class="photo"
+          src="{{garment.photoUrl}}"
+          mode="aspectFill"
+        />
         <view wx:else class="photo placeholder">暂无图片</view>
-        <text class="garment-name">{{garment.name || garment.categoryLabel}}</text>
-        <text class="meta">{{garment.categoryLabel}} · {{garment.colorLabel}}</text>
+        <text class="garment-name"
+          >{{garment.name || garment.categoryLabel}}</text
+        >
+        <text class="meta"
+          >{{garment.categoryLabel}} · {{garment.colorLabel}}</text
+        >
+        <text
+          wx:if="{{garment.statusLabel && garment.statusLabel !== '可穿'}}"
+          class="status-label"
+          >状态：{{garment.statusLabel}}</text
+        >
       </view>
     </view>
     <button
@@ -60,19 +120,22 @@
           data-index="{{index}}"
           data-rating="good"
           bindtap="onFeedbackRating"
-        >搭配得不错</view>
+          >搭配得不错</view
+        >
         <view
           class="feedback-option {{item.feedbackRating === 'soso' ? 'active' : ''}}"
           data-index="{{index}}"
           data-rating="soso"
           bindtap="onFeedbackRating"
-        >一般</view>
+          >一般</view
+        >
         <view
           class="feedback-option {{item.feedbackRating === 'bad' ? 'active' : ''}}"
           data-index="{{index}}"
           data-rating="bad"
           bindtap="onFeedbackRating"
-        >不喜欢</view>
+          >不喜欢</view
+        >
       </view>
       <block wx:if="{{!item.feedbackSubmitted}}">
         <textarea
@@ -88,7 +151,9 @@
           loading="{{item.feedbackSubmitting}}"
           data-index="{{index}}"
           bindtap="submitFeedback"
-        >提交反馈</button>
+        >
+          提交反馈
+        </button>
       </block>
       <view wx:else class="feedback-done">已收到你的反馈，谢谢！</view>
     </view>

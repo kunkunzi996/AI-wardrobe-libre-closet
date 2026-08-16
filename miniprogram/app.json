@@ -18,6 +18,12 @@
     "navigationBarTextStyle": "black",
     "backgroundColor": "#eceaf0"
   },
+  "requiredPrivateInfos": ["getLocation"],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取城市天气，帮助 AI 生成更合适的穿搭"
+    }
+  },
   "tabBar": {
     "custom": true,
     "color": "#b4aec4",

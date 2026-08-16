@@ -24,6 +24,8 @@ const requiredFiles = [
   'miniprogram/pages/edit-outfit/index.wxml',
   'miniprogram/pages/edit-outfit/index.wxss',
   'miniprogram/pages/edit-outfit/index.js',
+  'miniprogram/pages/outfit/index.wxml',
+  'miniprogram/pages/outfit/index.js',
   'miniprogram/pages/admin-inventory/index.wxml',
   'miniprogram/pages/admin-inventory/index.wxss',
   'miniprogram/pages/admin-inventory/index.js',
@@ -292,6 +294,142 @@ try {
   } else {
     global.wx = originalWx;
   }
+}
+
+const weatherContractFailures = [];
+function requireWeatherContract(condition, message) {
+  if (!condition) weatherContractFailures.push(message);
+}
+
+requireWeatherContract(
+  Array.isArray(appJson.requiredPrivateInfos) &&
+    appJson.requiredPrivateInfos.includes('getLocation'),
+  'app.json must declare getLocation in requiredPrivateInfos',
+);
+const locationPermission =
+  appJson.permission && appJson.permission['scope.userLocation'];
+requireWeatherContract(
+  locationPermission &&
+    typeof locationPermission.desc === 'string' &&
+    /天气|城市|穿搭/.test(locationPermission.desc),
+  'app.json must explain that location is used for weather-based outfit recommendations',
+);
+
+const recommendOutfitMatch = apiJs.match(
+  /recommendOutfit\s*:\s*function\s*\(([^)]*)\)\s*\{([\s\S]*?)\n\s*\},\n\s*submitOutfitFeedback/,
+);
+const recommendOutfitParameters = recommendOutfitMatch
+  ? recommendOutfitMatch[1]
+      .split(',')
+      .map(function (parameter) {
+        return parameter.trim();
+      })
+      .filter(Boolean)
+  : [];
+const weatherParameter = recommendOutfitParameters[2];
+requireWeatherContract(
+  Boolean(recommendOutfitMatch && weatherParameter),
+  'api.recommendOutfit must accept a weather request object',
+);
+requireWeatherContract(
+  Boolean(
+    recommendOutfitMatch &&
+      weatherParameter &&
+      new RegExp(
+        `data\\.weather\\s*=\\s*${weatherParameter.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          '\\$&',
+        )}`,
+      ).test(recommendOutfitMatch[2]),
+  ),
+  'api.recommendOutfit must include weather in the current recommendation payload',
+);
+
+const outfitJs = readRequiredFile('miniprogram/pages/outfit/index.js');
+const outfitWxml = readRequiredFile('miniprogram/pages/outfit/index.wxml');
+requireWeatherContract(
+  /wx\.getLocation\s*\(\s*\{[\s\S]*?type\s*:\s*['"]gcj02['"]/.test(
+    outfitJs,
+  ),
+  'outfit page must request gcj02 location for automatic weather mode',
+);
+requireWeatherContract(
+  /recommendOutfit\s*\(\s*requestText\s*,[\s\S]*?,[\s\S]*?weather/.test(
+    outfitJs,
+  ),
+  'outfit page must send the current weather request to api.recommendOutfit',
+);
+
+let outfitPage;
+global.Page = function (definition) {
+  outfitPage = definition;
+};
+require(path.join(root, 'miniprogram/pages/outfit/index.js'));
+delete global.Page;
+
+requireWeatherContract(
+  outfitPage && typeof outfitPage.saveWeatherPreference === 'function',
+  'outfit page must expose saveWeatherPreference for device-local mode and city storage',
+);
+if (outfitPage && typeof outfitPage.saveWeatherPreference === 'function') {
+  const storedPreferences = [];
+  const previousWx = global.wx;
+  try {
+    global.wx = {
+      setStorageSync(key, value) {
+        storedPreferences.push({ key, value });
+      },
+    };
+    outfitPage.saveWeatherPreference({
+      mode: 'auto',
+      latitude: 31.2304,
+      longitude: 121.4737,
+    });
+    outfitPage.saveWeatherPreference({
+      mode: 'manual',
+      city: '杭州市',
+      latitude: 30.2741,
+      longitude: 120.1551,
+    });
+  } finally {
+    if (previousWx === undefined) {
+      delete global.wx;
+    } else {
+      global.wx = previousWx;
+    }
+  }
+
+  requireWeatherContract(
+    storedPreferences.length === 2 &&
+      JSON.stringify(storedPreferences[0].value) ===
+        JSON.stringify({ mode: 'auto' }) &&
+      JSON.stringify(storedPreferences[1].value) ===
+        JSON.stringify({ mode: 'manual', city: '杭州市' }),
+    'weather preferences must store only {mode} or {mode, city}, never coordinates',
+  );
+}
+
+for (const label of ['自动定位', '手动城市']) {
+  requireWeatherContract(
+    outfitWxml.includes(label),
+    `outfit page must render the ${label} weather mode`,
+  );
+}
+requireWeatherContract(
+  /当前温度/.test(outfitWxml) && /未来\s*8\s*小时|未来八小时/.test(outfitWxml),
+  'outfit page must render the current temperature and future eight-hour basis',
+);
+requireWeatherContract(
+  outfitWxml.includes('本次未使用实时温度'),
+  'outfit page must render the real-time temperature degradation message',
+);
+
+if (weatherContractFailures.length > 0) {
+  throw new Error(
+    `Weather outfit contract is not implemented:\n- ${weatherContractFailures.join(
+      '\n- ',
+    )}`,
+  );
 }
 
 console.log('Native mini-program validation passed.');
