@@ -35,48 +35,13 @@ describe('TencentWeatherService', () => {
     json: async () => payload,
   });
 
-  const futureHours = [18, 19, 20, 21, 23, 24, 25, 26, 24, 22].map(
-    (temperature, index) => {
-      const time = new Date(
-        Date.now() + (index - 2) * 60 * 60 * 1000,
-      ).toISOString();
-      return {
-        time,
-        timestamp: time,
-        temperature,
-        temperatureC: temperature,
-      };
-    },
-  );
-
-  const successfulProviderPayload = {
-    status: 0,
-    message: 'query ok',
-    result: {
-      city: '上海市',
-      adcode: '310100',
-      address_component: {
-        city: '上海市',
-        adcode: '310100',
-      },
-      location: {
-        lat: 31.23,
-        lng: 121.47,
-      },
-      realtime: {
-        time: new Date().toISOString(),
-        temperature: 22,
-        temperatureC: 22,
-      },
-      hourly: futureHours,
-      forecast: {
-        hourly: futureHours,
-      },
-    },
-  };
-
+  // 默认 payload 用实测夹具。此处曾放置两个「按想象编造」的响应构造器：它们把
+  // 实时数据写成对象、把逐小时挂在 result.hourly，与腾讯真实契约完全不符
+  // （BUG-13）。留着的后果是消费它们的用例在解析第一步就短路，看似绿灯实则一条
+  // 守卫都没测到（BUG-16，两个构造器的原名见 docs/plan.md 缺陷表）。
+  // 因此本文件只允许出现实测原文，不再有任何手写的供应商响应。
   const makeFetch = (
-    payload: unknown = successfulProviderPayload,
+    payload: unknown = TENCENT_REALTIME_BY_LOCATION,
   ): jest.Mock<Promise<FetchResult>, [string, RequestInit?]> =>
     jest.fn(async () => response(payload));
 
@@ -258,37 +223,96 @@ describe('TencentWeatherService', () => {
     ).resolves.toEqual(expect.objectContaining({ status: 'unavailable' }));
   });
 
-  it('供应商返回错误状态或不足八个未来小时数据时返回 unavailable', async () => {
-    const providerErrorFetch = makeFetch({
+  // TEST-012 / TEST-013：两条降级守卫的鉴别力保护。
+  //
+  // 这两条取代了原先一条同时声称守卫「供应商错误状态」与「不足八小时」的用例。
+  // 那条用例喂的是编造的返回体，解析层在读 result.realtime[0] 时就短路，两条
+  // 守卫**一条都没被执行到**——删掉任意一条守卫它照样绿（BUG-16）。
+  //
+  // 拆成两条后，每条各自指向一条守卫，并且都通过了变异验证：把对应守卫从
+  // 实现中移除，对应用例必须转红。证据见 docs/test.md#TEST-012 / #TEST-013。
+  // 两条都必须在 TZ=UTC 下运行，理由同 TEST-010。
+
+  it('供应商返回非零状态码时返回 unavailable', async () => {
+    freezeFixtureNow();
+
+    // 由实测响应派生：字段名与层级全部保留，只把顶层 status 由 0 改为 110
+    // （腾讯实测的配额超限码）。key 配额是按 key 计的，故两条天气路径同时被拒
+    // 才是真实故障形态；只改其中一条会让本用例的红灯依赖「另一条恰好可解析」
+    // 这种巧合。派生构造就地声明，不写回夹具文件。
+    const quotaExceeded = (payload: { status: number }) => ({
+      ...payload,
       status: 110,
-      message: 'invalid key',
-      result: null,
+      message: '配额超限',
     });
-    const providerErrorService = new TencentWeatherService(
-      makeConfig() as any,
-      providerErrorFetch as any,
+
+    const fetchImpl = jest.fn(async (url: string) =>
+      response(
+        String(url).includes('type=hours')
+          ? quotaExceeded(TENCENT_FORECAST_HOURS)
+          : quotaExceeded(TENCENT_REALTIME_BY_LOCATION),
+      ),
     );
 
-    await expect(
-      providerErrorService.getContext({ mode: 'manual', city: '上海' }),
-    ).resolves.toEqual(expect.objectContaining({ status: 'unavailable' }));
+    const service = new TencentWeatherService(
+      makeConfig() as any,
+      fetchImpl as any,
+    );
 
-    const insufficientPayload = {
-      ...successfulProviderPayload,
+    const result = await service.getContext({
+      mode: 'auto',
+      latitude: 39.9052,
+      longitude: 116.7245,
+    });
+
+    expect(result.status).toBe('unavailable');
+    // 降级不得携带半截数据
+    expect(result.hourly).toEqual([]);
+  });
+
+  it('逐小时数据不足八条时返回 unavailable', async () => {
+    freezeFixtureNow();
+
+    // 实时必须成功，否则走不到「不足八小时」那道门槛。
+    // 逐小时由实测响应派生：字段名与层级全部保留，只把 infos 截到前 5 条。
+    const truncatedHours = {
+      ...TENCENT_FORECAST_HOURS,
       result: {
-        ...successfulProviderPayload.result,
-        hourly: futureHours.slice(2, 7),
-        forecast: { hourly: futureHours.slice(2, 7) },
+        ...TENCENT_FORECAST_HOURS.result,
+        forecast_hours: [
+          {
+            ...TENCENT_FORECAST_HOURS.result.forecast_hours[0],
+            infos: TENCENT_FORECAST_HOURS.result.forecast_hours[0].infos.slice(
+              0,
+              5,
+            ),
+          },
+        ],
       },
     };
-    const insufficientService = new TencentWeatherService(
-      makeConfig() as any,
-      makeFetch(insufficientPayload) as any,
+
+    const fetchImpl = jest.fn(async (url: string) =>
+      response(
+        String(url).includes('type=hours')
+          ? truncatedHours
+          : TENCENT_REALTIME_BY_LOCATION,
+      ),
     );
 
-    await expect(
-      insufficientService.getContext({ mode: 'manual', city: '上海' }),
-    ).resolves.toEqual(expect.objectContaining({ status: 'unavailable' }));
+    const service = new TencentWeatherService(
+      makeConfig() as any,
+      fetchImpl as any,
+    );
+
+    const result = await service.getContext({
+      mode: 'auto',
+      latitude: 39.9052,
+      longitude: 116.7245,
+    });
+
+    // 关键断言：不足八条必须整体降级，不得返回 5 条半截趋势
+    expect(result.status).toBe('unavailable');
+    expect(result.hourly).toEqual([]);
   });
 
   // TEST-010：以腾讯真实响应夹具为准，锁定 BUG-13（字段路径与 type 参数）

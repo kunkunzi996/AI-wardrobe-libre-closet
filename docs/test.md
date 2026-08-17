@@ -21,6 +21,8 @@
 | TEST-009 | warns about temperature when an explicit request overrides the exclusion | new | 1 | green | TASK-08a/TASK-08b | passed |
 | TEST-010 | builds an available context from the real Tencent weather responses | new | 1 | green | TASK-09a/TASK-09b | passed |
 | TEST-011 | resolves a manual city to an adcode through the geocoder | new | 1 | green | TASK-10a/TASK-10b | passed |
+| TEST-012 | 供应商返回非零状态码时返回 unavailable | new | 1 | green（变异可证伪） | TASK-11 | passed |
+| TEST-013 | 逐小时数据不足八条时返回 unavailable | new | 1 | green（变异可证伪） | TASK-11 | passed |
 
 > 「P5 状态」列口径：TEST-001~009 的 `passed` 由 2026-08-16 第一轮（INITIAL + CLOSURE-1）取得；**全部十一个资产的 `passed` 已于 2026-08-17 在提交 `61e03d1` 上由第二轮 P5 重新取得**，证据见下方「P5 第二轮 Current 结果」。第一轮记录原样保留备查。
 
@@ -631,3 +633,100 @@ TEST-005 与 TEST-006 均已由 TASK-04b 的实现转绿，上方执行记录为
 - TEST-001~004 的「P5 整体回归」行原为 209 项且自注「BUG-09 修复后须重跑」；BUG-09 早在 TASK-04b 修复，该重跑要求由新增的「P5 整体回归（第二轮）」行履行，原行保留备查。
 - TEST-005、TEST-006 各有一条与同阶段绿灯行重复的 `| P4 绿灯（TASK-04b） | 尚未执行 | … | planned |` 占位行，绿灯真实证据本就写在「TASK-04b 阻塞记录与解除」段内，占位行已删除。
 - TEST-007~TEST-011 的「定义哈希」原写 `planned`，与 TEST-001~006 的「未记录（本项目未建立定义哈希机制）」口径不一致，且 `planned` 会被门禁读成待办占位；已统一为「未记录」并注明原因。第一轮 CLOSURE-1 曾在 TEST-007~009 上放过这一项。
+
+## TEST Asset · TEST-012 · 供应商返回非零状态码时返回 unavailable
+
+### 资产定义
+
+- Asset ID：TEST-012
+- 来源类型：new
+- 历史来源：无。`docs/archive/**` 不存在（命令：`ls docs/archive` → 不存在）。
+- Derived From：无
+- 定义版本：1
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份）
+- 覆盖条目：BUG-16、AC-04、MVP-05、HC-06
+- Test Seam：`TencentWeatherService.getContext`（经 `TENCENT_WEATHER_FETCH` 注入按 URL 分发的假 fetch）
+- 测试定义载体：`src/weather/tencent-weather.service.spec.ts`（P4 由 TASK-11 写入）
+- 夹具载体：`src/weather/__fixtures__/tencent-weather-responses.ts` 的 `TENCENT_REALTIME_BY_LOCATION` 与 `TENCENT_FORECAST_HOURS`，**只读引用，不修改**
+- 工作目录：`C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`
+- 完整调用命令：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts -t "供应商返回非零状态码时返回 unavailable"`
+- 对应 TASK：TASK-11
+- 复用判断：无可复用资产。当前套件中唯一声称覆盖该分支的是**未登记为资产**的既有用例 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable`，实测其在解析第一步即短路、对 `hasProviderError` 零鉴别力（BUG-16），不能作为复用来源；亦不属 `adapt`——其来源不是已登记资产，且语义由「空转」变为「有鉴别力」。属 new。
+
+### 测试定义
+
+- 状态：green（首次即绿；鉴别力由变异验证证明，见下方执行记录）
+- 定义：auto 模式调用 `getContext`，就地声明一个按 URL 分发的假 fetch，两条天气路径都返回**由实测夹具派生**的非零状态响应——保留 `TENCENT_REALTIME_BY_LOCATION` / `TENCENT_FORECAST_HOURS` 的全部字段名与层级，只把顶层 `status` 由 `0` 改为 `110`（腾讯实测的配额超限码），模拟「key 配额耗尽，两次请求都被拒」这一真实场景。断言：
+  1. `result.status === 'unavailable'`；
+  2. `result.hourly` 为空数组（降级返回不得携带半截数据）。
+- 派生数据声明：payload 由实测成功响应派生，仅改动顶层 `status` 一个值，在用例内就地声明并注释标明来源，**不写入夹具文件**冒充实测样本（先例见 TEST-011）。
+- 为什么两条路径都要改成非零：若只把实时请求改为非零、逐小时保持成功，则在 `hasProviderError` 被移除后实时仍能解析出温度、逐小时也齐全，用例确实会转红——但那是靠「实时响应恰好可解析」这一巧合。两条都非零更贴近真实故障形态（配额是按 key 计的），且变异下的失败原因更直接。
+- 时区要求：与同套件其余资产一致，**必须在 `TZ=UTC` 下执行**。理由见 TEST-010 的时区要求段。
+- 预期首次运行结果：**绿灯**。`hasProviderError` 已经正确实现，本资产写完即通过。这不是缺陷，而是本轮的前提——BUG-16 修的是「守卫没被测到」，不是「守卫是错的」。绿灯本身证明不了鉴别力，鉴别力由下方变异验证证明。
+- 变异验证（本资产的鉴别力证明，缺此项不算完成）：把 `src/weather/tencent-weather.service.ts:220` 的 `root && !this.hasProviderError(root) ? root : undefined` 临时改为 `root`，本资产**必须转红**，失败原因须为 `Expected: "unavailable"` / `Received: "available"`；随后 `git checkout -- src/weather/tencent-weather.service.ts` 还原，`git diff --stat` 须为空。
+
+### 本轮执行记录
+
+| 阶段 | 时间 | 被测版本 / 工作树 | 退出码 | 结果摘要 | 结论 |
+|---|---|---|---:|---|---|
+| P4 首次运行（TASK-11） | 2026-08-17 | `feature/outfit-taxonomy-consumption` 未提交工作树，实现为 `6721da8` 原样 | 0 | 按本资产完整调用命令执行所在套件：12 项全部通过，本资产在列。**如 P3 预期即为绿灯**——`hasProviderError` 本就正确，本轮不改实现。绿灯本身不构成鉴别力证据，见下一行 | green |
+| P4 变异验证（TASK-11） | 2026-08-17 | 同上，但 `tencent-weather.service.ts:220` 临时改为 `return root;`（移除 `hasProviderError` 判定） | 1 | 12 项中 11 项通过、**仅本资产 1 项失败**：`● TencentWeatherService › 供应商返回非零状态码时返回 unavailable`，`Expected: "unavailable"` / `Received: "available"`，与 PLAN 预期原文逐字一致。红灯未外溢。随后 `git checkout -- src/weather/tencent-weather.service.ts` 还原，`git diff --stat` 输出为空 | 变异红灯成立 |
+| P5 整体回归 | 2026-08-17 | 同上（实现已还原） | 0 | `npm test -- --runInBand`：39 个套件、219 项全部通过；`TZ=UTC npx jest --runInBand` 同样 39 套件 219 项 | green |
+
+- 鉴别力结论：**本资产可证伪**。移除 `hasProviderError` 即转红，且失败原因精确指向本资产要守的行为。这正是被取代的旧用例做不到的——旧用例在同一变异下照样通过。
+- 旁证：同变异下 `falls back to unavailable when the geocoder cannot resolve the city` 仍然通过，印证第二轮 P5 Standards 轴的判断——该用例对 `hasProviderError` 同样没有鉴别力，`hasProviderError` 此前确实处于零保护状态。
+
+## TEST Asset · TEST-013 · 逐小时数据不足八条时返回 unavailable
+
+### 资产定义
+
+- Asset ID：TEST-013
+- 来源类型：new
+- 历史来源：无。`docs/archive/**` 不存在。
+- Derived From：无
+- 定义版本：1
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份）
+- 覆盖条目：BUG-16、AC-01、AC-04、HC-06
+- Test Seam：`TencentWeatherService.getContext`（同 TEST-012）
+- 测试定义载体：`src/weather/tencent-weather.service.spec.ts`（P4 由 TASK-11 写入）
+- 夹具载体：同 TEST-012，**只读引用，不修改**
+- 工作目录：`C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`
+- 完整调用命令：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts -t "逐小时数据不足八条时返回 unavailable"`
+- 对应 TASK：TASK-11
+- 复用判断：同 TEST-012，属 new。
+
+### 测试定义
+
+- 状态：green（首次即绿；鉴别力由变异验证证明，见下方执行记录）
+- 定义：auto 模式调用 `getContext`，就地声明按 URL 分发的假 fetch：`type=now` 返回**原样**的 `TENCENT_REALTIME_BY_LOCATION`（必须成功，否则走不到逐小时那道门槛）；`type=hours` 返回**由 `TENCENT_FORECAST_HOURS` 派生**的响应——保留全部字段名与层级，只把 `result.forecast_hours[0].infos` 截断为前 5 条。断言：
+  1. `result.status === 'unavailable'`；
+  2. `result.hourly` 为空数组——**关键断言**：不足八条时必须整体降级，不得返回 5 条半截趋势。
+- 时间冻结：沿用外层 `freezeFixtureNow()`（`FIXTURE_NOW = Date.parse('2026-08-17T02:00:00.000Z')`）。夹具首个时段为北京时间 `2026-08-17 10:00:00`，冻结后截断出的 5 条全部落在未来窗口内，`normalizeHourly` 不会因「只保留未来时段」再额外丢弃，使本资产精确指向 `hourly.length < 8` 这一条守卫而非时间过滤。
+- 派生数据声明：截断由实测样本就地派生并注释标明来源，**不写入夹具文件**。
+- 时区要求：**必须在 `TZ=UTC` 下执行**，理由同 TEST-010。
+- 预期首次运行结果：**绿灯**，理由同 TEST-012。
+- 变异验证（本资产的鉴别力证明，缺此项不算完成）：把 `src/weather/tencent-weather.service.ts:316-318` 的 `if (hourly.length < 8) { return undefined; }` 临时删除，本资产**必须转红**，失败原因须为 `Expected: "unavailable"` / `Received: "available"`（届时 `getContext` 会返回带 5 条 `hourly` 的 `available`）；随后 `git checkout` 还原，`git diff --stat` 须为空。
+
+### 本轮执行记录
+
+| 阶段 | 时间 | 被测版本 / 工作树 | 退出码 | 结果摘要 | 结论 |
+|---|---|---|---:|---|---|
+| P4 首次运行（TASK-11） | 2026-08-17 | `feature/outfit-taxonomy-consumption` 未提交工作树，实现为 `6721da8` 原样 | 0 | 按本资产完整调用命令执行所在套件：12 项全部通过，本资产在列。**如 P3 预期即为绿灯**，理由同 TEST-012 | green |
+| P4 变异验证（TASK-11） | 2026-08-17 | 同上，但 `tencent-weather.service.ts:316-318` 的 `if (hourly.length < 8) { return undefined; }` 被临时删除 | 1 | 12 项中 11 项通过、**仅本资产 1 项失败**：`● TencentWeatherService › 逐小时数据不足八条时返回 unavailable`，`Expected: "unavailable"` / `Received: "available"`，与 PLAN 预期原文逐字一致。红灯未外溢。随后 `git checkout` 还原，`git diff --stat` 输出为空 | 变异红灯成立 |
+| P5 整体回归 | 2026-08-17 | 同上（实现已还原） | 0 | 与 TEST-012 同批：`npm test -- --runInBand` 与 `TZ=UTC npx jest --runInBand` 均 39 套件 219 项通过 | green |
+
+- 鉴别力结论：**本资产可证伪**。删除「不足八条」判断即转红——届时 `getContext` 会返回带 5 条 `hourly` 的 `available`，正是用户会看到残缺温度趋势的那个后果。
+- 两次变异互不干扰：变异 1 只让 TEST-012 红、变异 2 只让 TEST-013 红，说明两条资产各自精确指向一条守卫，没有互相兜底。
+
+## TASK-11 施工核对（2026-08-17）
+
+- 用例数量对账：天气套件 11 → **12**（删除 1 条空转用例、新增 2 条），整体 218 → **219**，套件数 39 不变。
+- 实现零改动的机器证据：两次变异均以 `git checkout -- src/weather/tencent-weather.service.ts` 还原，最终 `git diff --stat src/weather/tencent-weather.service.ts` 输出为空——`TencentWeatherService` 相对 `6721da8` 逐字相同，目标 5「不改变任何运行时行为」成立。
+- 白名单核对：本卡最终改动 `docs/plan.md`、`docs/task.md`、`docs/test.md`、`src/weather/tencent-weather.service.spec.ts` 四个文件，其中前三份为 P3 补正与施工台账，源码仅一份。未触碰夹具文件、TEST-010/TEST-011 的两个 `describe` 整段、`makeRealFetch`、`makeRoutedFetch`，也未触碰 `src/wardrobe/**`、`src/ai/**`、`miniprogram/**`。
+- 默认 payload 变更的影响实跑确认：`makeFetch` 默认值由编造构造器改为 `TENCENT_REALTIME_BY_LOCATION` 后，依赖该默认值的两条既有用例（`缺少 Key 时返回 unavailable…`、`只读取 canonical 腾讯配置…`）仍然通过——它们都断言 `fetchImpl` 从未被调用，默认 payload 对其无影响。此项按卡片要求实跑确认，未凭推断放行。
+- 其它检查：`npm run build`、`npm run test:miniapp`、`git diff --check` 均退出码 `0`；`npx prettier --check src/weather/tencent-weather.service.spec.ts` 报 `All matched files use Prettier code style!`。
+- 注释措辞调整：新增注释初稿中直接写出了两个被删构造器的原名，导致验收项 1 的 `grep` 不为空，使该机器检查失效。已改为不出现原名、改指 `docs/plan.md` 缺陷表；改后 `grep -n "successfulProviderPayload\|futureHours" src/weather/tencent-weather.service.spec.ts` 无命中。
+
+### 被取代用例的处置说明（TEST-012 与 TEST-013 共用）
+
+既有用例 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable`（`src/weather/tencent-weather.service.spec.ts:261-292`）由 TASK-11 删除，其保护意图由 TEST-012、TEST-013 两条承接。**这是拆分而非退役**：原用例一条同时声称守卫两件事、实测两件都没守住；拆开后每条各自指向一条守卫，且每条都必须通过变异验证证明可证伪。覆盖面只增不减，且从「声称覆盖」变为「可证明覆盖」。

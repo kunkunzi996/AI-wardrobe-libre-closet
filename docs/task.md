@@ -1,7 +1,9 @@
 # 小程序穿搭出口与调用模式收敛 TASKS
 
 - 上游：`docs/plan.md`（用户认可后方可施工）
-- 功能点：8/10
+- 功能点：11/10（**超出协议上限 1 个**，2026-08-17 补正三登记）
+
+> 关于功能点超限：`kun-plan` 协议规定单份 PLAN 最多 10 个功能点。TASK-01~TASK-10 已占满，TASK-11 是第二轮 P5 双轴评审判定的**返修卡**（冻结集 B01 / BUG-16），不是新增产品范围——SPEC 一字未改，实现行为一字不改。拆成独立 PLAN 会把冻结集与本轮切开，导致 `CLOSURE-1` 无法在同一份上下文里定向关闭，反而违背协议意图。故在此显式登记超限与理由，不静默突破。头部原写「8/10」为 TASK-09、TASK-10 追加前的旧值，一并更正。
 
 ## TASK-01a · 写测试：本地与 AI 方案共用完整提醒和颜色依据
 
@@ -629,3 +631,70 @@
 #### 首轮阻塞记录（2026-08-17，已由 P3 二次补正解除）
 
 首轮施工完成全部实现后，TEST-011 三条转绿，但整套退出码为 `1`：唯一失败项是 TASK-09b 时期改写的 `手动城市请求不需要暴露坐标，并返回供应商归一化城市`，返回 `{ status: 'unavailable', reason: '天气位置不可用。', hourly: [] }`。根因为**测试桩缺陷而非实现缺陷**——该用例的 `makeRealFetch` 只按 `type=hours` 二分流，把实时天气夹具返回给了 `/ws/geocoder/v1/` 请求。当时该 spec 不在本卡「允许改」内，按协议不得顺手修复，故记 `blocked` 并回 P3。此为 TASK-09b 同类阻塞的第二次复发，教训已写入 `docs/plan.md#卡片切分补正二`。
+
+## TASK-11 · 让两条降级守卫拥有有鉴别力的回归保护
+
+> **卡型说明（为什么是单卡而不是 a/b 配对卡）**：配对卡的 `a` 必须取得**原因正确的红灯**，红灯来源是「实现尚未写」。本卡不存在这个前提——`hasProviderError` 与 `hourly.length < 8` 两条守卫**已经是正确的**，新用例写完即绿。若强行拆成 a/b，`a` 卡只能靠临时删掉生产代码来制造红灯，并把仓库留在「守卫已被移除」的中间态等待 `b` 卡恢复；一旦中断，分支上就躺着一个真实回归。那是为了满足形式而制造风险。
+>
+> 因此本卡采用单卡形态，并用**更强的证据**替代红→绿循环：变异验证（见 `docs/plan.md#变异验证（BUG-16 专用，TEST-012 / TEST-013 的鉴别力证明）`）。变异在**同一张卡内**完成并立即还原，仓库任何时刻都不会停留在守卫缺失的状态；还原后 `git diff --stat` 为空即为「实现零改动」的机器证据。本卡不伪造任何自动化结果分类：TEST-012/TEST-013 在 `docs/test.md` 中如实记录「首次运行即绿」与「变异下转红」两段证据，不谎称存在过缺实现的红灯。
+
+### 任务定义
+
+- 状态：implemented
+- 来源：BUG-16、AC-01、AC-04、MVP-05、HC-06
+- 契约影响面：无。本卡不改变任何公开契约、返回结构、配置或用户可见行为，只替换测试内部的数据来源。
+- 阻塞依赖（Depends On）：无。TASK-09b、TASK-10b 均已终态并提交（`61e03d1`），本卡在 `6721da8` 之上开工。
+- 可并行（Parallel With）：无。本轮其余卡片均已终态。
+- Consumes：
+  - 实测夹具 `src/weather/__fixtures__/tencent-weather-responses.ts` 的 `TENCENT_REALTIME_BY_LOCATION` 与 `TENCENT_FORECAST_HOURS`（TASK-09a 产出，2026-08-17 实测原文）
+  - BUG-16 的复核证据（`docs/plan.md` 缺陷表）：`successfulProviderPayload.result` 无数组形态 `realtime`，`parseProviderPayload` 在 `tencent-weather.service.ts:290-301` 短路
+  - 本 spec 文件外层 `describe` 内已存在的辅助：`response()`、`makeConfig()`、`FIXTURE_NOW`、`freezeFixtureNow()`
+- Produces：
+  - `docs/test.md` 的 TEST-012、TEST-013 两个资产记录，各含「首次绿灯」与「变异红灯」两段证据
+  - `src/weather/tencent-weather.service.spec.ts` 中两条有鉴别力的降级守卫用例，取代空转的 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable`
+  - `grep -n "successfulProviderPayload\|futureHours" src/weather/tencent-weather.service.spec.ts` 无命中的核对结果
+  - 「实现零改动」的机器证据：变异还原后 `git diff --stat src/weather/tencent-weather.service.ts` 为空
+- Test Seam：`TencentWeatherService.getContext`（沿用 TEST-010/TEST-011 的同一公开边界，不新增 Seam，不断言私有 `parseProviderPayload` / `hasProviderError`）
+- TEST Asset ID：TEST-012、TEST-013
+- 来源类型：new（检索证据见 `docs/plan.md#TEST 资产策略`；仓库无 `docs/archive/**`）
+- TEST 记录：`docs/test.md#TEST-012`、`docs/test.md#TEST-013`
+- 历史来源：无。被取代的既有用例未登记为 TEST 资产，且其语义由「空转」变为「有鉴别力」，不构成 `reuse` 或 `adapt`。
+- 边界约束：
+  - 只观察 `getContext` 的公开返回，不断言私有方法、不导入内部类型
+  - 失败形态只能由实测样本**就地派生**并注释标明来源，**不得向夹具文件写入任何字段**（先例见 `docs/test.md#TEST-011` 的「派生数据声明」）
+  - 两条新用例各自使用**就地声明**的路由 fetch 桩，不改动、不复用 `makeRealFetch`（TEST-010 及三条既有用例的载体）与 `makeRoutedFetch`（TEST-011 的载体），避免波及已终态资产
+- 跨模块检查：无。`TencentWeatherService` 的公开返回 `OutfitTemperatureContext` 字段与含义一字不改，下游 `outfit-generator`、Controller、小程序均不受影响；由 `npm test -- --runInBand` 全量回归兜底确认。
+- 允许改：
+  - `src/weather/tencent-weather.service.spec.ts`，且**仅限**以下四处：① 删除 `futureHours`（`:38-51`）与 `successfulProviderPayload`（`:52-76`）两个构造器；② 把 `makeFetch` 的默认 payload 由 `successfulProviderPayload` 改为实测夹具 `TENCENT_REALTIME_BY_LOCATION`（`:79`）；③ 删除用例 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable`（`:261-292`）；④ 在其原位置新增 TEST-012、TEST-013 两条用例
+  - `docs/test.md` 中 TEST-012、TEST-013 两个小节与 manifest 两行
+  - `src/weather/tencent-weather.service.ts`，**且仅限变异验证期间的临时改动**：改动必须在同一张卡内用 `git checkout -- src/weather/tencent-weather.service.ts` 还原，还原后该文件相对 `6721da8` 必须逐字相同。任何意图保留的实现改动都不在本卡范围。
+- 禁止碰：
+  - TEST-010 的定义与断言（`describe('对齐腾讯真实响应契约')` 整段）
+  - TEST-011 的定义与断言（`describe('手动城市经地址解析换取 adcode')` 整段）
+  - 夹具文件 `src/weather/__fixtures__/**` 的任何字段名、层级与取值
+  - 其余六条既有用例的名称与断言：`在外发和缓存前将自动坐标保留两位…`、`手动城市请求不需要暴露坐标…`、`相同的降精度坐标在十五分钟缓存窗口内只请求一次`、`缺少 Key 时返回 unavailable…`、`只读取 canonical 腾讯配置…`、`供应商超时或抛出网络错误时返回 unavailable…`。其中「缺少 Key」与「canonical 配置」两条使用 `makeFetch()` 默认值，但都断言 `fetchImpl` 从未被调用，默认 payload 换成实测夹具对它们**应当**无影响——施工时须实跑确认，不得想当然。
+  - `src/wardrobe/**`、`src/ai/**`、`miniprogram/**`、`docs/spec.md`
+  - `hasProviderError`、`hourly.length < 8` 的判定逻辑、阈值与降级文案（变异期间的临时删除除外，且必须还原）
+- 验收：
+  1. `grep -n "successfulProviderPayload\|futureHours" src/weather/tencent-weather.service.spec.ts` 无命中
+  2. `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出码 `0`，套件用例由 11 条变为 12 条（删 1 条、增 2 条）
+  3. **变异验证两条全部成立**：删 `hasProviderError` → 仅 TEST-012 失败且原因为 `Expected: "unavailable"` / `Received: "available"`；删 `hourly.length < 8` → 仅 TEST-013 失败且原因相同。任一条变异下用例仍通过，即按 `docs/plan.md` 暂停条件停止并回 P3
+  4. 变异还原后 `git diff --stat src/weather/tencent-weather.service.ts` 为空
+  5. `npm test -- --runInBand` 与 `TZ=UTC npx jest --runInBand` 均退出码 `0`，套件数 39 不变、用例数由 218 变为 219（删 1 增 2，数量可对账）
+  6. `npm run build`、`npm run test:miniapp`、`git diff --check` 均退出码 `0`；`npx prettier --check src/weather/tencent-weather.service.spec.ts` 通过
+- 人工验收：无。本卡不改变任何用户可见行为，不存在「打开什么 → 点什么 → 看到什么」的路径。BUG-13/14/15 的真机验收仍留待 P6，不因本卡而改变。
+- 回滚：`git checkout -- src/weather/tencent-weather.service.spec.ts` 回到 `6721da8` 状态；撤回 `docs/test.md` 中 TEST-012/TEST-013 两个小节与 manifest 两行。若变异验证中途中断，另需 `git checkout -- src/weather/tencent-weather.service.ts`。不使用 `git reset --hard`、`git clean` 或批量删除。
+
+### 施工后填写
+
+<!-- P4 完成时直接把上方唯一“状态”改为 implemented / blocked；不得另建 TEST 状态或完成状态字段。 -->
+
+- TEST 记录：`docs/test.md#TEST-012`、`docs/test.md#TEST-013`，以及 `docs/test.md#TASK-11 施工核对（2026-08-17）`。完整命令、退出码与失败原文均在该处，本卡不复制。
+- 实际改动：仅 `src/weather/tencent-weather.service.spec.ts` 一个源文件（144 行变化）。① 删除 `futureHours`、`successfulProviderPayload` 两个编造数据构造器共 39 行；② `makeFetch` 默认 payload 改为实测夹具 `TENCENT_REALTIME_BY_LOCATION`，并补注释说明此处为何不得再出现手写响应；③ 删除空转用例 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable`；④ 在其原位置新增 TEST-012、TEST-013 两条，各自就地声明按 URL 分发的假 fetch，失败形态由实测夹具就地派生（TEST-012 只改顶层 `status` 为 `110`，TEST-013 只把 `forecast_hours[0].infos` 截到前 5 条），均注释标明来源。夹具文件一字未动。
+- 变异验证结果：**两条全部成立**。① 移除 `hasProviderError` 判定 → 12 项中仅 TEST-012 失败，`Expected: "unavailable"` / `Received: "available"`；② 删除 `if (hourly.length < 8) return undefined;` → 仅 TEST-013 失败，原因相同。两次变异互不干扰，说明两条资产各自精确指向一条守卫。两次均以 `git checkout -- src/weather/tencent-weather.service.ts` 还原，最终 `git diff --stat` 该文件输出为空——实现相对 `6721da8` 逐字相同。
+- 未完成项：
+  - 本卡不改变任何用户可见行为，无人工验收路径。BUG-13/14/15 的真机三条路径仍全部未执行，留待 P6，不因本卡而改变。
+  - 第二轮 P5 的三条非阻断观察（`miniappFallback` 不可达分支及锁定它的用例、ADR-0001 与实现口径不一致、`HANDOFF.md` / `PROJECT_STATE.md` 内容过期）按 PLAN 非目标未处理，需用户另开 Bug 任务。
+  - 既有基线欠账：`src/wardrobe/recommendation/outfit-generator.service.ts` 第 118、190、346-354 行与其 spec 第 715 行的 prettier 差异仍在，属改动前即有，按 `kun-code` 协议未顺手修复。
+  - 遗留项 B04（`OutfitTemperatureContext` 非判别式联合、消费端 `?? ±Infinity`）仍 `OPEN`，根因 `PLAN`。
+  - 卡型偏离已披露：本卡不符合 `kun-code` 协议的 a / b / 单卡（自动化豁免）三条路径中的任何一条，理由见本卡「卡型说明」。协议未为「给已经正确的实现补回归守卫」提供路径，本卡以变异验证替代红→绿循环，并如实记录「首次即绿」，未伪造缺实现的红灯。

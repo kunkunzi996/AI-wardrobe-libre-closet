@@ -26,6 +26,7 @@
 | BUG-13 | P6 真实链路验证（2026-08-17） | `src/weather/tencent-weather.service.ts:196-262` | 请求与解析层按想象中的契约编写，从未对腾讯真实接口验证过。实测真实响应为 `result.realtime[0].infos.temperature`（`realtime` 是数组、`infos` 是对象），逐小时须显式传 `type=hours` 且路径为 `result.forecast_hours[0].infos[].info.temperature`（`infos` 是数组、每条内层键为单数 `info`、时间键为 `hour`）。现有代码把 `realtime` 当对象读、不传 `type`、并在 `result.hourly` / `forecastHourly` / `forecast.hourly` 三个不存在的路径上找逐小时，`rawHourly` 恒为 `undefined`，`parseProviderPayload` 恒返回 `undefined`，天气**在任何模式下恒为不可用**。AC-1、AC-4 与 SPEC 第 22、39 条全部落空。 |
 | BUG-14 | P6 真实链路验证（2026-08-17） | `src/weather/tencent-weather.service.ts:202` | 手动城市模式发送 `city=<城市名>`，腾讯天气接口不支持该参数，实测返回 `status:348 参数错误，location和adcode必须有其中一个参数`。手动选城市**恒不可用**，违反 SPEC 第 22 条与 HC-06。真实可行路径为先调 `/ws/geocoder/v1/?address=<城市名>` 取 `result.ad_info.adcode`，再以 `adcode` 查天气（同一 key，实测均返回 `status:0`）。 |
 | BUG-15 | P6 真实链路验证（2026-08-17） | `src/weather/tencent-weather.service.ts:306-324` | 腾讯逐小时时间字段为 `"2026-08-17 10:00:00"`，**不带时区标记**；`normalizeTimestamp` 用 `new Date(value)` 解析，V8 对该格式按**运行环境本地时区**解释。`docker/Dockerfile:29` 使用 `node:22-slim` 且未设置 `TZ`，生产容器为 UTC，会把北京时间当 UTC，`toISOString()` 输出整体偏移 8 小时；小程序 `miniprogram/pages/outfit/index.js:19-23` 用 `new Date(timestamp).getHours()` 生成时段标签，最终向用户显示错误的小时。开发机为东八区，该缺陷**只在生产环境显现**。 |
+| BUG-16 | P5 第二轮双轴 Finding B01（2026-08-17） | `src/weather/tencent-weather.service.spec.ts:38,52,261-292` | 两个「按想象编造」的测试数据构造器 `futureHours`、`successfulProviderPayload` 未按本 PLAN 第 5 章白名单第 246 行的要求删除，导致用例 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable` **空转**：`successfulProviderPayload.result` 没有数组形态的 `realtime`，`parseProviderPayload`（`tencent-weather.service.ts:290-301`）在读取 `this.asArray(realtimeResult?.realtime)?.[0]` 时即短路返回 `undefined`，两段断言都到不了它们声称守卫的分支。实测后果：把 `hasProviderError`（`:392-399`）整个删掉，`{status:110, result:null}` 仍会因 `asRecord(null)` 为 `undefined` 而降级，测试照样绿；把 `hourly.length < 8`（`:316-318`）整个删掉，`hourly: futureHours.slice(2,7)` 那半段根本走不到，测试照样绿。全套 11 条用例无第二条覆盖这两个分支。**这两条降级守卫目前处于「有实现、有名义测试、无实际回归保护」状态**，与 BUG-13~BUG-15 的失效模式完全相同。 |
 
 ### 继承自上游的硬约束
 
@@ -63,9 +64,13 @@ BUG-13~BUG-15 的共同根因是：天气模块的请求与解析层从未对真
 3. 让小程序入口在任意客户端版本、任意天气模式下都稳定使用新版小程序规则，并合法返回零至三套方案。
 4. 让天气模块真正拿得到温度：请求与解析层按腾讯**实测契约**（而非想象中的契约）重写，自动定位与手动城市两条路径都能产出 `status:'available'` 的上下文，且时段时间戳不受运行环境时区影响。（2026-08-17 新增，对应 BUG-13~BUG-15；目标 2、3 建立的模式契约只保证「规则选对」，本目标保证「温度真拿得到」——前者正确而后者失效时，用户看到的仍是恒定的「天气不可用」。）
 
+5. 让天气模块的两条降级守卫（供应商非零状态码、逐小时不足八条）拥有**有鉴别力**的回归保护：守卫被移除时对应用例必须转红。（2026-08-17 新增，对应 BUG-16；目标 4 保证「温度真拿得到」，本目标保证「拿不到时的兜底不会被无声改坏」——本目标**不改动任何实现行为**，只补回归缺口。）
+
 ### 非目标
 
 - 不修改 `docs/spec.md`、标签定义、温度阈值、天气产品行为或小程序页面与前端契约。
+- 目标 5 不改变 `TencentWeatherService` 的任何运行时行为。`hasProviderError` 与 `hourly.length < 8` 两条守卫的判定逻辑、阈值与降级文案一字不动；本轮只让它们被真正测到。
+- 不处理第二轮 P5 的三条非阻断观察（`miniappFallback` 不可达分支及锁定它的用例、ADR-0001 与实现口径不一致、`HANDOFF.md` / `PROJECT_STATE.md` 内容过期）。它们不进入本轮冻结集，由用户另开 Bug 任务。
 - 不改变网页旧模式的固定三套、可穿过滤或 AI fallback 合同。
 - 不修改 `OutfitAiService` 的提示词与解析、腾讯天气服务、数据库、部署流程或生产数据。
 - 不把生成器内部已有的 `miniappMode` 布尔参数线程重构掉，也不拆分出独立的小程序生成器类；本轮只修入口契约。
@@ -243,8 +248,26 @@ flowchart LR
 | `docs/backend-architecture-source-of-truth.md` | 修改 | 后端分层与入口规范真源 | 产品需求、测试证据 | 第 4 章补一条规则：穿搭推荐调用方必须显式声明规则模式，不得由天气或其它数据字段是否存在推断 |
 | `docs/test.md` | 新建 | 本轮 TEST manifest、资产定义与执行记录 | 业务测试源码 | 迁移 TEST-001~TEST-004，新增 TEST-005、TEST-006 |
 | `src/weather/tencent-weather.service.ts` | 修改 | 腾讯位置服务取数与响应解析，产出 `OutfitTemperatureContext` | 穿搭规则、温度阈值判断、HTTP 映射、小程序渲染 | 按 `#外部依赖实测契约` 重写请求与解析：实时走 `type=now`、逐小时走 `type=hours`、时间显式按 `+08:00` 解析、手动城市经 geocoder 换 `adcode`（BUG-13/14/15） |
-| `src/weather/tencent-weather.service.spec.ts` | 修改 | 天气服务公开行为回归 | 私有解析函数细节、真实网络 | 新增 TEST-010、TEST-011；三条依赖编造返回体的既有用例改喂真实夹具（**改写而非退役**，隐私降精度、供应商城市归一、缓存窗口三项保护意图不得削弱），并删除 `successfulProviderPayload` / `futureHours` 两个编造数据构造器 |
+| `src/weather/tencent-weather.service.spec.ts` | 修改 | 天气服务公开行为回归 | 私有解析函数细节、真实网络 | 新增 TEST-010、TEST-011；三条依赖编造返回体的既有用例改喂真实夹具（**改写而非退役**，隐私降精度、供应商城市归一、缓存窗口三项保护意图不得削弱），并删除 `successfulProviderPayload` / `futureHours` 两个编造数据构造器（**该项在 TASK-09b/10b 未执行，已登记为 BUG-16，改由 TASK-11a/11b 执行**）；2026-08-17 补正三追加：新增 TEST-012、TEST-013 两条以实测夹具为基底的降级守卫用例，`makeFetch` 的默认 payload 由 `successfulProviderPayload` 改为实测夹具 `TENCENT_REALTIME_BY_LOCATION` |
 | `src/weather/__fixtures__/tencent-weather-responses.ts` | 新建 | 腾讯真实响应夹具，作为解析层唯一事实依据 | 断言逻辑、业务规则 | 落盘 2026-08-17 实测原文（实时 / 逐小时 / 未来 / geocoder），只允许删除 `request_id` |
+
+> **卡片切分补正三（2026-08-17，第二轮 P5 判定 B01 后）**：同一类问题**第三次复发**，且这次是由评审而非施工发现的。TASK-09b 的卡片自相矛盾——`docs/task.md:508` 写「允许删除 `successfulProviderPayload` 与 `futureHours` 这两个编造数据的构造器本身」，`docs/task.md:511`「禁止碰」却又列入「其余四条既有用例（缺少 Key、canonical 配置、超时降级、**供应商错误状态**）」，而「供应商错误状态」那条正是消费这两个构造器的用例。删构造器必然碰白名单外的用例，施工时按协议选择不删，**判断本身没错，错在卡片**。后果是构造器留存、该用例空转，见 BUG-16。
+>
+> **本次固化为逐卡核对项（切每一张卡时都要过一遍，不是读一遍就算数）**：
+>
+> 1. 本卡是否改变了某个数据契约（返回体形状、字段路径、请求参数）？
+> 2. 若是，**枚举**该契约的全部测试消费点（命令：`grep -n "<构造器名或字段名>" <spec 文件>`），不靠回忆。
+> 3. 逐个确认这些消费点都在本卡「允许改」内。任何一个落在「禁止碰」里，就是死结，必须当场重切，不得留给施工时判断。
+> 4. 「允许删除 X」与「禁止碰消费 X 的用例」不得同时出现在一张卡上——这是补正一、二、三的共同形态，出现即视为切卡错误。
+>
+> 已按此逐条复核 TASK-01a~TASK-10b 全部二十张卡（核对方式：对每张卡的「允许改」与「禁止碰」取交集，并检查「允许删除 / 退役」措辞是否与「禁止碰」的用例清单重叠）。结论：
+>
+> - **本形态仅 TASK-09b 一处**——`:508` 允许删构造器，`:513` 禁止碰消费它的「供应商错误状态」用例。
+> - TASK-10b（补正二）属另一形态：改变契约后测试桩需同步，而桩不在白名单，不是「允许删 vs 禁止碰」冲突。
+> - TASK-04b `:230` 的「只允许删除一条断言」在 `:231` 禁止碰中写明「上述获授权的单条除外」，已显式除外，不构成冲突。
+> - TASK-09a `:470` 的「只允许删除 `request_id`」针对夹具内容，不涉及测试消费点。
+>
+> 未发现第四处同类冲突。
 
 > **卡片切分补正二（2026-08-17，TASK-10b 首轮施工后）**：同一类问题**复发**——TASK-10b 把手动城市改走 geocoder 后，TASK-09b 时期改写的 `手动城市请求不需要暴露坐标…` 因测试桩不认识地址解析 URL 而转红，而该 spec 同样不在 TASK-10b 的「允许改」内。已把该 spec 按**单条用例的 fetch 桩**这一最小范围纳入 TASK-10b 允许改。
 >
@@ -280,6 +303,20 @@ flowchart LR
   - 改前结果：尚未执行（现有用例全部基于编造的返回体，证明不了任何真实行为）。
   - 覆盖：BUG-13、BUG-14、BUG-15、AC-01、AC-04、MVP-01、HC-06。
 - 天气模块契约核对，同一 cwd：`grep -n "city=" src/weather/tencent-weather.service.ts` 结果应为空（BUG-14 修复后 `city` 参数不得再出现在任何请求拼装位置）。
+- 编造数据清除核对（BUG-16），同一 cwd：`grep -n "successfulProviderPayload\|futureHours" src/weather/tencent-weather.service.spec.ts` 结果应为空。
+  - 改前结果：2026-08-17 实跑，命中 8 处（`:38`、`:52`、`:71`、`:73`、`:79`、`:277`、`:279`、`:280`、`:281`）。
+
+#### 变异验证（BUG-16 专用，TEST-012 / TEST-013 的鉴别力证明）
+
+普通绿灯**证明不了**这两条用例有鉴别力——BUG-16 的整个教训就是「绿灯 ≠ 被测到」。因此本轮为目标 5 规定一项额外的、可核对的验收：**守卫被移除时对应用例必须转红**。
+
+执行方式（cwd 同上，逐条记录退出码与失败原文到 `docs/test.md`）：
+
+1. 临时删除 `src/weather/tencent-weather.service.ts` 的 `hasProviderError` 判定（把 `:220` 的 `root && !this.hasProviderError(root) ? root : undefined` 改为 `root`）→ 运行 `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` → **TEST-012 必须失败**，且失败原因为 `Expected: "unavailable"` / `Received: "available"`。
+2. 还原后临时删除 `:316-318` 的 `if (hourly.length < 8) return undefined;` → 同一命令 → **TEST-013 必须失败**，失败原因同上。
+3. 两次变异都必须用 `git checkout -- src/weather/tencent-weather.service.ts` 还原，还原后 `git diff --stat src/weather/tencent-weather.service.ts` 必须为空——**这是「本轮未改动任何实现」的机器证据**。
+
+任一条变异下用例仍然通过，即说明该用例仍无鉴别力，按暂停条件停止并回到 P3，不得以「实现是对的」为由放行。
 
 ### TEST 资产策略
 
@@ -291,6 +328,10 @@ flowchart LR
 | BUG-08、MVP-04/05、AC-04、HC-06/07 | 空衣橱、三种天气模式、AI 零调用、`recommend` | 同上 | reuse（同上） | TEST-004 | 本轮 `docs/task.md` TASK-02a 迁移 |
 | BUG-09、MVP-01、HC-01/06 | 缺省 `weather` 请求、显式模式、响应恒定带 `weather`、`recommend` | 无归档可复用；当前测试反向锁定错误行为（`miniapp-outfit.controller.spec.ts:115-119`、`:143-147`），必须改为正确期望 | new | TEST-005 | 无，检索证据见本表 |
 | BUG-09、MVP-04、AC-05、HC-05 | 缺省 `weather` + 全非可穿衣橱、旧 fallback 文案退出、真实生成器跨模块 | 无归档可复用；当前无任何用例覆盖该路径 | new | TEST-006 | 无，检索证据见本表 |
+| BUG-16、AC-04、MVP-05、HC-06 | 供应商非零状态码降级、`hasProviderError`、`getContext` | 仓库无 `docs/archive/**`（命令：`ls docs/archive` → 不存在）。当前套件中唯一声称覆盖该分支的是**未登记为资产**的既有用例 `供应商返回错误状态或不足八个未来小时数据时返回 unavailable`，实测其在解析第一步即短路、对该守卫零鉴别力（证据见 BUG-16），不能作为复用来源；亦不属 `adapt`（其来源不是已登记资产，且语义由「空转」变为「有鉴别力」） | new | TEST-012 | 无，检索证据见本表 |
+| BUG-16、AC-01、AC-04、HC-06 | 逐小时不足八条降级、`hourly.length < 8`、`getContext` | 同上 | new | TEST-013 | 无，检索证据见本表 |
+
+> TEST-012 / TEST-013 取代上述既有用例。取代不等于放弃其保护意图：该用例名义上守卫的两件事被拆成两条**各自独立、各自可证伪**的资产，覆盖面只增不减。原用例在 TASK-11a 中删除，其位置由这两条承接。
 
 ### 人工验收
 
@@ -325,6 +366,7 @@ flowchart LR
 - TASK-03a/03b 失败：逐个撤回 `GenerateOutfitInput` 类型改动、生成器 `:78` 判断改动、两个 Controller 与两份测试文件的显式 `mode` 声明，回到 `Boolean(input.temperatureContext)` 判断；已完成的 TASK-01/02 改动不动。
 - TASK-04a/04b 失败：逐个撤回 `MiniappOutfitController` 的恒定模式声明、天气归一、响应字段与分支删除，以及 TEST-005、TEST-006 用例；保留 TASK-03 的显式模式契约。
 - TASK-05 失败：撤回 `docs/backend-architecture-source-of-truth.md` 的新增规则段落。
+- TASK-11a/11b 失败：`git checkout -- src/weather/tencent-weather.service.spec.ts` 即可回到 `6721da8` 的状态（本卡只改这一个源文件），并撤回 `docs/test.md` 中 TEST-012/TEST-013 两个小节与 manifest 两行。实现文件 `src/weather/tencent-weather.service.ts` 在本卡结束时本就应与 `6721da8` 逐字相同，若变异验证中途中断，同样用 `git checkout -- src/weather/tencent-weather.service.ts` 还原。
 - 不使用 `git reset --hard`、`git clean`、批量删除或覆盖用户现有未提交工作。
 
 ### 暂停条件
@@ -335,4 +377,9 @@ flowchart LR
 - 若删除 `usesWeatherContext` 分支会让某条既有验收行为失去承载（例如出现无人负责的用户提示），停止并把该文案作为产品决定交回 P2。
 - 若为了让测试通过需要弱化 TEST-001~TEST-006 中任何一条断言、放宽匹配或扩大文件白名单，立即停止；补显式 `mode` 参数属于契约适配、不得顺手改动断言内容。
 - 任一旧测试新增失败、跨用户衣物混入、天气降级被阻断或网页旧模式行为改变时，立即停止后续施工。
+- BUG-16 专用暂停条件（2026-08-17 补正三新增）：
+  - 若 TEST-012 或 TEST-013 在对应守卫被移除后**仍然通过**，立即停止。这说明用例仍无鉴别力，属方案不成立，回到 P3 重新设计断言；不得以「实现本来就是对的」为由放行——那正是 BUG-16 的成因。
+  - 若为了让这两条用例通过需要修改 `hasProviderError`、`hourly.length < 8` 的判定逻辑、阈值或降级文案，立即停止。目标 5 明确不改变任何运行时行为；实现需要改，说明是新缺陷，应另行登记而非并入本卡。
+  - 若变异验证后 `git diff --stat src/weather/tencent-weather.service.ts` 非空，立即停止并还原，不得提交。
+  - 若新用例需要向 `src/weather/__fixtures__/tencent-weather-responses.ts` 写入任何字段，立即停止。失败形态只能由实测样本**就地派生**并注释标明来源（先例见 `docs/test.md` TEST-011 的「派生数据声明」），夹具是事实记录，不是可编辑的测试素材。
 - 完成后仍须重新执行整体回归与 Matt Pocock 双轴审查；任一门禁不成立，不修、不提交、不推送。
