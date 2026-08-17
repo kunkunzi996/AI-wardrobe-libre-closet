@@ -19,8 +19,10 @@
 | TEST-007 | keeps the legacy web AI output unchanged | new | 1 | green | TASK-06a/TASK-06b | passed |
 | TEST-008 | applies default core selection only in mini-program mode | new | 1 | green | TASK-07a/TASK-07b | passed |
 | TEST-009 | warns about temperature when an explicit request overrides the exclusion | new | 1 | green | TASK-08a/TASK-08b | passed |
-| TEST-010 | builds an available context from the real Tencent weather responses | new | 1 | green | TASK-09a/TASK-09b | not-run |
-| TEST-011 | resolves a manual city to an adcode through the geocoder | new | 1 | green | TASK-10a/TASK-10b | not-run |
+| TEST-010 | builds an available context from the real Tencent weather responses | new | 1 | green | TASK-09a/TASK-09b | passed |
+| TEST-011 | resolves a manual city to an adcode through the geocoder | new | 1 | green | TASK-10a/TASK-10b | passed |
+
+> 「P5 状态」列口径：TEST-001~009 的 `passed` 由 2026-08-16 第一轮（INITIAL + CLOSURE-1）取得；**全部十一个资产的 `passed` 已于 2026-08-17 在提交 `61e03d1` 上由第二轮 P5 重新取得**，证据见下方「P5 第二轮 Current 结果」。第一轮记录原样保留备查。
 
 > 定义版本说明：TEST-001~TEST-004 当前生效版本为 `2`。TASK-03a 于 2026-08-16 以版本 `1` 复跑确认基线；TASK-03b 同日为这四个资产的调用参数补显式 `mode` 字段，测试文件路径、测试名称、Test Seam、调用命令与全部 `expect` 断言逐字不变，仅属兼容参数变化，按 `kun-plan` 协议保留 Asset ID 并把定义版本递增为 `2`。
 
@@ -65,7 +67,8 @@
 | P4 绿灯（TASK-01b） | 未记录 | 同上 | 0 | 与 TEST-002、TEST-003 合并运行：3 个套件、41 项全部通过 | green |
 | P4 基线（TASK-03a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体未改动 | 0 | 按本资产完整调用命令原样单独执行：1 个套件通过，26 项中 1 项匹配通过、25 项跳过；失败输出：无 | reused-green |
 | P4 绿灯（TASK-03b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体调用参数新增 `mode: 'miniapp-taxonomy-v1'` | 0 | 按本资产完整调用命令原样复跑：1 个套件通过，26 项中 1 项匹配通过、25 项跳过；2 条 `expect` 断言逐字未变；失败输出：无 | 绿灯（基线未变） |
-| P5 整体回归 | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑） |
+| P5 整体回归（第一轮 INITIAL） | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑，已由下一行履行） |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 断言清单快照（TASK-03a 于 2026-08-16 记录，供 TASK-03b 与 P5 逐字对账）：测试名 `adds status and core temperature cautions to local plans when AI falls back`，位于 `src/wardrobe/recommendation/outfit-generator.service.spec.ts`，`expect` 共 2 条，被断言对象为 `result.plans[0].cautions` 拼接后的字符串：
   1. `expect(cautions).toMatch(/待洗/);`
@@ -103,7 +106,8 @@
 | P4 绿灯（TASK-01b） | 未记录 | 同上 | 0 | 合并运行 3 个套件、41 项全部通过 | green |
 | P4 基线（TASK-03a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体未改动 | 0 | 按本资产完整调用命令原样单独执行：1 个套件通过，26 项中 1 项匹配通过、25 项跳过；失败输出：无 | reused-green |
 | P4 绿灯（TASK-03b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体调用参数新增 `mode: 'miniapp-taxonomy-v1'` | 0 | 按本资产完整调用命令原样复跑：1 个套件通过，26 项中 1 项匹配通过、25 项跳过；1 条 `expect` 断言逐字未变；失败输出：无 | 绿灯（基线未变） |
-| P5 整体回归 | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑） |
+| P5 整体回归（第一轮 INITIAL） | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑，已由下一行履行） |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 断言清单快照（TASK-03a 于 2026-08-16 记录，供 TASK-03b 与 P5 逐字对账）：测试名 `adds the actual outfit color relationship to mini-program AI reasons`，位于 `src/wardrobe/recommendation/outfit-generator.service.spec.ts`，`expect` 共 1 条：
   1. `expect(result.ai?.recommendations[0].reason).toMatch(/同色|近似/);`
@@ -140,7 +144,8 @@
 | P4 绿灯（TASK-01b） | 未记录 | 同上 | 0 | 合并运行 3 个套件、41 项全部通过 | green |
 | P4 基线（TASK-03a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体未改动 | 0 | 按本资产完整调用命令原样单独执行：1 个套件通过，16 项中 1 项匹配通过、15 项跳过；失败输出：无 | reused-green |
 | P4 绿灯（TASK-03b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体未改动（本用例走 mock 生成器，不受入口类型影响） | 0 | 按本资产完整调用命令原样复跑：1 个套件通过，16 项中 1 项匹配通过、15 项跳过；1 条 `expect` 断言逐字未变；失败输出：无 | 绿灯（基线未变） |
-| P5 整体回归 | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑） |
+| P5 整体回归（第一轮 INITIAL） | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑，已由下一行履行） |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 断言清单快照（TASK-03a 于 2026-08-16 记录，供 TASK-03b 与 P5 逐字对账）：测试名 `preserves cautions from local generated plans`，位于 `src/wardrobe/miniapp-outfit.controller.spec.ts`，`expect` 共 1 条：
   1. `expect(result.recommendations[0].cautions).toEqual(['状态提醒：待洗衣物请先确认。']);`
@@ -177,7 +182,8 @@
 | P4 绿灯（TASK-02b） | 未记录 | 同上 | 0 | 3 个套件、44 项全部通过 | green |
 | P4 基线（TASK-03a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体未改动 | 0 | 按本资产完整调用命令原样单独执行：1 个套件通过，16 项中 3 项匹配通过（auto/manual/unavailable 三条参数化用例齐全）、13 项跳过；失败输出：无 | reused-green |
 | P4 绿灯（TASK-03b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，载体未改动（Controller 已改为显式声明模式） | 0 | 按本资产完整调用命令原样复跑：1 个套件通过，16 项中 3 项匹配通过、13 项跳过；3 条 `expect` 断言逐字未变；失败输出：无 | 绿灯（基线未变） |
-| P5 整体回归 | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑） |
+| P5 整体回归（第一轮 INITIAL） | 2026-08-16 | 同上 | 0 | `npm test -- --runInBand`：39 个套件、209 项全部通过 | green（BUG-09 修复后须重跑，已由下一行履行） |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 断言清单快照（TASK-03a 于 2026-08-16 记录，供 TASK-03b 与 P5 逐字对账）：测试名 `returns zero recommendations for an empty wardrobe with %s weather`，位于 `src/wardrobe/miniapp-outfit.controller.spec.ts`，为 `it.each` 参数化用例（标签 `auto` / `manual` / `unavailable`），每条用例 `expect` 共 3 条：
   1. `await expect(controller.recommend({ weather } as any, req)).resolves.toEqual({ source: 'fallback', message: undefined, recommendations: [], weather: temperatureContext });`
@@ -219,8 +225,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-04a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，TASK-03b 完成后的实现 | 1 | 第 1 条断言失败：`expect(received).toBe(expected)`，`Expected: "miniapp-taxonomy-v1"`、`Received: "legacy-web"`。缺省 `weather` 的请求仍被送进网页旧规则，正是 BUG-09 的行为。非语法、import、路径或环境错误，属原因正确的红灯 | red |
 | P4 绿灯（TASK-04b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，`miniapp-outfit.controller.ts` 已恒定声明 miniapp 模式 | 0 | 按本资产完整调用命令原样复跑：1 项匹配通过；4 条断言全部成立（模式为 `miniapp-taxonomy-v1`、温度上下文 `unavailable`、`getContext` 收到 `{mode:'unavailable'}`、响应含 `weather`），末段非法天气仍抛 `BadRequestException`；失败输出：无 | green |
-| P4 绿灯（TASK-04b） | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | planned |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 ## TEST Asset · TEST-006 · drops the legacy no-wearable fallback message and returns status-caution plans without a weather field
 
@@ -255,8 +260,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-04a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，TASK-03b 完成后的实现 | 1 | 第 1 条断言失败：`expect(received).not.toBe(expected)`，`Expected: not "衣橱里还没有可穿衣物，请先添加衣服。"`。Controller 仍在 `!usesWeatherContext && !coreGarmentId` 分支早退，未调用生成器，全非可穿衣橱拿不到带状态提醒的方案，与 HC-05 冲突。非语法、import、路径或环境错误，属原因正确的红灯 | red |
 | P4 绿灯（TASK-04b） | 2026-08-16 | 同上 | 0 | 按本资产完整调用命令原样复跑：1 项匹配通过；全非可穿衣橱经真实生成器返回 1 套方案，`cautions` 含「状态提醒：待洗衣物请先确认。」，衣物带 `statusLabel: '待洗'`，旧 fallback 文案已退出；失败输出：无 | green |
-| P4 绿灯（TASK-04b） | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | planned |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 ## TEST Asset · TEST-007 · keeps the legacy web AI output unchanged
 
@@ -267,7 +271,7 @@
 - 历史来源：无。`docs/archive/**` 不存在。
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-17 第二轮 P5 统一口径，此前误写为 `planned`）
 - 覆盖条目：BUG-10、HC-01
 - Test Seam：`OutfitGeneratorService.generateWithAi`
 - 测试定义载体：`src/wardrobe/recommendation/outfit-generator.service.spec.ts`（P4 由 TASK-06a 写入）
@@ -290,7 +294,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-06a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树 | 1 | 第 1 条断言失败：`Expected: "黑色上衣配黑色长裤，适合正式场合。"`、`Received: "黑色上衣配黑色长裤，适合正式场合。 色彩上形成同色系搭配。"`。网页 AI 理由确实被追加了小程序专用的颜色关系文案。非语法、import 或环境错误，属原因正确的红灯 | red |
 | P4 绿灯（TASK-06b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，`attachAiGarments` 的 legacy 分支已恢复为纯映射 | 0 | 按本资产完整调用命令原样复跑：1 项匹配通过；两条断言均成立——AI 理由逐字等于原文（不再被追加颜色关系文案），`recommendations` 长度为 4（不再被 `.slice(0, 3)` 截断）。第 2 条断言至此获得真实证据；失败输出：无 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 红灯范围核对（TASK-06a，2026-08-16）：`npx jest --runInBand src/wardrobe/recommendation/outfit-generator.service.spec.ts` 退出码 `1`，27 项中 26 通过、仅本资产 1 项失败，红灯未外溢。
 - 第 2 条断言（条数不得被截断）本次尚未被执行到——jest 在第 1 条断言即中止。该断言对应实现中的 `.slice(0, 3)`，将在 TASK-06b 转绿过程中被真实执行；在此之前不声称它已获得证据。
@@ -309,7 +313,7 @@
 - 历史来源：无。`docs/archive/**` 不存在。
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-17 第二轮 P5 统一口径，此前误写为 `planned`）
 - 覆盖条目：BUG-11、HC-01、HC-05
 - Test Seam：`OutfitGeneratorService.generateWithAi`
 - 测试定义载体：`src/wardrobe/recommendation/outfit-generator.service.spec.ts`（P4 由 TASK-07a 写入）
@@ -333,7 +337,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-07a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，TASK-06b 完成后的实现 | 1 | 第 2 条断言失败：`Received promise resolved instead of rejected`。legacy 模式未给 `coreGarmentId` 时没有报错，反而把 `#42 收纳长裤`（status `stored`，非可穿）选为默认核心并生成了 3 套方案——正是 BUG-11 描述的「小程序默认核心规则漏进 legacy」。第 1 条断言（指定非可穿核心须报错）当前即通过，属既有正确行为的守卫。非语法、import 或环境错误，属原因正确的红灯 | red |
 | P4 绿灯（TASK-07b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，核心选择已按 `mode` 分流 | 0 | 按本资产完整调用命令原样复跑：1 项匹配通过；三段断言均成立——legacy 指定非可穿核心报错、legacy 不做默认核心选择、小程序仍保留默认核心规则并选中 `#42`；失败输出：无 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 用例迁移记录（TASK-07a 授权范围内，2026-08-16）：三条原本以 `mode: 'legacy-web'` 锁定小程序规则的既有用例已改到正确模式，**全部 `expect` 断言逐字未变**，只调整了 `mode` 与必要入参：
   1. `selects the highest-id wearable garment as the default core`：`mode` 由 `'legacy-web'` 改为 `'miniapp-taxonomy-v1'`，新增 `temperatureContext: temperatureContext(16, 20)` 与 `as any`。`userId: 7` 与仓库查询断言不变。
@@ -356,7 +360,7 @@
 - 历史来源：无。`docs/archive/**` 不存在。
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-17 第二轮 P5 统一口径，此前误写为 `planned`）
 - 覆盖条目：BUG-12、AC-03、MVP-03、HC-03
 - Test Seam：`OutfitGeneratorService.generateWithAi`
 - 测试定义载体：`src/wardrobe/recommendation/outfit-generator.service.spec.ts`（P4 由 TASK-08a 写入）
@@ -382,7 +386,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-08a） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，TASK-07b 完成后的实现 | 1 | 高温场景第 2 条断言失败：`Expected pattern: /温度|保暖|厚/`、`Received string: ""`。第 1 条断言通过，说明 `#20 加厚外套` 确实因明确保暖需求被放行并进入方案，但 `cautions` 为空——28℃ 下拿到含加厚外套的方案却没有任何温度提醒，正是 BUG-12 与 AC-03 第一个触发条件的缺口。非语法、import 或环境错误，属原因正确的红灯 | red |
 | P4 绿灯（TASK-08b） | 2026-08-16 | `feature/outfit-taxonomy-consumption` 未提交工作树，`temperatureCautions` 已覆盖明确需求触发条件 | 0 | 按本资产完整调用命令原样复跑：1 项匹配通过；高温与低温两段镜像场景的 4 条断言全部成立——冲突单品仍被明确需求放行进入方案，且 `cautions` 不再为空；失败输出：无 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 红灯范围核对（TASK-08a，2026-08-16）：`npx jest --runInBand src/wardrobe/recommendation/outfit-generator.service.spec.ts` 退出码 `1`，29 项中 28 通过、仅本资产 1 项失败，红灯未外溢；TEST-001~TEST-008 未受影响。
 - 格式：本卡新增代码经 `npx prettier` 比对无差异；该 spec 文件仅剩第 715 行 `makeService([core, whiteBottom])` 一处改动前即存在的格式问题，按 `kun-code` 协议未顺手修复。
@@ -392,7 +396,9 @@
 - HC-02 未被触碰的证据（TASK-08b，2026-08-16）：`grep -n "> 25\|<= 10" src/wardrobe/recommendation/outfit-generator.service.ts` 命中第 442-443 行（排除判断）与第 614-615 行（提醒判断），比较符与阈值均与改动前逐字一致；本卡只增加提醒，未改变任何排除逻辑。
 - 格式：本卡新增的一条长文案初次触发 prettier 差异（原第 656 行），已自行修正；该实现文件剩余差异位于第 118、190、346-354 行，均为本轮更早卡片留下，按 `kun-code` 协议未顺手修复。
 
-## P5 Current 结果
+## P5 第一轮结果（INITIAL + CLOSURE-1，2026-08-16）
+
+> 本段为**第一轮** P5 的历史记录，被测对象是当时未提交的工作树（214 项），**不覆盖**其后新增的 `src/weather/` 模块、`outfit-tag-profile.ts` 与小程序改造。当前轮次的入场证据见下方「P5 第二轮 Current 结果」。
 
 | 检查 | 工作目录 | 完整命令 | 时间 | 退出码 | 结论 |
 |---|---|---|---|---:|---|
@@ -475,7 +481,7 @@ TEST-005 与 TEST-006 均已由 TASK-04b 的实现转绿，上方执行记录为
 - 历史来源：无。`docs/archive/**` 不存在。
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-17 第二轮 P5 统一口径，此前误写为 `planned`）
 - 覆盖条目：BUG-13、BUG-15、AC-01、AC-04、MVP-01、HC-06
 - Test Seam：`TencentWeatherService.getContext`（经 `TENCENT_WEATHER_FETCH` 注入返回真实夹具的假 fetch）
 - 测试定义载体：`src/weather/tencent-weather.service.spec.ts`（P4 由 TASK-09a 写入）
@@ -504,7 +510,7 @@ TEST-005 与 TEST-006 均已由 TASK-04b 的实现转绿，上方执行记录为
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-09a） | 2026-08-17 | `feature/outfit-taxonomy-consumption` 未提交工作树，实现文件为 `5b53509` 原样 | 1 | `expect(result.status).toBe('available')` 失败：`Expected: "available"`、`Received: "unavailable"`（spec 第 292 行）。现有实现不传 `type`、把 `result.realtime` 当对象读、在不存在的 `result.hourly` 路径找逐小时，`parseProviderPayload` 返回 `undefined`，`getContext` 降级为不可用，与预期红灯原因逐条吻合。非语法、import、路径或环境错误 | red |
 | P4 绿灯（TASK-09b） | 2026-08-17 | `feature/outfit-taxonomy-consumption` 未提交工作树，请求与解析层已按实测契约重写 | 0 | 先原样复跑确认红灯仍在且原因未漂移（`Expected: "available"` / `Received: "unavailable"`），实现后同一命令退出 `0`，本资产 1 项通过；同套件 8 项全部通过。失败输出：无 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - 绿灯整体核对（TASK-09b，2026-08-17）：`npm test -- --runInBand` 退出码 `0`，39 个套件、215 项全部通过（上一基线 214 项 + 本资产新增 1 项，数量可对账）。`TZ=UTC npx jest --runInBand` 同样退出码 `0`、39 套件 215 项——**在生产容器时区下整体回归也全绿**，证明修复不依赖开发机时区。`npm run build`、`npm run test:miniapp`、`git diff --check` 均退出码 `0`。
 - 红灯范围核对（TASK-09a，2026-08-17）：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出码 `1`，8 项中 7 项通过、仅本资产 1 项失败，红灯未外溢；TEST-001~TEST-009 所在文件未被触碰。
@@ -522,7 +528,7 @@ TEST-005 与 TEST-006 均已由 TASK-04b 的实现转绿，上方执行记录为
 - 历史来源：无。`docs/archive/**` 不存在。
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-17 第二轮 P5 统一口径，此前误写为 `planned`）
 - 覆盖条目：BUG-14、AC-01、MVP-01、HC-06、SPEC 第 22 条
 - Test Seam：`TencentWeatherService.getContext`（假 fetch 按 URL 路径分发 geocoder 与天气夹具，并记录调用顺序与完整 URL）
 - 测试定义载体：`src/weather/tencent-weather.service.spec.ts`（P4 由 TASK-10a 写入）
@@ -550,7 +556,7 @@ TEST-005 与 TEST-006 均已由 TASK-04b 的实现转绿，上方执行记录为
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-10a） | 2026-08-17 | `feature/outfit-taxonomy-consumption` 未提交工作树，实现为 TASK-09b 完成后的状态 | 1 | 本资产 3 条全部失败，原因逐条对上 BUG-14：①「经 geocoder 解析」——`Expected substring: "/ws/geocoder/v1/"`、`Received string: "https://weather.example.test/ws/weather/v1/?key=…&type=now&city=%E5%8C%97%E4%BA%AC%E5%B8%82"`，第一次请求直接打了天气接口并携带腾讯不接受的 `city` 参数；②「geocoder 解析不出城市时降级」与③「geocoder 无 adcode 时降级」——均为 `Expected: "unavailable"` / `Received: "available"`，因为实现根本不调用 geocoder，失败响应无从生效。非语法、import 或环境错误 | red |
 | P4 绿灯（TASK-10b） | 2026-08-17 | `feature/outfit-taxonomy-consumption` 未提交工作树，手动城市已改走 geocoder（首轮阻塞，经 P3 二次补正后重开） | 0 | **本资产 3 条全部转绿**；先原样复跑确认红灯仍在且原因未漂移，实现后三条断言全部成立，`grep -n "city=" src/weather/tencent-weather.service.ts` 无命中。但整套退出码为 `1`——唯一失败项是本资产之外的既有用例 `手动城市请求不需要暴露坐标，并返回供应商归一化城市`，该失败经 P3 二次补正后由本卡在补正范围内修复（测试桩增加 geocoder 路由），重开后整套 11 项全部通过 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归（第二轮） | 2026-08-17 | 提交 `61e03d1`，工作树干净 | 0 | 本资产完整调用命令原样复跑退出码 `0`；`npm test -- --runInBand` 39 个套件、218 项全部通过 | green |
 
 - **阻塞记录（TASK-10b，2026-08-17）**：整套 11 项中 10 项通过，唯一失败为 TASK-09b 时期改写的 `手动城市请求不需要暴露坐标，并返回供应商归一化城市`，实际返回 `{ status: 'unavailable', reason: '天气位置不可用。', hourly: [] }`。根因是**测试桩缺陷而非实现缺陷**：该用例的 `makeRealFetch` 只按 `type=hours` 二分流，把实时天气夹具返回给了 `/ws/geocoder/v1/` 请求，`resolveAdcode` 找不到 `ad_info.adcode` 于是如实降级。最小修复为改用 TASK-10a 已建好的 `makeRoutedFetch`，约 3 行，断言意图无需变动；但该 spec 不在 TASK-10b 的「允许改」内，按协议不得顺手修复，须回 P3 补正卡片白名单后重开 TASK-10b。此为 TASK-09b 同类阻塞的**第二次复发**，P3 补正时须一并核查剩余卡片。
 
@@ -559,3 +565,69 @@ TEST-005 与 TEST-006 均已由 TASK-04b 的实现转绿，上方执行记录为
 - 红灯范围核对（TASK-10a，2026-08-17）：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出码 `1`，11 项中 8 项通过、仅本资产 3 项失败，红灯未外溢；TEST-010 与其余既有用例均未受影响。
 - 改动范围核对：本卡只编辑 `src/weather/tencent-weather.service.spec.ts` 与 `src/weather/__fixtures__/tencent-weather-responses.ts`。`git diff` 中实现文件的改动全部来自 TASK-09b（工作树尚未提交，故 diff 累计显示）。红灯本身即为实现未被触碰的佐证——三条失败呈现的正是 TASK-09b 遗留的旧手动路径行为，若实现被改动则不会是这个失败形态。`npx prettier --check` 对两份文件均通过；`git diff --check` 退出码 `0`。
 - 夹具溯源：geocoder 响应由 2026-08-17 实测 `GET /ws/geocoder/v1/?address=北京市` 取得，返回 `status:0`，`result.ad_info.adcode` 为 `"110000"`，与天气接口共用同一 key，无需额外开通。
+
+## P5 第二轮 Current 结果（2026-08-17）
+
+- 被测对象：提交 `61e03d1`（`61e03d1ba8862ca697f5a5c1b062bfb8cc98bb2b`），定点 `47e422e`，`git status --porcelain=v1 --untracked-files=all` 为空，工作树干净。
+- 为什么需要第二轮：第一轮（INITIAL + CLOSURE-1，2026-08-16）在提交 `5b53509` 之前的工作树上完成，基线 214 项，**不覆盖**其后交付的 `src/weather/` 全模块重写、`src/wardrobe/recommendation/outfit-tag-profile.ts` 与 `miniprogram/pages/outfit/` 改造，也不覆盖 TEST-010、TEST-011。第一轮结论不能代表当前代码。
+- 工作目录（以下全部检查共用）：`C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`。
+
+### 检查总表
+
+| 检查 | 完整命令 | 退出码 | 结论 |
+|---|---|---:|---|
+| 证据预检 | `TZ=UTC npx jest --runInBand src/wardrobe/recommendation/outfit-generator.service.spec.ts src/wardrobe/miniapp-outfit.controller.spec.ts src/wardrobe/outfit.controller.spec.ts src/wardrobe/recommendation/wardrobe-recommendation.service.spec.ts src/weather/tencent-weather.service.spec.ts` | 0 | passed（5 个套件、61 项全部通过） |
+| Manifest 全量执行 | TEST-001~TEST-011 各自的完整调用命令逐条原样执行，明细见下表 | 0 | passed（十一个资产退出码均为 `0`） |
+| 整体回归（本机时区，东八区） | `npm test -- --runInBand` | 0 | passed（39 个套件、218 项全部通过，失败集合为空） |
+| 整体回归（生产容器时区） | `TZ=UTC npx jest --runInBand` | 0 | passed（39 个套件、218 项全部通过，与本机时区结果一致） |
+
+> 第二轮把证据预检从第一轮的 4 个套件扩到 5 个，补入本轮新建的 `src/weather/tencent-weather.service.spec.ts`；并在 `TZ=UTC` 下执行，与 `docker/Dockerfile:29` 的 `node:22-slim`（未设 `TZ`，等同 UTC）对齐——BUG-15 是只在生产时区显现的缺陷，不加这一趟就等于没验。
+
+### Manifest 逐条复跑明细
+
+| Asset ID | 退出码 | 结果 |
+|---|---:|---|
+| TEST-001 | 0 | 29 项中 1 项匹配通过、28 项跳过 |
+| TEST-002 | 0 | 29 项中 1 项匹配通过、28 项跳过 |
+| TEST-003 | 0 | 18 项中 1 项匹配通过、17 项跳过 |
+| TEST-004 | 0 | 18 项中 3 项匹配通过、15 项跳过（`it.each` 三个参数化标签） |
+| TEST-005 | 0 | 18 项中 1 项匹配通过、17 项跳过 |
+| TEST-006 | 0 | 18 项中 1 项匹配通过、17 项跳过 |
+| TEST-007 | 0 | 29 项中 1 项匹配通过、28 项跳过 |
+| TEST-008 | 0 | 29 项中 1 项匹配通过、28 项跳过 |
+| TEST-009 | 0 | 29 项中 1 项匹配通过、28 项跳过 |
+| TEST-010 | 0 | 11 项中 1 项匹配通过、10 项跳过（`TZ=UTC`） |
+| TEST-011 | 0 | 11 项中 3 项匹配通过、8 项跳过（`TZ=UTC`，按 describe 名匹配三条用例） |
+
+### 整体回归按测试名称对账
+
+- 第一轮 CLOSURE-1 基线 214 项；当前 218 项，差额 **4 项**。
+- 差额经名称核对，全部落在 `src/weather/tencent-weather.service.spec.ts`：该套件当前 11 项 = 改造前既有 7 项 + TEST-010 一项 + TEST-011 三项。
+- 该套件 11 条用例名逐条确认存在且通过：`在外发和缓存前将自动坐标保留两位，并归一化当前及未来八小时温度`、`手动城市请求不需要暴露坐标，并返回供应商归一化城市`、`相同的降精度坐标在十五分钟缓存窗口内只请求一次`、`缺少 Key 时返回 unavailable，不发起供应商请求且不抛错`、`只读取 canonical 腾讯配置，旧天气别名不会生效`、`供应商超时或抛出网络错误时返回 unavailable，不阻断推荐`、`供应商返回错误状态或不足八个未来小时数据时返回 unavailable`、`builds an available context from the real Tencent weather responses`、`resolves a manual city to an adcode through the geocoder`、`falls back to unavailable when the geocoder cannot resolve the city`、`falls back to unavailable when the geocoder response carries no adcode`。
+- 既有 7 条一条未删、未跳过、未改名——TASK-09b 只改写了其中三条的**输入夹具**，测试名与断言意图保留。
+- 旧测试无新增失败，失败集合仍为空。
+
+### 适用的其它检查
+
+| 检查 | 完整命令 | 退出码 |
+|---|---|---:|
+| 构建 | `npm run build` | 0 |
+| 小程序静态校验 | `npm run test:miniapp` | 0 |
+| 空白字符 | `git diff --check` | 0 |
+| 本轮天气模块格式 | `npx prettier --check src/weather/tencent-weather.service.ts src/weather/tencent-weather.service.spec.ts src/weather/__fixtures__/tencent-weather-responses.ts src/weather/weather.module.ts` | 0（`All matched files use Prettier code style!`） |
+
+### 已知未修欠账（不阻断入场，供评审判断）
+
+1. `npx prettier --check src/wardrobe/recommendation/outfit-generator.service.ts src/wardrobe/recommendation/outfit-generator.service.spec.ts` 退出码 `1`，两份文件仍有差异。位置为实现文件第 118、190、346-354 行与 spec 第 715 行，均为本轮更早卡片改动前即存在，按 `kun-code` 协议未顺手修复。
+2. B04（`OutfitTemperatureContext` 非判别式联合、消费端 `?? ±Infinity` 兜底）为第一轮 INITIAL 阻断项，用户在返修出口未选择处理，仍 `OPEN`，根因 `PLAN`。
+3. BUG-13 / BUG-14 / BUG-15 的**人工验收全部未执行**：真机三条路径（授权定位、手动填城市、时段标签与手机时间一致）留待 P6。其中时区一致性只在生产容器显现，本机测试无法替代。
+
+### 文档修正说明（2026-08-17，第二轮入场门要求）
+
+第二轮 P5 入场门首次检查时判定 `BLOCKED`，原因是**记录过期**而非测试未跑。已按门禁逐条补正：
+
+- 「P5 Current 结果」整段为 2026-08-16 的 214 项记录，对应第一轮；已改名为「P5 第一轮结果」并加注适用范围，当前轮证据另立本段。
+- TEST-010、TEST-011 的 manifest「P5 状态」由 `not-run` 改为 `passed`，依据为本段实测。
+- TEST-001~004 的「P5 整体回归」行原为 209 项且自注「BUG-09 修复后须重跑」；BUG-09 早在 TASK-04b 修复，该重跑要求由新增的「P5 整体回归（第二轮）」行履行，原行保留备查。
+- TEST-005、TEST-006 各有一条与同阶段绿灯行重复的 `| P4 绿灯（TASK-04b） | 尚未执行 | … | planned |` 占位行，绿灯真实证据本就写在「TASK-04b 阻塞记录与解除」段内，占位行已删除。
+- TEST-007~TEST-011 的「定义哈希」原写 `planned`，与 TEST-001~006 的「未记录（本项目未建立定义哈希机制）」口径不一致，且 `planned` 会被门禁读成待办占位；已统一为「未记录」并注明原因。第一轮 CLOSURE-1 曾在 TEST-007~009 上放过这一项。
