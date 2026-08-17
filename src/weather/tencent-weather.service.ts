@@ -54,6 +54,14 @@ type NormalizedWeatherRequest =
       city: string;
     };
 
+/**
+ * 天气接口只接受经纬度或行政区划码二选一——**不存在 `city` 参数**。
+ * 用户手动填写的城市名必须先经地址解析换成 adcode 才能查询。
+ */
+type WeatherQuery =
+  | { kind: 'location'; value: string }
+  | { kind: 'adcode'; value: string };
+
 type WeatherCacheEntry = {
   expiresAt: number;
   context: OutfitTemperatureContext;
@@ -105,6 +113,82 @@ export class TencentWeatherService {
       this.cache.delete(cacheKey);
     }
 
+    // 手动城市先经地址解析换成 adcode；解析不出来就如实降级，
+    // 不猜测、不退回默认城市（HC-06）。
+    const query = await this.resolveQuery(request, apiKey);
+    if (!query) {
+      return this.unavailable('天气位置不可用。');
+    }
+
+    // 腾讯天气接口无法在一次请求里同时返回实时与逐小时（实测 type=now,hours
+    // 只返回 realtime），必须分两次取。每秒配额上限极低，全部请求严格串行。
+    const realtimePayload = await this.fetchPayload(
+      this.requestUrl(query, apiKey, 'now'),
+    );
+    if (!realtimePayload) {
+      return this.unavailable('天气服务暂时不可用。');
+    }
+
+    const hoursPayload = await this.fetchPayload(
+      this.requestUrl(query, apiKey, 'hours'),
+    );
+    if (!hoursPayload) {
+      return this.unavailable('天气服务暂时不可用。');
+    }
+
+    const context = this.parseProviderPayload(
+      realtimePayload,
+      hoursPayload,
+      request.mode === 'manual' ? request.city : undefined,
+    );
+    if (!context) {
+      return this.unavailable('天气数据暂时不可用。');
+    }
+
+    this.cache.set(cacheKey, {
+      expiresAt: Date.now() + CACHE_TTL_MS,
+      context,
+    });
+    return context;
+  }
+
+  /**
+   * 把归一化请求变成天气接口真正接受的查询条件。
+   * auto 直接用降精度后的经纬度；manual 必须多打一次地址解析换取 adcode。
+   */
+  private async resolveQuery(
+    request: NormalizedWeatherRequest,
+    apiKey: string,
+  ): Promise<WeatherQuery | undefined> {
+    if (request.mode === 'auto') {
+      return {
+        kind: 'location',
+        value: `${request.latitude.toFixed(2)},${request.longitude.toFixed(2)}`,
+      };
+    }
+
+    const adcode = await this.resolveAdcode(request.city, apiKey);
+    return adcode ? { kind: 'adcode', value: adcode } : undefined;
+  }
+
+  /** 地址解析：城市名 → 行政区划码。拿不到就返回 undefined，绝不猜测。 */
+  private async resolveAdcode(
+    city: string,
+    apiKey: string,
+  ): Promise<string | undefined> {
+    const url = new URL('/ws/geocoder/v1/', this.baseUrl());
+    url.searchParams.set('key', apiKey);
+    url.searchParams.set('output', 'json');
+    url.searchParams.set('address', city);
+
+    const payload = await this.fetchPayload(url.toString());
+    const result = this.asRecord(this.asRecord(payload)?.result);
+    const adInfo = this.asRecord(result?.ad_info);
+    return this.asString(adInfo?.adcode);
+  }
+
+  /** 单次供应商请求：自带超时与中断，失败一律返回 undefined，不向上抛。 */
+  private async fetchPayload(url: string): Promise<unknown | undefined> {
     const controller = new AbortController();
     let rejectTimeout: ((reason?: unknown) => void) | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -117,7 +201,7 @@ export class TencentWeatherService {
 
     try {
       const response = await Promise.race([
-        this.fetchImpl(this.requestUrl(request, apiKey), {
+        this.fetchImpl(url, {
           method: 'GET',
           headers: {
             Accept: 'application/json',
@@ -128,25 +212,14 @@ export class TencentWeatherService {
       ]);
 
       if (!response?.ok) {
-        return this.unavailable('天气服务暂时不可用。');
+        return undefined;
       }
 
       const payload = await response.json();
-      const context = this.parseProviderPayload(
-        payload,
-        request.mode === 'manual' ? request.city : undefined,
-      );
-      if (!context) {
-        return this.unavailable('天气数据暂时不可用。');
-      }
-
-      this.cache.set(cacheKey, {
-        expiresAt: Date.now() + CACHE_TTL_MS,
-        context,
-      });
-      return context;
+      const root = this.asRecord(payload);
+      return root && !this.hasProviderError(root) ? root : undefined;
     } catch {
-      return this.unavailable('天气服务暂时不可用。');
+      return undefined;
     } finally {
       clearTimeout(timeout);
     }
@@ -192,59 +265,49 @@ export class TencentWeatherService {
   }
 
   private requestUrl(
-    request: NormalizedWeatherRequest,
+    query: WeatherQuery,
     apiKey: string,
+    type: 'now' | 'hours',
   ): string {
     const url = new URL('/ws/weather/v1/', this.baseUrl());
     url.searchParams.set('key', apiKey);
     url.searchParams.set('output', 'json');
-    if (request.mode === 'manual') {
-      url.searchParams.set('city', request.city);
-    } else {
-      url.searchParams.set(
-        'location',
-        `${request.latitude.toFixed(2)},${request.longitude.toFixed(2)}`,
-      );
-    }
+    // type 必须显式传：缺省只返回实时，且腾讯对不认识的取值静默退回实时而不报错。
+    url.searchParams.set('type', type);
+    url.searchParams.set(query.kind, query.value);
     return url.toString();
   }
 
+  /**
+   * 按腾讯实测契约解析两份响应，字段路径见 docs/plan.md#外部依赖实测契约。
+   * 这里刻意不做「猜多个候选字段名」的兜底：契约由 __fixtures__ 下的实测样本
+   * 固定，对不上就应当暴露成不可用并回到 P3，而不是靠猜蒙混过去。
+   */
   private parseProviderPayload(
-    payload: unknown,
+    realtimePayload: unknown,
+    hoursPayload: unknown,
     fallbackCity?: string,
   ): OutfitTemperatureContext | undefined {
-    const root = this.asRecord(payload);
-    if (!root || this.hasProviderError(root)) {
-      return undefined;
-    }
-
-    const result =
-      this.asRecord(root.result) ?? this.asRecord(root.data) ?? root;
-    if (!result) {
-      return undefined;
-    }
-
-    const realtime =
-      this.asRecord(result.realtime) ??
-      this.asRecord(result.current) ??
-      this.asRecord(result.now) ??
-      {};
+    // 实时：result.realtime 是数组，每个元素的 infos 是对象
+    const realtimeResult = this.asRecord(
+      this.asRecord(realtimePayload)?.result,
+    );
+    const realtimeEntry = this.asRecord(
+      this.asArray(realtimeResult?.realtime)?.[0],
+    );
     const currentC = this.firstNumber(
-      realtime.temperatureC,
-      realtime.temperature,
-      result.temperatureC,
-      result.temperature,
+      this.asRecord(realtimeEntry?.infos)?.temperature,
     );
     if (currentC === undefined) {
       return undefined;
     }
 
-    const forecast = this.asRecord(result.forecast);
-    const rawHourly =
-      this.asArray(result.hourly) ??
-      this.asArray(result.hourlyForecast) ??
-      this.asArray(result.forecastHourly) ??
-      this.asArray(forecast?.hourly);
+    // 逐小时：result.forecast_hours 是数组，元素的 infos 也是数组
+    const hoursResult = this.asRecord(this.asRecord(hoursPayload)?.result);
+    const hoursEntry = this.asRecord(
+      this.asArray(hoursResult?.forecast_hours)?.[0],
+    );
+    const rawHourly = this.asArray(hoursEntry?.infos);
     if (!rawHourly) {
       return undefined;
     }
@@ -254,10 +317,11 @@ export class TencentWeatherService {
       return undefined;
     }
 
+    // 按 adcode 查询时 city/district 可能为空串，逐级回退到省级
     const city =
-      this.asString(result.city) ??
-      this.asString(this.asRecord(result.address_component)?.city) ??
-      this.asString(this.asRecord(result.address)?.city) ??
+      this.asString(realtimeEntry?.city) ??
+      this.asString(realtimeEntry?.district) ??
+      this.asString(realtimeEntry?.province) ??
       fallbackCity;
     if (!city) {
       return undefined;
@@ -281,15 +345,11 @@ export class TencentWeatherService {
         if (!point) return undefined;
 
         const temperatureC = this.firstNumber(
-          point.temperatureC,
-          point.temperature,
-          point.temp,
+          this.asRecord(point.info)?.temperature,
         );
         if (temperatureC === undefined) return undefined;
 
-        const timestamp = this.normalizeTimestamp(
-          point.timestamp ?? point.time ?? point.datetime ?? point.forecastTime,
-        );
+        const timestamp = this.normalizeTimestamp(point.hour);
         return timestamp ? { timestamp, temperatureC } : undefined;
       })
       .filter((point): point is OutfitTemperaturePoint => Boolean(point));
@@ -304,22 +364,28 @@ export class TencentWeatherService {
     return future.slice(0, 8);
   }
 
+  /**
+   * 腾讯的 hour 形如 "2026-08-17 10:00:00"：没有时区标记，但恒为东八区。
+   *
+   * 直接交给 `new Date(...)` 会按**运行环境时区**解释——开发机是东八区，
+   * 结果碰巧正确；生产容器（docker/Dockerfile 的 node:22-slim，未设 TZ）
+   * 是 UTC，整条时间轴会偏移 8 小时，用户看到的时段标签全错。
+   * 因此这里显式补 `+08:00`，让解析结果与运行环境无关。
+   */
   private normalizeTimestamp(value: unknown): string | undefined {
-    if (value instanceof Date) {
-      return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
-    }
-
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      const milliseconds = value < 1_000_000_000_000 ? value * 1000 : value;
-      const date = new Date(milliseconds);
-      return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
-    }
-
-    if (typeof value !== 'string' || !value.trim()) {
+    const raw = this.asString(value);
+    if (!raw) {
       return undefined;
     }
 
-    const date = new Date(value);
+    const matched = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2})?$/.exec(raw);
+    if (!matched) {
+      return undefined;
+    }
+
+    const date = new Date(
+      `${matched[1]}T${matched[2]}${matched[3] ?? ':00'}+08:00`,
+    );
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
   }
 
@@ -360,8 +426,7 @@ export class TencentWeatherService {
 
   private baseUrl(): string {
     const configured =
-      this.configValue<string>('TENCENT_LBS_BASE_URL') ??
-      DEFAULT_BASE_URL;
+      this.configValue<string>('TENCENT_LBS_BASE_URL') ?? DEFAULT_BASE_URL;
     return configured.replace(/\/+$/, '');
   }
 

@@ -23,6 +23,9 @@
 | BUG-10 | P5 双轴 Finding B01（2026-08-16） | `src/wardrobe/recommendation/outfit-generator.service.ts:310-355` | `attachAiGarments` 的网页（legacy）分支被 TASK-01b 追加了小程序专用后处理，改变了网页 AI 输出。经核实实际可达的行为改变为两处：AI 理由被追加整套颜色关系文案；AI 方案被 `.slice(0, 3)` 截断。另有三段在 legacy 永不可达的死代码（`seenPlans`、两处 `miniappMode &&` 判断、`!garmentIds.length` 丢弃——因 `core` 必被 unshift 而不可达）。违反 HC-01。 |
 | BUG-11 | P5 双轴 Finding B02（2026-08-16） | `src/wardrobe/recommendation/outfit-generator.service.ts:106-111` | 默认核心衣物选择分支 `(wearable[0] ?? orderedGarments[0])` 没有 `mode` 判别，网页模式也能选到非可穿衣物当核心；`coreGarmentId` 由 fixed point 的必填被放宽为两个模式共同可选。SPEC 硬约束 5 把该规则限定为小程序新版规则。三条 spec 用例以 `mode: 'legacy-web'` 正面锁定了这一错误行为。 |
 | BUG-12 | P5 双轴 Finding B03（2026-08-16） | `src/wardrobe/recommendation/outfit-generator.service.ts:620-658` | `temperatureCautions` 只检查核心衣物且完全不读 `requestText`（形参声明未使用）。用户明确要求保暖/凉爽时，冲突的**非核心**单品因 `explicitWarm/explicitCool` 免于被排除并进入方案，却不产生任何温度注意事项，AC-03 的第一个触发条件（「明确要求保暖」）没有承载体。 |
+| BUG-13 | P6 真实链路验证（2026-08-17） | `src/weather/tencent-weather.service.ts:196-262` | 请求与解析层按想象中的契约编写，从未对腾讯真实接口验证过。实测真实响应为 `result.realtime[0].infos.temperature`（`realtime` 是数组、`infos` 是对象），逐小时须显式传 `type=hours` 且路径为 `result.forecast_hours[0].infos[].info.temperature`（`infos` 是数组、每条内层键为单数 `info`、时间键为 `hour`）。现有代码把 `realtime` 当对象读、不传 `type`、并在 `result.hourly` / `forecastHourly` / `forecast.hourly` 三个不存在的路径上找逐小时，`rawHourly` 恒为 `undefined`，`parseProviderPayload` 恒返回 `undefined`，天气**在任何模式下恒为不可用**。AC-1、AC-4 与 SPEC 第 22、39 条全部落空。 |
+| BUG-14 | P6 真实链路验证（2026-08-17） | `src/weather/tencent-weather.service.ts:202` | 手动城市模式发送 `city=<城市名>`，腾讯天气接口不支持该参数，实测返回 `status:348 参数错误，location和adcode必须有其中一个参数`。手动选城市**恒不可用**，违反 SPEC 第 22 条与 HC-06。真实可行路径为先调 `/ws/geocoder/v1/?address=<城市名>` 取 `result.ad_info.adcode`，再以 `adcode` 查天气（同一 key，实测均返回 `status:0`）。 |
+| BUG-15 | P6 真实链路验证（2026-08-17） | `src/weather/tencent-weather.service.ts:306-324` | 腾讯逐小时时间字段为 `"2026-08-17 10:00:00"`，**不带时区标记**；`normalizeTimestamp` 用 `new Date(value)` 解析，V8 对该格式按**运行环境本地时区**解释。`docker/Dockerfile:29` 使用 `node:22-slim` 且未设置 `TZ`，生产容器为 UTC，会把北京时间当 UTC，`toISOString()` 输出整体偏移 8 小时；小程序 `miniprogram/pages/outfit/index.js:19-23` 用 `new Date(timestamp).getHours()` 生成时段标签，最终向用户显示错误的小时。开发机为东八区，该缺陷**只在生产环境显现**。 |
 
 ### 继承自上游的硬约束
 
@@ -37,11 +40,28 @@
 | HC-07 | 一次最多返回三套有实际差异的方案，允许少于三套和部分方案；不得用明显不合适的衣物强行补齐。 |
 | HC-08 | 新版推荐对目标账号正式启用前，必须完成剩余十一件衣物的 AI 分析和补标时间记录，并完成人工数据核对；不要求每件衣物的所有标签组都有值。 |
 
+### 外部依赖实测契约（腾讯位置服务，2026-08-17 实测）
+
+BUG-13~BUG-15 的共同根因是：天气模块的请求与解析层从未对真实接口验证过，测试用的是自己编造的返回体。以下契约由 2026-08-17 用真实 key 实际调用取得，四份原始响应已存档为仓库夹具，**后续任何解析改动必须以夹具为准，不得再自行编造返回体**。
+
+| 项 | 实测结论 |
+| --- | --- |
+| 天气地址 | `GET https://apis.map.qq.com/ws/weather/v1/` |
+| 位置参数 | 只接受 `location=<纬度,经度>` 或 `adcode=<行政区划码>`，二选一必填；**不存在 `city` 参数**，传了返回 `status:348` |
+| `type` 合法值 | `now`（默认，实时）、`future`（未来 4 天，白天/夜间两档）、`hours`（未来 24 小时逐小时）。**传入非法值不报错，静默退回 `now`**——这是排查时最容易误判"功能不存在"的陷阱 |
+| 实时返回路径 | `result.realtime[0].infos.temperature`（`realtime` 为数组，`infos` 为对象） |
+| 逐小时返回路径 | `result.forecast_hours[0].infos[].info.temperature`（`infos` 为数组，内层键为**单数** `info`） |
+| 逐小时时间字段 | `infos[].hour`，格式 `"2026-08-17 10:00:00"`，**无时区标记，实为东八区**；必须显式按 `+08:00` 解析，禁止依赖运行环境时区 |
+| 单次请求能否合并 | 不能。实测 `type=now,hours` 只返回 `realtime`，实时与逐小时必须**两次请求** |
+| 地址解析 | `GET /ws/geocoder/v1/?address=<城市名>` 返回 `result.ad_info.adcode`，与天气共用同一 key，无需额外开通 |
+| 配额约束 | 每秒请求数上限很低（实测连发 6 次即返回 `status:120`）；同一次推荐内的多次请求必须**串行**，不得并发 |
+
 ### 目标
 
 1. 建立一个真正覆盖本地规则方案和小程序 AI 方案的最终归一化出口，统一追加状态提醒、核心温度提醒和整套颜色关系；Controller 只映射，不制造第二个出口。（已由 TASK-01a/01b、TASK-02a/02b 完成）
 2. 让「用哪套推荐规则」成为生成器入口的显式命名契约，让「本次是否拿到实时温度」回到纯数据事实的位置；两者不得互相推断。
 3. 让小程序入口在任意客户端版本、任意天气模式下都稳定使用新版小程序规则，并合法返回零至三套方案。
+4. 让天气模块真正拿得到温度：请求与解析层按腾讯**实测契约**（而非想象中的契约）重写，自动定位与手动城市两条路径都能产出 `status:'available'` 的上下文，且时段时间戳不受运行环境时区影响。（2026-08-17 新增，对应 BUG-13~BUG-15；目标 2、3 建立的模式契约只保证「规则选对」，本目标保证「温度真拿得到」——前者正确而后者失效时，用户看到的仍是恒定的「天气不可用」。）
 
 ### 非目标
 
@@ -222,11 +242,22 @@ flowchart LR
 | `src/wardrobe/outfit.controller.ts` | 修改 | 网页推荐页面参数与渲染数据 | 小程序规则、温度上下文 | `generateWithAi` 调用补 `mode: 'legacy-web'` |
 | `docs/backend-architecture-source-of-truth.md` | 修改 | 后端分层与入口规范真源 | 产品需求、测试证据 | 第 4 章补一条规则：穿搭推荐调用方必须显式声明规则模式，不得由天气或其它数据字段是否存在推断 |
 | `docs/test.md` | 新建 | 本轮 TEST manifest、资产定义与执行记录 | 业务测试源码 | 迁移 TEST-001~TEST-004，新增 TEST-005、TEST-006 |
+| `src/weather/tencent-weather.service.ts` | 修改 | 腾讯位置服务取数与响应解析，产出 `OutfitTemperatureContext` | 穿搭规则、温度阈值判断、HTTP 映射、小程序渲染 | 按 `#外部依赖实测契约` 重写请求与解析：实时走 `type=now`、逐小时走 `type=hours`、时间显式按 `+08:00` 解析、手动城市经 geocoder 换 `adcode`（BUG-13/14/15） |
+| `src/weather/tencent-weather.service.spec.ts` | 修改 | 天气服务公开行为回归 | 私有解析函数细节、真实网络 | 新增 TEST-010、TEST-011；三条依赖编造返回体的既有用例改喂真实夹具（**改写而非退役**，隐私降精度、供应商城市归一、缓存窗口三项保护意图不得削弱），并删除 `successfulProviderPayload` / `futureHours` 两个编造数据构造器 |
+| `src/weather/__fixtures__/tencent-weather-responses.ts` | 新建 | 腾讯真实响应夹具，作为解析层唯一事实依据 | 断言逻辑、业务规则 | 落盘 2026-08-17 实测原文（实时 / 逐小时 / 未来 / geocoder），只允许删除 `request_id` |
+
+> **卡片切分补正二（2026-08-17，TASK-10b 首轮施工后）**：同一类问题**复发**——TASK-10b 把手动城市改走 geocoder 后，TASK-09b 时期改写的 `手动城市请求不需要暴露坐标…` 因测试桩不认识地址解析 URL 而转红，而该 spec 同样不在 TASK-10b 的「允许改」内。已把该 spec 按**单条用例的 fetch 桩**这一最小范围纳入 TASK-10b 允许改。
+>
+> 复发原因值得记下：下方「补正一」已经写明「改契约的实现与消费该契约的测试必须同卡」，但撰写 TASK-10b 时没有把这条规则回头应用到自身。**教训写进文档不等于会被执行**——后续切卡时应当把它当成一条逐卡核对项，而不是一段说明文字。核查结论：本轮 TASK-09a/09b/10a/10b 四张卡已全部走完，无其它卡片存在同类隐患。
+>
+> **卡片切分补正（2026-08-17，TASK-09a 施工后）**：TASK-09a 取得红灯后发现 TASK-09b 的「允许改」原本不含天气 spec，而该 spec 中三条既有用例依赖编造的返回体、解析层一改必然转红，形成「白名单内无法转绿」的死结。已回 P3 把该 spec 按点名范围纳入 TASK-09b 允许改，并写明**改写而非退役**的约束。留档提醒：卡片切分时若一张卡改变了某个契约，消费该契约的测试必须与实现在**同一张卡**内，否则中间态必然是红的。
+>
+> **白名单补正说明（2026-08-17）**：本节原将 `src/weather/**` 整体列入「禁止触碰」，但 `git log --diff-filter=A -- src/weather/tencent-weather.service.ts` 显示该目录正是由本轮提交 `5b53509` 新建的——**PLAN 白名单与本轮实际施工范围脱节**，施工时越过了自己声明的边界，文档未同步。本次补正只是让白名单追认既有事实并覆盖 BUG-13~BUG-15 的修复范围，**不扩大本轮产品范围**：SPEC 一字未改，温度阈值与穿搭规则仍归 `outfit-generator` 持有且仍在本节禁止范围之外。
 
 ### 禁止触碰
 
 - `docs/spec.md`、`CONTEXT.md`、`docs/adr/**`、`PROJECT_STATE.md`、`HANDOFF.md`、`README.md`。
-- `src/ai/**`、`src/weather/**`、`src/app.module.ts`、`src/wardrobe/wardrobe.module.ts`、`src/wardrobe/garment.service.ts`。
+- `src/ai/**`、`src/weather/weather.module.ts`、`src/app.module.ts`、`src/wardrobe/wardrobe.module.ts`、`src/wardrobe/garment.service.ts`。
 - `miniprogram/**`、`scripts/validate-miniapp-shell.cjs`。
 - 数据库实体与迁移、`.env*`、部署工作流、生产服务器和真实数据。
 
@@ -244,6 +275,11 @@ flowchart LR
 - 同一 cwd：`npm run test:miniapp` 与 `git diff --check`
   - 改前结果：2026-08-16 实跑，均退出码 `0`；用于确认前端契约与 diff 格式未被本轮改动波及。
 - 模块边界：无独立依赖图工具。改为两项可执行检查——`grep -n "temperatureContext" src/wardrobe/recommendation/outfit-generator.service.ts` 确认该字段不再出现在任何模式判断位置；`grep -rn "usesWeatherContext" src/wardrobe/miniapp-outfit.controller.ts` 结果应为空。
+- 天气模块（BUG-13~BUG-15）专用，同一 cwd：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts`
+  - **必须带 `TZ=UTC`**：开发机为东八区，`new Date("2026-08-17 10:00:00")` 在东八区恰好得到与显式 `+08:00` 相同的结果，不加该前缀则 BUG-15 的错误实现也会通过，红灯无效。生产容器 `docker/Dockerfile:29` 的 `node:22-slim` 未设 `TZ`，等同 `TZ=UTC`，该前缀即为生产环境的忠实复现。
+  - 改前结果：尚未执行（现有用例全部基于编造的返回体，证明不了任何真实行为）。
+  - 覆盖：BUG-13、BUG-14、BUG-15、AC-01、AC-04、MVP-01、HC-06。
+- 天气模块契约核对，同一 cwd：`grep -n "city=" src/weather/tencent-weather.service.ts` 结果应为空（BUG-14 修复后 `city` 参数不得再出现在任何请求拼装位置）。
 
 ### TEST 资产策略
 
@@ -293,7 +329,8 @@ flowchart LR
 
 ### 暂停条件
 
-- 若必须修改 `src/ai/**`、`src/weather/**`、`miniprogram/**`、`scripts/validate-miniapp-shell.cjs`、SPEC、数据库或共享响应外层结构，停止并回到 P2/P3 重新确认。
+- 若必须修改 `src/ai/**`、`src/weather/weather.module.ts`、`miniprogram/**`、`scripts/validate-miniapp-shell.cjs`、SPEC、数据库或共享响应外层结构，停止并回到 P2/P3 重新确认。（2026-08-17 补正：`src/weather/tencent-weather.service.ts` 及其 spec、夹具已按第 5 章说明纳入白名单，不再属于本条暂停条件。）
+- 天气模块修复的额外暂停条件：若为了让 TEST-010/TEST-011 变绿需要改动温度阈值、`FUTURE_HOUR_TOLERANCE_MS` 的过滤语义、「取 8 条」的切片规则，或需要修改夹具中来自腾讯的任何字段名与层级，立即停止并回到 P3。夹具是事实，不是可调参数。
 - 若 `mode` 必填导致某个调用点无法确定应声明哪种模式，停止并报告该调用点，不得随意假定或加默认值。
 - 若删除 `usesWeatherContext` 分支会让某条既有验收行为失去承载（例如出现无人负责的用户提示），停止并把该文案作为产品决定交回 P2。
 - 若为了让测试通过需要弱化 TEST-001~TEST-006 中任何一条断言、放宽匹配或扩大文件白名单，立即停止；补显式 `mode` 参数属于契约适配、不得顺手改动断言内容。

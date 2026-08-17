@@ -450,3 +450,182 @@
 - 执行结果：先原样复跑 TEST-009，退出码 `1` 且失败原因与 TASK-08a 记录一致（`Received string: ""`）；实现后同一命令退出码 `0`，高温与低温两段镜像场景 4 条断言全部成立。TEST-001~TEST-009 逐条原样复跑退出码均为 `0`；cwd `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet` 运行 `npm test -- --runInBand` 退出码 `0`，39 个套件、214 项全部通过（上一基线 213 项 + TEST-009 新增 1 项，数量可对账）；`npm run build`、`npm run test:miniapp`、`git diff --check` 均退出码 `0`。
 - HC-02 未被触碰的证据：`grep -n "> 25|<= 10" src/wardrobe/recommendation/outfit-generator.service.ts` 命中第 442-443 行（排除判断）与第 614-615 行（提醒判断），比较符与阈值与改动前逐字一致。本卡只增加提醒，不改变任何衣物是否入选。
 - 未完成项：BUG-12 的自动化验证已完成，但**人工验收未执行**，留待 P6——需在小程序搭配页于最高温大于 25℃ 时输入明确保暖需求、让方案包含加厚单品，确认页面真的显示出新增的温度注意事项。既有基线问题：该实现文件第 118、190、346-354 行有本轮更早卡片留下的 prettier 差异，按 `kun-code` 协议未顺手修复；本卡新增文案初次触发的格式差异已自行修正。
+
+## TASK-09a · 准备 TEST：天气模块必须对齐腾讯真实响应契约
+
+### 任务定义
+
+- 状态：red
+- 来源：BUG-13、BUG-15、AC-01、AC-04、MVP-01、HC-06
+- 契约影响面：无（`OutfitTemperatureContext` 公开形状不变）
+- 阻塞依赖（Depends On）：无
+- 可并行（Parallel With）：无（与 TASK-10a 共用天气 spec 文件，按顺序施工）
+- Consumes：`docs/plan.md#外部依赖实测契约`；2026-08-17 实测取得的四份腾讯真实响应；现有 `TencentWeatherService.getContext` 与注入点 `TENCENT_WEATHER_FETCH`
+- Produces：仓库内的真实响应夹具，以及原因正确的红测——锁定 auto 模式下 `getContext` 必须返回 `status:'available'`、真实 `currentC`、恰好 8 条 `hourly`，且时间戳按东八区解析
+- Test Seam：`TencentWeatherService.getContext`（经 `TENCENT_WEATHER_FETCH` 注入返回真实夹具的假 fetch）
+- TEST Asset ID：TEST-010
+- 来源类型：new
+- TEST 记录：`docs/test.md#TEST-010`
+- 历史来源：无
+- 边界约束：夹具必须是实测原文，只允许删除 `request_id` 并统一日期基准，**不得手写或改写任何字段名与层级**；只观察 `getContext` 的公开返回，不断言私有 `parseProviderPayload`、`normalizeHourly`、`normalizeTimestamp`
+- 时区断言要求：本卡红灯**必须在 `TZ=UTC` 下复跑**。开发机为东八区，naive 的 `new Date("2026-08-17 10:00:00")` 在东八区恰好得到正确结果，只有强制 `TZ=UTC` 才能复现生产容器（`node:22-slim` 未设 `TZ`）的 8 小时偏移。断言写死期望的 ISO 时间戳
+- 跨模块检查：无（Controller 与生成器不在本卡范围）
+- 允许改：`src/weather/tencent-weather.service.spec.ts`、新增 `src/weather/__fixtures__/tencent-weather-responses.ts`、`docs/test.md` 中 TEST-010 小节
+- 禁止碰：任何实现文件；TEST-001~TEST-009 的断言；`src/wardrobe/**`、`src/ai/**`、小程序
+- 验收：聚焦命令 `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出 `1`；失败原因必须是 auto 模式拿不到 available 上下文或时间戳偏移 8 小时，不得是语法、import 或环境错误
+- 回滚：撤回本卡在天气 spec 中的新增用例与夹具文件
+
+### 施工后填写
+
+- TEST 记录：`docs/test.md#TEST-010`，测试定义、时间冻结说明与「P4 红灯（TASK-09a）」执行记录已写入
+- 红证据：cwd `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`；命令 `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts`；退出码 `1`。失败断言为 spec 第 292 行 `expect(result.status).toBe('available')`，`Expected: "available"` / `Received: "unavailable"`。现有实现不传 `type`、把 `result.realtime` 当对象读、在不存在的 `result.hourly` 路径找逐小时，`parseProviderPayload` 返回 `undefined` 导致降级——与卡片预期的红灯原因逐条吻合。非语法、import 或环境错误，属原因正确的红灯。
+- 范围核对：整套 8 项中 7 项通过、仅本卡 1 项失败，红灯未外溢；`git diff --stat -- src/weather/tencent-weather.service.ts src/wardrobe src/ai miniprogram` 输出为空，实现文件零改动。
+- 实际改动：新增 `src/weather/__fixtures__/tencent-weather-responses.ts`（391 行，2026-08-17 实测原文，仅删除 `request_id`）；`src/weather/tencent-weather.service.spec.ts` 新增 `describe('对齐腾讯真实响应契约')` 及其中一条用例，并补两处夹具 import。未触碰任何实现文件，未改动既有用例的任何断言。
+- 时间冻结设计说明：夹具时间是固定的历史时刻，若不冻结当前时间，「只保留未来时段」的过滤会随真实时间推移逐条丢弃夹具数据，测试次日即失效。故用 `jest.spyOn(Date, 'now')` 冻结在夹具首个时段（北京时间 2026-08-17 10:00:00），并在同 `describe` 的 `afterEach` 中 `restoreAllMocks()` 归还，不影响既有用例。
+- 格式：`npx prettier --check` 对两份文件均通过；`git diff --check` 退出码 `0`。
+- 未完成项：实现留给 TASK-09b，**但 TASK-09b 目前不可开工**——本 spec 中另有 3 条既有用例（坐标降精度、手动城市归一化城市、十五分钟缓存）基于编造的返回体断言 `status: 'available'`，解析层改为只认真实契约后必然转红，而 TASK-09b 的「允许改」不含本 spec 文件，届时无法在白名单内让整体回归转绿。详见 `docs/test.md#TEST-010` 的「遗留风险」，须先回 P3 补正卡片切分后再开工。
+
+## TASK-09b · 写实现：天气请求与解析层按真实契约重写
+
+### 任务定义
+
+- 状态：green
+- 来源：BUG-13、BUG-15、AC-01、AC-04、MVP-01、HC-06
+- 契约影响面：无
+- 阻塞依赖（Depends On）：TASK-09a（状态必须为 red）
+- 可并行（Parallel With）：无
+- Consumes：TASK-09a 红测与夹具；`docs/plan.md#外部依赖实测契约`
+- Produces：`TencentWeatherService` 改为按真实契约取数——实时走 `type=now` 读 `result.realtime[0].infos.temperature`，逐小时走 `type=hours` 读 `result.forecast_hours[0].infos[].info.temperature`，时间取 `infos[].hour` 并**显式按 `+08:00`** 解析；同时把三条依赖编造返回体的既有用例改喂真实夹具，**保留其原有保护意图**
+- 边界约束：
+  - 两次请求必须**串行**，不得 `Promise.all` 并发（配额每秒上限极低，实测连发 6 次即 `status:120`）
+  - **不得改动** `FUTURE_HOUR_TOLERANCE_MS` 的过滤语义与「取 8 条」的切片规则，本卡只修正取数与解析，不改业务窗口
+  - **不得改动** 任何温度阈值（HC-02 由 `outfit-generator` 持有，本卡不碰该文件）
+  - 缓存键与 `CACHE_TTL_MS` 语义保持不变；两次请求合成的结果作为一个整体缓存
+  - 拿不到数据时仍走既有 `unavailable()` 降级，不得抛异常打断推荐（HC-06）
+- 既有用例改写约束（2026-08-17 P3 补正，起因见 `docs/test.md#TEST-010` 遗留风险）：
+  - 涉及且**仅**涉及这三条：`在外发和缓存前将自动坐标保留两位，并归一化当前及未来八小时温度`、`手动城市请求不需要暴露坐标，并返回供应商归一化城市`、`相同的降精度坐标在十五分钟缓存窗口内只请求一次`。它们转红的原因是**喂的数据是编造的**，不是断言错了。
+  - 只允许把数据来源从 `successfulProviderPayload` 换成真实夹具，并按新的两次请求调整调用次数期望。**三项保护意图一条都不许削弱或删除**：① 原始精确坐标不得进入请求 URL、不得出现在返回中（SPEC 隐私约束 1）；② 手动模式不暴露坐标且城市名来自供应商；③ 同一降精度坐标在缓存窗口内不重复打供应商。
+  - 允许删除 `successfulProviderPayload` 与 `futureHours` 这两个编造数据的构造器本身——它们是本轮缺陷的载体，留着会诱使后续实现去兼容一个不存在的契约。
+  - `手动城市…` 一条在本卡只需喂真实夹具即可转绿，**不得**在本卡断言 geocoder 调用或 `city=` 参数缺席——那属于 TASK-10a 的范围，本卡提前写入会侵占下一张卡。
+  - 严禁通过 `it.skip`、`it.todo`、注释掉或放宽断言让它们「通过」。
+- 跨模块检查：`OutfitTemperatureContext` 的字段与含义一字不改，`outfit-generator` 与 Controller 无需改动，靠 TEST-001~TEST-009 原样复跑证明未回归
+- 允许改：`src/weather/tencent-weather.service.ts`、`src/weather/tencent-weather.service.spec.ts`（仅限上述三条既有用例及其编造数据构造器）
+- 禁止碰：TEST-010 的定义与断言（`describe('对齐腾讯真实响应契约')` 整段）、夹具文件 `src/weather/__fixtures__/**`、其余四条既有用例（缺少 Key、canonical 配置、超时降级、供应商错误状态）、`src/wardrobe/**`、`src/ai/**`、小程序、SPEC
+- 自测：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出 `0`；`npm test -- --runInBand`、`npm run build` 均退出 `0`；TEST-001~TEST-009 逐条原样复跑退出 `0`
+- 人工验收：留待 P6——小程序搭配页授权定位后，确认显示真实城市、当前温度和未来八小时趋势，且时段标签与手机时间对得上
+- 回滚：撤回 `tencent-weather.service.ts` 本卡改动
+
+### 施工后填写
+
+- 实际改动：
+  - `src/weather/tencent-weather.service.ts`：① 把单次取数拆为新私有方法 `fetchPayload(url)`（自带超时与中断，失败返回 `undefined` 不上抛），`getContext` 改为**串行**调用两次——先 `type=now` 再 `type=hours`；② `requestUrl` 增加 `type: 'now' | 'hours'` 形参并显式写入查询串；③ `parseProviderPayload` 改为接收两份 payload，按实测契约读 `result.realtime[0].infos.temperature` 与 `result.forecast_hours[0].infos[]`，城市按 `city → district → province → fallbackCity` 逐级回退（按 adcode 查询时 city/district 为空串）；④ `normalizeHourly` 改读 `infos[].info.temperature` 与 `infos[].hour`；⑤ `normalizeTimestamp` 重写为只接受 `"YYYY-MM-DD HH:mm[:ss]"` 并**显式补 `+08:00`** 后解析。
+  - `src/weather/tencent-weather.service.spec.ts`：新增 `FIXTURE_NOW` / `freezeFixtureNow()` / `makeRealFetch()` 三个共用工具与一个 `afterEach(jest.restoreAllMocks)`；三条点名用例改喂真实夹具。
+- 契约猜测兜底已移除：原实现在 `realtime|current|now`、`hourly|hourlyForecast|forecastHourly|forecast.hourly`、`timestamp|time|datetime|forecastTime`、`temperatureC|temperature|temp` 等多组候选字段名之间「猜」。这正是缺陷得以长期隐藏的机制——猜不中就静默降级，没有任何一处会报错。现改为只认夹具固定的单一路径，对不上即暴露为不可用并回到 P3。
+- 三条既有用例的处置（对照卡片「既有用例改写约束」逐条核对）：
+  - `在外发和缓存前将自动坐标保留两位…`：数据源换真实夹具，坐标改用夹具对应的北京坐标 `39.905023/116.724502`。**隐私保护未削弱**——仍断言请求 URL 只含 `39.91`/`116.72`、不含原始精度，且返回中不含原始坐标与密钥。
+  - `手动城市请求不需要暴露坐标…`：数据源换真实夹具。**保护意图加强**——故意让用户输入（`' 上海 '`）与夹具供应商返回（`北京市`）不一致，从而真正证明城市名取自供应商而非回显用户输入；另新增一条 `not.toContain('location=')` 断言手动模式不携带坐标。按卡片约束，本卡**未**断言 geocoder 调用或 `city=` 参数缺席，该范围留给 TASK-10a。
+  - `相同的降精度坐标在十五分钟缓存窗口内只请求一次`：数据源换真实夹具，调用次数期望由 `1` 改为 `2`（一次取数 = 实时 + 逐小时两次请求）。**缓存保护未削弱**——第二次 `getContext` 仍须完全命中缓存、不再打供应商，否则计数会是 4。
+  - 未使用 `it.skip`、`it.todo`、注释或放宽断言；其余四条用例（缺少 Key、canonical 配置、超时降级、供应商错误状态）一字未动。
+- 关于「允许删除 `successfulProviderPayload` / `futureHours`」：**未删除**。这两个构造器被「供应商返回错误状态或不足八个未来小时数据时返回 unavailable」一条消费，而该用例在本卡「禁止碰」之列，删除构造器会导致它编译失败，等同于触碰。保留后它们的语义反而正当了——它们现在扮演的是「供应商返回了我们不认识的结构」，正是该用例要验证的降级场景。此为保守取舍，不是遗漏。
+- 时间冻结的必要性：真实夹具的时间是固定历史时刻，而实现保留了「只保留未来时段」的过滤（`FUTURE_HOUR_TOLERANCE_MS` 语义未改）。若不冻结 `Date.now()`，夹具数据会随真实时间推移逐条被滤掉，测试次日即失效。故三条用例与 TEST-010 均冻结在夹具首个时段（北京时间 `2026-08-17 10:00:00`），并由 `afterEach` 归还。
+- TEST 记录：`docs/test.md#TEST-010`，「P4 绿灯（TASK-09b）」执行记录已写入；TEST 定义、测试名称与调用命令逐字未改。
+- 执行结果：
+  - 先原样复跑 TEST-010，退出码 `1`，失败断言与 TASK-09a 记录逐字一致（`Expected: "available"` / `Received: "unavailable"`），原因未漂移。
+  - 实现后 `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出码 `0`，8 项全部通过。
+  - cwd `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`：`npm test -- --runInBand` 退出码 `0`，39 个套件、**215 项**全部通过（上一基线 214 项 + TEST-010 新增 1 项，数量可对账）。
+  - `TZ=UTC npx jest --runInBand` 退出码 `0`，同样 39 套件 215 项——**在生产容器时区下整体回归同样全绿**，证明本轮修复不依赖开发机时区。
+  - TEST-001~TEST-009 承载套件原样复跑：`npx jest --runInBand src/wardrobe/recommendation/outfit-generator.service.spec.ts src/wardrobe/miniapp-outfit.controller.spec.ts src/wardrobe/outfit.controller.spec.ts src/wardrobe/recommendation/wardrobe-recommendation.service.spec.ts` 退出码 `0`，4 套件 50 项通过。
+  - `npm run build`、`npm run test:miniapp`、`git diff --check` 均退出码 `0`；`npx prettier --check` 对两份改动文件报 `All matched files use Prettier code style!`。
+- 未完成项：
+  - **BUG-14 仍未修复**：手动城市仍在向天气接口发送腾讯不支持的 `city=` 参数，真实链路下会返回 `status:348`。本卡按约束未触碰该范围，留给 TASK-10a/10b。因此当前手动选城市在真机上**仍然拿不到温度**，不得对外描述为已修复。
+  - **人工验收未执行**：BUG-13/BUG-15 的自动化验证已完成，但真机路径留待 P6——需在小程序搭配页授权定位后确认显示真实城市、当前温度与未来八小时趋势，且时段标签与手机时间一致（时区缺陷只在生产容器显现，本机测试无法替代）。
+  - 既有基线问题：`src/wardrobe/recommendation/outfit-generator.service.ts` 第 118、190、346-354 行与其 spec 第 715 行仍有本轮更早卡片留下的 prettier 差异，按 `kun-code` 协议未顺手修复。
+
+## TASK-10a · 准备 TEST：手动城市必须经地址解析取得 adcode
+
+### 任务定义
+
+- 状态：red
+- 来源：BUG-14、AC-01、MVP-01、HC-06、SPEC 第 22 条
+- 契约影响面：无（`WeatherRequestInput` 的 `manual` 形状不变）
+- 阻塞依赖（Depends On）：TASK-09b（共用天气实现与 spec 文件，且解析层须先对齐）
+- 可并行（Parallel With）：无
+- Consumes：TASK-09b 的实现；实测 geocoder 响应 `result.ad_info.adcode`
+- Produces：原因正确的红测——锁定 `manual` 模式必须先请求 `/ws/geocoder/v1/` 且携带 `address=<城市名>`，再以取回的 `adcode` 请求天气，最终返回 available 上下文；同时锁定**任何请求都不得再出现 `city=` 参数**
+- Test Seam：`TencentWeatherService.getContext`（假 fetch 按 URL 分发 geocoder 与天气两份夹具，并记录调用顺序与 URL）
+- TEST Asset ID：TEST-011
+- 来源类型：new
+- TEST 记录：`docs/test.md#TEST-011`
+- 历史来源：无
+- 边界约束：只断言公开返回与假 fetch 收到的 URL，不断言私有方法；geocoder 夹具同样取自实测原文
+- 跨模块检查：无
+- 允许改：`src/weather/tencent-weather.service.spec.ts`、`src/weather/__fixtures__/tencent-weather-responses.ts`、`docs/test.md` 中 TEST-011 小节
+- 禁止碰：任何实现文件；TEST-001~TEST-010 的断言
+- 验收：聚焦命令退出 `1`；失败原因必须是手动模式没有调用 geocoder 或仍在发送 `city=` 参数
+- 回滚：撤回本卡在天气 spec 与夹具中的新增内容
+
+### 施工后填写
+
+- TEST 记录：`docs/test.md#TEST-011`，测试定义、用例数量说明、派生数据声明与「P4 红灯（TASK-10a）」执行记录已写入
+- 红证据：cwd `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`；命令 `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts`；退出码 `1`。本资产 3 条全部失败：①「经 geocoder 解析」失败于 `Expected substring: "/ws/geocoder/v1/"`、`Received string: "https://weather.example.test/ws/weather/v1/?key=…&type=now&city=%E5%8C%97%E4%BA%AC%E5%B8%82"`——第一次请求直接打天气接口且携带腾讯不接受的 `city` 参数，正是 BUG-14；②③ 两条降级用例均为 `Expected: "unavailable"` / `Received: "available"`，因为实现根本不调用 geocoder。非语法、import 或环境错误，属原因正确的红灯。
+- 范围核对：整套 11 项中 8 项通过、仅本卡 3 项失败，红灯未外溢；TEST-010 与其余既有用例不受影响。
+- 实际改动：`src/weather/__fixtures__/tencent-weather-responses.ts` 追加两份实测 geocoder 响应（成功、地址解析不到）；`src/weather/tencent-weather.service.spec.ts` 新增 `describe('手动城市经地址解析换取 adcode')` 及其中三条用例、一个按 URL 路径分发夹具的 `makeRoutedFetch` 工具，并补三处夹具 import。**未触碰任何实现文件**——`git diff` 中 `tencent-weather.service.ts` 的改动全部来自 TASK-09b（工作树未提交，diff 累计显示）；红灯形态本身即为佐证，三条失败呈现的正是 09b 遗留的旧手动路径行为。
+- 与卡片规划的两处差异（均已在 `docs/test.md#TEST-011` 留档）：
+  - **用例数由 2 增至 3**。实测发现腾讯的两种失败形态走不同代码路径：地址解析不到时返回 `status:348`（而非 `status:0` 配空结果），与「返回成功但缺 `ad_info`」不是同一条分支，合成一条会漏测。
+  - **第三条用例的 payload 为派生数据**，由实测成功响应保留 `status:0`、摘掉 `ad_info` 而来，在用例内就地声明并注释标明来源，未写入夹具文件冒充实测样本。
+- TEST-011 调用命令调整：由 `-t "resolves a manual city to an adcode through the geocoder"`（只匹配 1 条）改为 `-t "手动城市经地址解析换取 adcode"`（按 describe 名匹配，一次运行本资产全部 3 条）。属 a 卡落地 TEST 定义的范围，Asset ID 与断言语义未变。
+- 格式：`npx prettier --check` 对夹具与 spec 均通过；`git diff --check` 退出码 `0`。
+- 未完成项：实现留给 TASK-10b。在 TASK-10b 完成前，**手动选城市在真机上仍然拿不到温度**，不得对外描述为已修复。
+
+## TASK-10b · 写实现：手动城市改走地址解析换取 adcode
+
+### 任务定义
+
+- 状态：green
+- 来源：BUG-14、AC-01、MVP-01、HC-06、SPEC 第 22 条
+- 契约影响面：无
+- 阻塞依赖（Depends On）：TASK-10a（状态必须为 red）
+- 可并行（Parallel With）：无
+- Consumes：TASK-10a 红测与 geocoder 夹具
+- Produces：`manual` 模式先调 `/ws/geocoder/v1/?address=<城市名>` 取 `result.ad_info.adcode`，再以 `adcode` 走 TASK-09b 建立的天气取数路径；`city=` 参数从代码中彻底消失
+- 边界约束：
+  - geocoder 与两次天气请求合计三次，必须**串行**
+  - geocoder 失败或没有 `adcode` 时走既有 `unavailable()` 降级，**不得回退到默认城市**（HC-06 明令禁止静默猜测城市）
+  - 不得把用户输入的城市名直接当作 `adcode` 透传
+  - `auto` 模式仍直接使用 `location`，不经 geocoder，避免无谓消耗配额
+- 跨模块检查：小程序手动城市输入路径不变，`miniprogram/pages/outfit/index.js` 无需改动
+- 既有用例改写约束（2026-08-17 P3 二次补正，起因见本卡首轮施工的阻塞记录）：
+  - 涉及且**仅**涉及一条：`手动城市请求不需要暴露坐标，并返回供应商归一化城市`。它转红的原因是**测试桩不认识地址解析的 URL**，把实时天气夹具喂给了 `/ws/geocoder/v1/`，不是断言错了。
+  - 只允许把该用例的 fetch 桩换成 TASK-10a 已建好的 `makeRoutedFetch`（或给 `makeRealFetch` 补一条 geocoder 路由分支）。**三项断言意图一条都不许削弱**：① 请求中出现用户输入的城市名；② 手动模式不携带 `location=`；③ 返回的城市名取自供应商而非回显用户输入。
+  - 严禁通过 `it.skip`、`it.todo`、注释掉或放宽断言让它通过。
+- 允许改：`src/weather/tencent-weather.service.ts`、`src/weather/tencent-weather.service.spec.ts`（**仅限**上述一条既有用例的 fetch 桩，以及为其复用 `makeRoutedFetch` 所需的最小作用域调整）
+- 禁止碰：TEST-010 与 TEST-011 的定义与断言（两个 `describe` 整段）、夹具文件 `src/weather/__fixtures__/**`、其余六条既有用例、`src/wardrobe/**`、`src/ai/**`、小程序、SPEC
+- 自测：`TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出 `0`；`npm test -- --runInBand`、`npm run build` 均退出 `0`；TEST-001~TEST-011 逐条原样复跑退出 `0`
+- 人工验收：留待 P6——小程序搭配页手动填写城市后，确认显示该城市的真实温度
+- 回滚：撤回 `tencent-weather.service.ts` 本卡改动
+
+### 施工后填写
+
+> 本卡曾于首轮施工阻塞（记录见下方「首轮阻塞记录」）。2026-08-17 经 P3 二次补正把 spec 按单条用例范围纳入「允许改」后重开，本次达成绿灯。
+
+- 实际改动：
+  - `src/weather/tencent-weather.service.ts`（首轮即完成）：① 新增 `WeatherQuery` 判别式类型（`location` | `adcode`），把「天气接口真正接受的查询条件」与「用户请求形态」分开表达；② 新增 `resolveQuery(request, apiKey)`——`auto` 直接用降精度经纬度，`manual` 转交地址解析；③ 新增 `resolveAdcode(city, apiKey)`——请求 `/ws/geocoder/v1/?address=<城市名>` 读取 `result.ad_info.adcode`，拿不到返回 `undefined`，**不猜测、不退回默认城市**（HC-06）；④ `requestUrl` 形参由 `NormalizedWeatherRequest` 改为 `WeatherQuery`，参数名直接取自 `query.kind`，`city` 参数就此消失；⑤ 地址解析 → 实时 → 逐小时三次请求严格串行。
+  - `src/weather/tencent-weather.service.spec.ts`（本轮补正范围内）：`makeRealFetch` 增加一条 `/ws/geocoder/v1/` 路由分支，返回 `TENCENT_GEOCODER_BEIJING`，共 4 行。
+- 既有用例处置核对（对照本卡「既有用例改写约束」）：仅改动 `手动城市请求不需要暴露坐标，并返回供应商归一化城市` 所依赖的 fetch 桩，**三项断言意图逐条保留且未削弱**——① 请求中仍须出现用户输入的城市名（现由 geocoder 的 `address=上海` 承载）；② 手动模式仍断言不含 `location=`（现走 `adcode=110000`）；③ 返回城市名仍须取自供应商（输入「上海」而期望「北京市」，回显即失败）。未使用 `it.skip`、`it.todo`、注释或放宽断言；其余六条既有用例与 TEST-010、TEST-011 的定义和断言一字未动。
+- BUG-14 契约核对：`grep -n "city=" src/weather/tencent-weather.service.ts` **无命中**，腾讯不接受的 `city` 参数已从实现中彻底消失。
+- TEST 记录：`docs/test.md#TEST-011`，「P4 绿灯（TASK-10b）」执行记录与首轮阻塞记录均已写入；TEST 定义、测试名称与调用命令逐字未改。
+- 执行结果：
+  - 先原样复跑 TEST-011，退出码 `1`，三条失败与 TASK-10a 记录逐字一致，原因未漂移。
+  - 实现后 `TZ=UTC npx jest --runInBand src/weather/tencent-weather.service.spec.ts` 退出码 `0`，11 项全部通过。
+  - cwd `C:\Users\Administrator\Desktop\AI穿搭软件\Libre-Closet`：`npm test -- --runInBand` 退出码 `0`，39 个套件、**218 项**全部通过（TASK-09b 基线 215 项 + TEST-011 新增 3 项，数量可对账）。
+  - `TZ=UTC npx jest --runInBand` 退出码 `0`，同样 39 套件 218 项——**在生产容器时区下整体回归同样全绿**。
+  - TEST-001~TEST-009 承载套件原样复跑退出码 `0`，4 套件 50 项通过。
+  - `npm run build`、`npm run test:miniapp`、`git diff --check` 均退出码 `0`；`npx prettier --check` 对实现、spec、夹具三份文件均报 `All matched files use Prettier code style!`。
+- 未完成项：
+  - **人工验收全部未执行**。BUG-13/14/15 的自动化验证已完成，但真机路径留待 P6：① 授权定位后确认显示真实城市、当前温度与未来八小时趋势；② 手动填写城市后确认显示该城市真实温度；③ 时段标签与手机时间一致——**时区缺陷只在生产容器（UTC）显现，本机测试无法替代**。
+  - 本轮天气模块的三次外部请求（地址解析 + 实时 + 逐小时）每次推荐都会发生，实际配额消耗与响应时延**尚未在真实环境观测过**，P6 需留意。
+  - 既有基线问题：`src/wardrobe/recommendation/outfit-generator.service.ts` 第 118、190、346-354 行与其 spec 第 715 行仍有本轮更早卡片留下的 prettier 差异，按 `kun-code` 协议未顺手修复。
+
+#### 首轮阻塞记录（2026-08-17，已由 P3 二次补正解除）
+
+首轮施工完成全部实现后，TEST-011 三条转绿，但整套退出码为 `1`：唯一失败项是 TASK-09b 时期改写的 `手动城市请求不需要暴露坐标，并返回供应商归一化城市`，返回 `{ status: 'unavailable', reason: '天气位置不可用。', hourly: [] }`。根因为**测试桩缺陷而非实现缺陷**——该用例的 `makeRealFetch` 只按 `type=hours` 二分流，把实时天气夹具返回给了 `/ws/geocoder/v1/` 请求。当时该 spec 不在本卡「允许改」内，按协议不得顺手修复，故记 `blocked` 并回 P3。此为 TASK-09b 同类阻塞的第二次复发，教训已写入 `docs/plan.md#卡片切分补正二`。
