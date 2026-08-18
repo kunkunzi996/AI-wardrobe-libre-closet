@@ -83,6 +83,7 @@ export class OutfitController {
   ) {
     const coreGarmentId = Number(garmentId);
     const result = await this.outfitGeneratorService.generateWithAi({
+      mode: 'legacy-web',
       coreGarmentId,
       requestText: q,
       userId: this.userId(req),

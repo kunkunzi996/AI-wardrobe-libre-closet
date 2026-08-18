@@ -1,5 +1,31 @@
 const api = require('../../utils/api');
 
+const WEATHER_PREFERENCE_KEY = 'outfit_weather_preference';
+
+function unavailableWeather(reason) {
+  return {
+    status: 'unavailable',
+    hourly: [],
+    reason: reason || '本次未使用实时温度。',
+  };
+}
+
+function displayWeather(weather) {
+  if (!weather || weather.status !== 'available') {
+    return unavailableWeather(weather && weather.reason);
+  }
+  return Object.assign({}, weather, {
+    hourly: (weather.hourly || []).map(function (point) {
+      const date = new Date(point.timestamp);
+      return Object.assign({}, point, {
+        timeLabel: Number.isNaN(date.getTime())
+          ? ''
+          : String(date.getHours()).padStart(2, '0') + ':00',
+      });
+    }),
+  });
+}
+
 Page({
   data: {
     requestText: '明天上班穿什么',
@@ -12,9 +38,25 @@ Page({
     coreGarmentId: '',
     lastRequestText: '',
     lastSource: '',
+    weatherPreference: { mode: 'auto', city: '' },
+    weather: unavailableWeather(),
+    weatherLoading: false,
   },
 
   onLoad(options) {
+    const savedPreference = wx.getStorageSync(WEATHER_PREFERENCE_KEY);
+    if (
+      savedPreference &&
+      (savedPreference.mode === 'auto' || savedPreference.mode === 'manual')
+    ) {
+      this.setData({
+        weatherPreference: {
+          mode: savedPreference.mode,
+          city:
+            savedPreference.mode === 'manual' ? savedPreference.city || '' : '',
+        },
+      });
+    }
     const coreGarmentId = options.coreGarmentId || '';
     if (!coreGarmentId) return;
     this.setData({
@@ -45,6 +87,110 @@ Page({
     this.setData({ requestText: event.detail.value });
   },
 
+  saveWeatherPreference(preference) {
+    const next = {
+      mode: preference && preference.mode === 'manual' ? 'manual' : 'auto',
+    };
+    if (next.mode === 'manual' && preference && preference.city) {
+      next.city = String(preference.city).trim();
+    }
+    wx.setStorageSync(WEATHER_PREFERENCE_KEY, next);
+    if (typeof this.setData === 'function') {
+      this.setData({
+        weatherPreference: { mode: next.mode, city: next.city || '' },
+      });
+    }
+  },
+
+  switchWeatherMode(event) {
+    const mode = event.currentTarget.dataset.mode;
+    if (mode === 'manual') {
+      this.chooseManualCity();
+      return;
+    }
+    this.saveWeatherPreference({ mode: 'auto' });
+  },
+
+  chooseManualCity() {
+    const page = this;
+    wx.showModal({
+      title: '选择城市',
+      editable: true,
+      placeholderText: '例如：杭州市',
+      content: this.data.weatherPreference.city || '',
+      success(res) {
+        if (!res.confirm || !res.content || !res.content.trim()) return;
+        page.saveWeatherPreference({ mode: 'manual', city: res.content });
+      },
+    });
+  },
+
+  requireLocationPrivacy() {
+    if (
+      typeof wx.getPrivacySetting !== 'function' ||
+      typeof wx.requirePrivacyAuthorize !== 'function'
+    ) {
+      return Promise.resolve(true);
+    }
+    return new Promise(function (resolve) {
+      wx.getPrivacySetting({
+        success(setting) {
+          if (!setting.needAuthorization) {
+            resolve(true);
+            return;
+          }
+          wx.requirePrivacyAuthorize({
+            success() {
+              resolve(true);
+            },
+            fail() {
+              resolve(false);
+            },
+          });
+        },
+        fail() {
+          resolve(false);
+        },
+      });
+    });
+  },
+
+  resolveWeatherRequest() {
+    const preference = this.data.weatherPreference;
+    if (preference.mode === 'manual' && preference.city) {
+      return Promise.resolve({ mode: 'manual', city: preference.city });
+    }
+    if (preference.mode !== 'auto') {
+      return Promise.resolve({ mode: 'unavailable' });
+    }
+    const page = this;
+    this.setData({ weatherLoading: true });
+    return this.requireLocationPrivacy().then(function (authorized) {
+      if (!authorized) {
+        page.setData({ weatherLoading: false });
+        return { mode: 'unavailable' };
+      }
+      return new Promise(function (resolve) {
+        wx.getLocation({
+          type: 'gcj02',
+          success(location) {
+            resolve({
+              mode: 'auto',
+              latitude: location.latitude,
+              longitude: location.longitude,
+            });
+          },
+          fail() {
+            resolve({ mode: 'unavailable' });
+          },
+          complete() {
+            page.setData({ weatherLoading: false });
+          },
+        });
+      });
+    });
+  },
+
   generateOutfit() {
     const requestText = this.data.requestText.trim();
     if (!requestText) {
@@ -52,10 +198,16 @@ Page({
       return;
     }
 
-    const page = this;
     this.setData({ loading: true, error: '', message: '' });
-    api
-      .recommendOutfit(requestText, this.data.coreGarmentId)
+    const page = this;
+    this.resolveWeatherRequest()
+      .then(function (weatherRequest) {
+        return api.recommendOutfit(
+          requestText,
+          page.data.coreGarmentId,
+          weatherRequest,
+        );
+      })
       .then(function (data) {
         const recommendations = (data.recommendations || []).map(
           function (plan) {
@@ -72,6 +224,7 @@ Page({
           savedIndex: -1,
           lastRequestText: requestText,
           lastSource: data.source || '',
+          weather: displayWeather(data.weather),
         });
       })
       .catch(function (error) {

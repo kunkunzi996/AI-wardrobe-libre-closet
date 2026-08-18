@@ -21,8 +21,9 @@
 | 目录           | 负责什么                                    | 不放什么                          |
 | -------------- | ------------------------------------------- | --------------------------------- |
 | `src/auth`     | Web 登录、微信小程序登录、JWT、鉴权 Guard   | 衣物业务规则                      |
-| `src/wardrobe` | 衣物、搭配、日历、统计、小程序衣橱 API      | AI 模型调用细节、底层文件存储实现 |
-| `src/ai`       | 衣物图片识别、AI 搭配文本生成               | 衣物入库保存、数据库查询          |
+| `src/wardrobe` | 衣物、搭配、日历、统计、小程序衣橱 API；穿搭候选、温度/状态规则、方案去重和整套颜色关系 | AI 模型调用细节、底层文件存储实现 |
+| `src/ai`       | 衣物图片识别、AI 搭配请求、JSON 解析和响应形状清洗 | 衣物入库保存、数据库查询、小程序穿搭确定性规则 |
+| `src/weather`  | 腾讯天气代理、天气归一化、缓存与降级        | 穿搭筛选、位置持久化              |
 | `src/file`     | 图片上传、读取、本地/S3 存储、抠图/白底处理 | 衣物业务字段判断                  |
 | `src/dal`      | MikroORM 连接、实体、迁移                   | Controller 或页面逻辑             |
 | `views`        | Web/PWA 服务端页面模板                      | 小程序原生页面逻辑                |
@@ -32,6 +33,9 @@
 
 - Web 页面请求进 `WardrobeController`、`OutfitController`、`CalendarController` 等页面 Controller。
 - 微信小程序请求进 `MiniappWardrobeController`、`MiniappOutfitController`、`MiniappDailyOutfitController`、`MiniappAuthController`。
+- 小程序穿搭推荐可携带 `auto`、`manual` 或 `unavailable` 天气选择；原始坐标只随当前推荐请求发送，后端返回城市、当前温度、未来八小时温度或降级原因。
+- **穿搭推荐调用方必须显式声明规则模式**：`OutfitGeneratorService` 的入口以必填 `mode` 字段区分 `legacy-web` 与 `miniapp-taxonomy-v1`，调用方按自身身份声明，不得由天气字段或其它数据是否存在来推断模式。小程序入口恒定声明 `miniapp-taxonomy-v1`，网页入口恒定声明 `legacy-web`。
+- 与此配套：「用哪套规则」是调用方身份，「本次有没有拿到实时温度」是数据事实，两者不得互相推断。温度不可用时用 `status: 'unavailable'` 的上下文表达，不用字段缺省表达；请求里天气字段缺省应归一为 `unavailable` 后继续按原规则生成，天气字段存在但格式非法才是参数错误。
 - 小程序手动保存今日穿搭仍走 `MiniappDailyOutfitController`，请求为 multipart，照片字段名为 `photo`。
 - Controller 只负责接请求、读参数、调用 Service、组织返回，不直接写复杂业务规则。
 
@@ -116,6 +120,7 @@
 ## 13. 配置读取规则
 
 - 全局配置在 `src/app.module.ts` 的 `ConfigModule.forRoot` 中声明和校验。
+- 腾讯天气只通过后端 `TencentWeatherService` 调用；canonical 配置只有 `TENCENT_LBS_KEY`、`TENCENT_LBS_BASE_URL`、`TENCENT_LBS_TIMEOUT_MS`。小程序包不包含腾讯 Key，设备本地只保存天气模式和可选城市，不保存经纬度。
 - 生产 `.env` 不提交 GitHub。
 - Qwen 识图必须确认 `QWEN_API_KEY`、`QWEN_API_BASE_URL`、`QWEN_VISION_MODEL=qwen3.7-plus`。
 - 管理员入口显示和管理员导出依赖 `MINIAPP_ADMIN_USER_IDS` 或 `MINIAPP_ADMIN_WECHAT_OPEN_IDS`，生产环境至少配置其中一个；不配置时普通用户和当前登录用户都看不到管理员入口。

@@ -42,6 +42,83 @@
   font-weight: 700;
 }
 
+.weather-card {
+  margin-bottom: 26rpx;
+  padding: 22rpx;
+  border-radius: 18rpx;
+  background: #f7f6fb;
+}
+
+.weather-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8rpx 16rpx;
+}
+
+.weather-city,
+.weather-unavailable,
+.weather-hourly-title {
+  color: #6b6580;
+  font-size: 24rpx;
+}
+
+.weather-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 16rpx;
+}
+
+.weather-mode {
+  height: 64rpx;
+  margin: 0;
+  border: 2rpx solid #e4e0ef;
+  border-radius: 14rpx;
+  background: #fff;
+  color: #6b6580;
+  font-size: 24rpx;
+  line-height: 60rpx;
+}
+
+.weather-mode::after {
+  border: none;
+}
+
+.weather-mode.active {
+  border-color: #6f5ae0;
+  background: #6f5ae0;
+  color: #fff;
+}
+
+.weather-basis {
+  display: grid;
+  gap: 12rpx;
+  margin-top: 18rpx;
+  color: #2e2742;
+  font-size: 26rpx;
+}
+
+.weather-hourly {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6rpx;
+  color: #6f5ae0;
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.weather-hour {
+  display: grid;
+  gap: 4rpx;
+}
+
+.weather-unavailable {
+  margin-top: 18rpx;
+  color: #9a5d24;
+}
+
 .prompt {
   width: 100%;
   min-height: 160rpx;
@@ -167,6 +244,16 @@
   margin-top: 6rpx;
   color: rgba(46, 39, 66, 0.55);
   font-size: 24rpx;
+}
+
+.status-label {
+  display: inline-block;
+  margin: 10rpx 6rpx 0;
+  padding: 6rpx 10rpx;
+  border-radius: 10rpx;
+  background: #fff1d6;
+  color: #9a5d24;
+  font-size: 22rpx;
 }
 
 .save {

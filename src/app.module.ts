@@ -141,6 +141,13 @@ import { AiModule } from './ai/ai.module';
           .default('local'),
         OPENAI_API_KEY: Joi.string().optional(),
         QWEN_API_KEY: Joi.string().optional(),
+        TENCENT_LBS_KEY: Joi.string().optional(),
+        TENCENT_LBS_BASE_URL: Joi.string()
+          .uri({
+            scheme: ['http', 'https'],
+          })
+          .default('https://apis.map.qq.com'),
+        TENCENT_LBS_TIMEOUT_MS: Joi.number().integer().min(1).default(8000),
         QWEN_API_BASE_URL: Joi.string()
           .uri({ scheme: ['http', 'https'] })
           .default('https://dashscope.aliyuncs.com/compatible-mode'),
