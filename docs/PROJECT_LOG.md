@@ -6,6 +6,10 @@ This document is intended for the maintaining team to use to document decisions.
 >
 > The team agrees to _BLANK_ project business decision(s)...
 
+## 2026-08-19
+
+P6 补验窗口关闭。用户确认剩余未验项不再补验：P6-08 / P6-12 坐标精度维持 SPEC GAP；P6-09 空衣橱、P6-10 待洗提醒、P6-11 网页端、P6-12 双账号维持本轮不验。未改原十三条结论，未宣布正式启用，体验版仍 `1.0.1`。详见 `docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。
+
 ## 2026-08-18
 
 小程序结构化标签穿搭与天气已合入 `main` 并部署生产 `52d124c`。P6 可验项已收口：用户拍板无 FAIL；P6-08 穿着感词与 P6-12 坐标精度为 SPEC GAP；待洗 / 空衣橱 / 双账号 / 网页端本轮不验。非正式启用（剩 11 件未补标）。结论原文：`docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。
