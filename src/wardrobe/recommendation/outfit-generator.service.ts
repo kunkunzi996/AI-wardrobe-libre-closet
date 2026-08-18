@@ -115,7 +115,9 @@ export class OutfitGeneratorService {
       : wearable.find((garment) => garment.id === input.coreGarmentId);
     if (!core) throw new NotFoundException('Core garment not found');
 
-    const plans = (miniappMode ? this.dedupePlans : (value: GeneratedOutfitPlan[]) => value)(
+    const plans = (
+      miniappMode ? this.dedupePlans : (value: GeneratedOutfitPlan[]) => value
+    )(
       PLAN_TITLES.map((title, index) => {
         const selected = this.pickGarments(
           core,
@@ -187,7 +189,9 @@ export class OutfitGeneratorService {
     const shouldExposeAi =
       rawAi &&
       (rawAi.source === 'ai' ||
-        (miniappMode && rawAi.source === 'fallback' && rawAi.recommendations.length > 0));
+        (miniappMode &&
+          rawAi.source === 'fallback' &&
+          rawAi.recommendations.length > 0));
     const ai = shouldExposeAi
       ? this.attachAiGarments(
           rawAi,
@@ -343,15 +347,17 @@ export class OutfitGeneratorService {
 
   private dedupePlans(plans: GeneratedOutfitPlan[]): GeneratedOutfitPlan[] {
     const seenPlans = new Set<string>();
-    return plans.filter((plan) => {
-      const dedupeKey = plan.garments
-        .map((garment) => garment.id)
-        .sort((left, right) => left - right)
-        .join(',');
-      if (seenPlans.has(dedupeKey)) return false;
-      seenPlans.add(dedupeKey);
-      return true;
-    }).slice(0, 3);
+    return plans
+      .filter((plan) => {
+        const dedupeKey = plan.garments
+          .map((garment) => garment.id)
+          .sort((left, right) => left - right)
+          .join(',');
+        if (seenPlans.has(dedupeKey)) return false;
+        seenPlans.add(dedupeKey);
+        return true;
+      })
+      .slice(0, 3);
   }
 
   private attachMiniappAiGarments(

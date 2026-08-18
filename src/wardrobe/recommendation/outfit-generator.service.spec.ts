@@ -712,7 +712,10 @@ describe('OutfitGeneratorService', () => {
       color: 'black' as any,
       status: GarmentStatus.Wearable,
     });
-    const result = await makeService([core, whiteBottom]).service.generateWithAi({
+    const result = await makeService([
+      core,
+      whiteBottom,
+    ]).service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
       coreGarmentId: 1,
       temperatureContext: temperatureContext(16, 20),
