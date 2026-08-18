@@ -2,13 +2,13 @@
 
 > 本文件只写**当前事实**。已完结的历史记录和功能验收明细归档在 `docs/PROJECT_LOG.md`。
 
-## 2026-08-13 新标签穿搭消费与天气体验（本地施工中，未部署）
+## 2026-08-13 新标签穿搭消费与天气体验（当时本地施工中；后已合入并部署）
 
 功能分支 `feature/outfit-taxonomy-consumption` 已在本地接通有效搭配标签画像、规则—AI—规则生成、腾讯天气代理和小程序天气模式。搭配页支持自动定位与手动城市，设备只保存模式和可选城市，坐标只随当前推荐请求发送；页面可显示城市、当前温度、未来八小时温度，定位或天气失败时继续推荐并提示“本次未使用实时温度”。
 
 本地根因修正已把小程序穿搭确定性规则统一归到 `OutfitGeneratorService`：AI 成功、AI 降级和本地规则共用方案收敛，低温冲突核心会提示风险，整套颜色关系进入推荐理由；`OutfitAiService` 只保留供应商请求、解析和响应形状清洗。腾讯天气配置已收敛为 `TENCENT_LBS_KEY`、`TENCENT_LBS_BASE_URL`、`TENCENT_LBS_TIMEOUT_MS`，真实值仍只存在于仓库外生产环境配置。
 
-当前仅为本地代码状态，尚未完成微信开发者工具七条人工路径验收，未提交、未推送、未合并、未部署。生产仍运行既有已验收版本；历史 AI 补标仍有 11 件未处理，本功能不得被描述为已上线或已完成生产验收。
+当时仅为本地代码状态。后续已于 2026-08-18 以 `52d124c` 合入 `main` 并部署生产；P6 可验项收口见 `docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。剩余 11 件衣物仍未补标，新版推荐仍不得称为正式启用。
 
 ## 2026-08-11 AI 客观标签白名单施工（已部署，单件数据与安全验收通过）
 
@@ -81,28 +81,31 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 
 当前可用状态：
 
-- **生产环境**：`https://aimatchwear.asia` 正常服务，生产业务代码基线为 `4bc13bcd`（2026-08-11），当前镜像为 `sha256:c0a6043b...`；GitHub `main` 在该业务基线之后仅新增项目文档提交，生产业务代码与主分支一致。
-- **小程序体验版**：停留在 `1.0.1`（2026-07-12 上传）。此后的前端改动——折叠选择框改版（`a5c1fdd`）、Stitch「我的」页面、补标数量边界修复（`0644511`）——**均未上传体验版**，体验版用户看不到。需要时在微信开发者工具点「上传」，无需动服务器。
-- **数据隔离**：微信登录 + 按 `openid` 隔离已验收，双微信号可分别管理各自衣橱。
-- **待人工验收**：Stitch「我的」页面的视觉和 tab 跳转尚未在微信开发者工具确认。
+- **生产环境**：`https://aimatchwear.asia` 正常服务，生产业务代码基线为 `52d124c`（2026-08-18 服务器本地构建）。候选镜像 `ai-wardrobe:candidate-52d124c`，回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`，停机备份 `/root/ai-wardrobe-backup-20260818T031559Z`。
+- **本轮功能**：小程序结构化标签穿搭与天气已部署。P6 可验项已于 2026-08-18 收口，结论见 `docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。无用户拍板 FAIL；非正式启用。
+- **轮次文档**：当前无活跃 `docs/spec.md` / `plan.md` / `task.md` / `test.md`。已冻结在 `docs/archive/2026-08-18-小程序穿搭出口与调用模式收敛/`。
+- **小程序体验版**：仍为 `1.0.1`（2026-07-12）。用户只要自己预览，未上传新体验版；老婆手机仍是旧包。
+- **数据隔离**：微信登录 + 按 `openid` 隔离已验收。本轮双账号串衣未再验。
+- **补标**：困困子账号仍剩 11 件未补标（硬约束 8 未满足）。
+- **日志**：生产 `app.log` 已于 2026-08-18 按方案 A 日切（`/etc/logrotate.d/ai-wardrobe-app`，copytruncate，留 7 天，超 50MB 提前切）。旧日志在卷内 `app.log-20260818`，额外备份 `/root/ai-wardrobe-app.log.bak-20260818T125420Z`。
 
 最新已验收功能提交为：
 
 ```text
-4bc13bc 合并：脱敏 HTTP 请求敏感请求头日志
+52d124c 合并：小程序结构化标签穿搭消费与天气模块实测契约修复（PR #5）
 ```
 
 最新主分支部署验收提交为：
 
 ```text
-4bc13bc 合并：脱敏 HTTP 请求敏感请求头日志
+52d124c 合并：小程序结构化标签穿搭消费与天气模块实测契约修复（PR #5）
 ```
 
-> 说明：`4bc13bcd` 于 2026-08-11 通过**服务器本地构建**部署并完成日志脱敏、安全哨兵、密钥轮换、数据库与公网冒烟验收。GitHub `main` 在该业务基线之后的提交截至本轮只更新项目文档，不改变生产业务代码。小程序前端自 `a5c1fdd` 起的改动（含 `0644511` 的补标数量边界修复）**仍未上传体验版**，需要时在微信开发者工具点「上传」。
+> 说明：`52d124c` 于 2026-08-18 通过**服务器本地构建**部署。上一业务基线是 2026-08-11 的 `4bc13bcd`（日志脱敏与密钥轮换）。小程序前端自 `a5c1fdd` 起的改动仍未上传体验版。
 
 ## 当前阶段
 
-阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收 / AI 搭配反馈导出和管理员库存导出 已完成服务器部署和微信开发者工具验收 / 衣物结构化标签库 已完成生产部署和微信开发者工具验收 / 衣物表单折叠选择框改版 已验收并合入 main（纯前端，无需部署，未传体验版）/ 存量衣物 AI 补标签 已完成 4 件生产试点（困困子账号剩 11 件）/ AI 客观标签白名单、请求日志脱敏与生产密钥轮换 已完成部署和安全验收（`4bc13bcd`）
+阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收 / AI 搭配反馈导出和管理员库存导出 已完成服务器部署和微信开发者工具验收 / 衣物结构化标签库 已完成生产部署和微信开发者工具验收 / 衣物表单折叠选择框改版 已验收并合入 main（纯前端，无需部署，未传体验版）/ 存量衣物 AI 补标签 已完成 4 件生产试点（困困子账号剩 11 件）/ AI 客观标签白名单、请求日志脱敏与生产密钥轮换 已完成部署和安全验收（`4bc13bcd`）/ 小程序结构化标签穿搭与天气已部署（`52d124c`），P6 可验项已收口（非正式启用）
 
 后端骨架验收状态：已验收（2026-06-19，后端验收官通过）
 
@@ -196,7 +199,7 @@ port: 127.0.0.1:3000->3000
 volume: ai_wardrobe_data:/app/data
 ```
 
-最近一次生产服务器验收：2026-08-11，`4bc13bcd` 已通过服务器本地构建部署；当前镜像 `sha256:c0a6043b...`，公网首页、衣物接口、标签库接口均返回 200，数据库 `integrity_check=ok` 且衣物数为 168，双日志脱敏哨兵通过，生产 `ACCESS_TOKEN_SECRET` 已轮换并由新容器加载。两个包含旧密钥环境快照的 stopped 容器已逐个删除。上一次业务部署基线为 2026-08-06 的 `bd8882c`。
+最近一次生产服务器验收：2026-08-18，`52d124c` 已通过服务器本地构建部署；回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`，备份 `/root/ai-wardrobe-backup-20260818T031559Z`。上一次安全修复基线为 2026-08-11 的 `4bc13bcd`（镜像 `sha256:c0a6043b...`）。
 
 ### 服务器规格与已知约束（2026-08-06 实测）
 
@@ -204,7 +207,7 @@ volume: ai_wardrobe_data:/app/data
 - 已配置 **4GB swapfile**（`/swapfile`，已写入 `/etc/fstab` 并实测重挂），`vm.swappiness=10`（已写入 `/etc/sysctl.conf`）。加 Swap 前为 0，任何内存尖峰都可能触发 OOM Killer 杀掉生产容器。
 - **服务器到 GitHub 的链路基本不通**：连测 3 次 `github.com` 全部 20 秒超时；而 `registry.npmjs.org` 正常（0.7~1.3 秒）。所有依赖 GitHub 的环节都会卡：Releases 上的预编译二进制、`git fetch`、GitHub Actions 的镜像包传输。
 - 因此仓库变量 **`AUTO_DEPLOY_MAIN` 已于 2026-08-06 置为 `false`**，推 `main` 不再自动部署。需要部署时手动触发工作流，或走服务器本地构建（步骤见 `docs/github-actions-auto-deploy.md`）。
-- 镜像标签约定：`ai-wardrobe:latest` 为在跑版本，`candidate-<sha>` 为待验证构建产物，`rollback-<sha>` 为回滚点。当前回滚点 `ai-wardrobe:rollback-4bc13bc-20260811T125713Z`。
+- 镜像标签约定：`ai-wardrobe:latest` 为在跑版本，`candidate-<sha>` 为待验证构建产物，`rollback-<sha>` 为回滚点。当前回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`。
 - 清理 Docker 垃圾只用 `docker image prune`（删无标签镜像）；**不要用 `docker builder prune`**，那会清掉构建层缓存，导致下次构建重新耗时约 47 分钟。
 
 GitHub Actions 自动部署工作流 `.github/workflows/deploy-main.yml` 仍然可用：推送 `main` 会先执行 `npm run test:miniapp` 和 `npm run build`；部署环节由 `if: github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY_MAIN == 'true'` 控制。镜像在 GitHub runner 上构建后 `docker save` 打包传到服务器 `docker load`，服务器不重新构建。配置与排查见 `docs/github-actions-auto-deploy.md`。
@@ -244,6 +247,9 @@ ALIYUN_IMAGE_SEG_ENDPOINT
 ALIYUN_IMAGE_SEG_REGION
 ALIYUN_IMAGE_SEG_RETURN_FORM
 ALIYUN_IMAGE_SEG_TIMEOUT_MS
+TENCENT_LBS_KEY
+TENCENT_LBS_BASE_URL
+TENCENT_LBS_TIMEOUT_MS
 ```
 
 当前衣物图片识别只走 Qwen 配置；`QWEN_VISION_MODEL` 默认值为 `qwen3.7-plus`。旧的 `AI_VISION_MODEL=gpt-4.1-mini` 识图兜底已不再使用。生产服务器 `.env` 如果写了 `QWEN_VISION_MODEL=qwen-vl-plus` 会覆盖代码默认值，必须改成 `QWEN_VISION_MODEL=qwen3.7-plus` 后重启容器。
@@ -355,13 +361,12 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：MVP 完成，已接入小程序微信登录和按用户隔离，体验版双微信号验收通过；Qwen 3.7 衣物图片识别升级、重复衣物入库提醒、重复判断结构化细化 V2 / V2.1、查看类似衣服、手动添加今日穿搭、今日穿搭删除、今日穿搭修改、AI 搭配反馈导出、管理员库存导出、衣物结构化标签库、AI 客观标签白名单和请求日志脱敏均已验收。**生产业务代码基线为 `4bc13bcd`（2026-08-11，服务器本地构建），GitHub `main` 后续截至本轮仅有项目文档更新。** 小程序前端自 `a5c1fdd` 起的改动尚未上传体验版。
+- 当前状态：小程序结构化标签穿搭与天气已部署在 `52d124c`。P6 可验项已收口，非正式启用。体验版仍为 `1.0.1`。困困子账号剩 11 件未补标。
 - 建议任务：
-  - 继续「存量衣物 AI 补标签」——困困子账号还剩 11 件待处理；扩大试点前先确认处理数量，并重新确认可用备份。
-  - 需要给体验版用户使用时，在微信开发者工具上传体验版（当前体验版还看不到折叠选择框和补标数量修复）。
-  - 可选优化：若还要优化冷缓存构建，先单独测量当前 Dockerfile 的冷缓存耗时；生产阶段现已复用 builder 的 `node_modules`，不再重复下载和编译原生依赖。
-  - 继续收集真实试用反馈，优先修复影响保存、删除、识别、导入导出的关键问题。
-- 继续文件：优先看 `PROJECT_STATE.md`、`docs/backend-architecture-source-of-truth.md`、`miniprogram/DESIGN.md`、`miniprogram/pages/garment-form/index.*`、`miniprogram/utils/api.js`、`src/wardrobe/garment-tag-taxonomy.ts`。
+  - 继续「存量衣物 AI 补标签」——还剩 11 件；扩大前先确认数量和可用备份。
+  - 几天后确认日切正常，再决定是否删 `/root/ai-wardrobe-app.log.bak-20260818T125420Z`。
+  - 体验版按 2026-08-18 决定先不上传，老婆维持 `1.0.1`。
+- 继续文件：优先看 `PROJECT_STATE.md`、`docs/p6-miniapp-outfit-acceptance-2026-08-18.md`、`docs/backend-architecture-source-of-truth.md`。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 小程序表单改动前必须知道：衣物表单的字段选择框由 `miniprogram/pages/garment-form/index.js` 里的 `fieldSelectorConfigs` 驱动（决定每个字段单选/多选、选项来自本地常量还是标签库）；`buildFieldGroups` 每次都从当前 `form` 值重建视图模型，所以 AI 回显、编辑回显、批量导入三条路径都能自动同步。改这里时**不要动提交格式**：单值字段是字符串，季节/风格/场景是「、」拼接串，后端靠 `GarmentService.normalizeTags` 拆数组。
 - 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在；`.github/workflows/deploy-main.yml` 尚未具备本轮人工部署使用的 SQLite WAL 停机备份、候选验证和回滚门禁，`AUTO_DEPLOY_MAIN` 在单独加固验收前必须保持 `false`。

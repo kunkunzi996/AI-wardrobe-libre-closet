@@ -6,6 +6,10 @@ This document is intended for the maintaining team to use to document decisions.
 >
 > The team agrees to _BLANK_ project business decision(s)...
 
+## 2026-08-18
+
+小程序结构化标签穿搭与天气已合入 `main` 并部署生产 `52d124c`。P6 可验项已收口：用户拍板无 FAIL；P6-08 穿着感词与 P6-12 坐标精度为 SPEC GAP；待洗 / 空衣橱 / 双账号 / 网页端本轮不验。非正式启用（剩 11 件未补标）。结论原文：`docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。
+
 ## 2026-06-16
 
 AI 衣橱 MVP 阶段完成并进入体验版验证期。当前 `main` 已包含原生小程序衣橱首页、单件 AI 识别上传、核心衣物搭配、今日穿搭、批量导入/导出/导入备份、批量删除等已验收能力。
