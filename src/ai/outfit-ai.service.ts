@@ -305,7 +305,7 @@ export class OutfitAiService {
 
   private fallback(input: OutfitAiInput): OutfitAiResult {
     if (input.mode === 'miniapp-taxonomy-v1') {
-      return this.miniappFallback(input);
+      return this.miniappFallback();
     }
     const wearable = input.availableGarments.filter(
       (garment) => garment.status === 'wearable',
@@ -345,7 +345,7 @@ export class OutfitAiService {
     };
   }
 
-  private miniappFallback(input: OutfitAiInput): OutfitAiResult {
+  private miniappFallback(): OutfitAiResult {
     return {
       source: 'fallback',
       message: 'AI暂时不可用，先为你按衣橱标签筛选出这些单品。',

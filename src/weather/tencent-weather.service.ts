@@ -188,7 +188,7 @@ export class TencentWeatherService {
   }
 
   /** 单次供应商请求：自带超时与中断，失败一律返回 undefined，不向上抛。 */
-  private async fetchPayload(url: string): Promise<unknown | undefined> {
+  private async fetchPayload(url: string): Promise<unknown> {
     const controller = new AbortController();
     let rejectTimeout: ((reason?: unknown) => void) | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {

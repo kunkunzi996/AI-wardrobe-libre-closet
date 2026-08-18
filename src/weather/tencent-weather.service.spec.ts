@@ -32,7 +32,7 @@ describe('TencentWeatherService', () => {
 
   const response = (payload: unknown, ok = true): FetchResult => ({
     ok,
-    json: async () => payload,
+    json: () => Promise.resolve(payload),
   });
 
   // 默认 payload 用实测夹具。此处曾放置两个「按想象编造」的响应构造器：它们把
@@ -43,7 +43,7 @@ describe('TencentWeatherService', () => {
   const makeFetch = (
     payload: unknown = TENCENT_REALTIME_BY_LOCATION,
   ): jest.Mock<Promise<FetchResult>, [string, RequestInit?]> =>
-    jest.fn(async () => response(payload));
+    jest.fn(() => Promise.resolve(response(payload)));
 
   // 真实夹具的时间是固定的历史时刻。不冻结当前时间，「只保留未来时段」的
   // 过滤会随真实时间推移逐条丢弃夹具数据，测试次日即失效。
@@ -58,15 +58,17 @@ describe('TencentWeatherService', () => {
     Promise<FetchResult>,
     [string, RequestInit?]
   > =>
-    jest.fn(async (url: string) => {
+    jest.fn((url: string) => {
       const target = String(url);
       if (target.includes('/ws/geocoder/v1/')) {
-        return response(TENCENT_GEOCODER_BEIJING);
+        return Promise.resolve(response(TENCENT_GEOCODER_BEIJING));
       }
-      return response(
-        target.includes('type=hours')
-          ? TENCENT_FORECAST_HOURS
-          : TENCENT_REALTIME_BY_LOCATION,
+      return Promise.resolve(
+        response(
+          target.includes('type=hours')
+            ? TENCENT_FORECAST_HOURS
+            : TENCENT_REALTIME_BY_LOCATION,
+        ),
       );
     });
 
@@ -207,10 +209,10 @@ describe('TencentWeatherService', () => {
 
   it('供应商超时或抛出网络错误时返回 unavailable，不阻断推荐', async () => {
     const fetchImpl = jest.fn<Promise<FetchResult>, [string, RequestInit?]>(
-      async () => {
+      () => {
         const error = new Error('request timed out');
         error.name = 'AbortError';
-        throw error;
+        return Promise.reject(error);
       },
     );
     const service = new TencentWeatherService(
@@ -246,11 +248,13 @@ describe('TencentWeatherService', () => {
       message: '配额超限',
     });
 
-    const fetchImpl = jest.fn(async (url: string) =>
-      response(
-        String(url).includes('type=hours')
-          ? quotaExceeded(TENCENT_FORECAST_HOURS)
-          : quotaExceeded(TENCENT_REALTIME_BY_LOCATION),
+    const fetchImpl = jest.fn((url: string) =>
+      Promise.resolve(
+        response(
+          String(url).includes('type=hours')
+            ? quotaExceeded(TENCENT_FORECAST_HOURS)
+            : quotaExceeded(TENCENT_REALTIME_BY_LOCATION),
+        ),
       ),
     );
 
@@ -291,11 +295,13 @@ describe('TencentWeatherService', () => {
       },
     };
 
-    const fetchImpl = jest.fn(async (url: string) =>
-      response(
-        String(url).includes('type=hours')
-          ? truncatedHours
-          : TENCENT_REALTIME_BY_LOCATION,
+    const fetchImpl = jest.fn((url: string) =>
+      Promise.resolve(
+        response(
+          String(url).includes('type=hours')
+            ? truncatedHours
+            : TENCENT_REALTIME_BY_LOCATION,
+        ),
       ),
     );
 

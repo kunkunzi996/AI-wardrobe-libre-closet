@@ -116,7 +116,9 @@ export class OutfitGeneratorService {
     if (!core) throw new NotFoundException('Core garment not found');
 
     const plans = (
-      miniappMode ? this.dedupePlans : (value: GeneratedOutfitPlan[]) => value
+      miniappMode
+        ? (value: GeneratedOutfitPlan[]) => this.dedupePlans(value)
+        : (value: GeneratedOutfitPlan[]) => value
     )(
       PLAN_TITLES.map((title, index) => {
         const selected = this.pickGarments(
