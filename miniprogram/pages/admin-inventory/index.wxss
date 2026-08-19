@@ -266,6 +266,17 @@
   line-height: 72rpx;
 }
 
+.copy-matched {
+  margin-top: 18rpx;
+  color: #4e4960;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.copy-matched text {
+  display: block;
+}
+
 .result-mask {
   position: fixed;
   z-index: 100;

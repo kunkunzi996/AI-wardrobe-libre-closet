@@ -60,6 +60,7 @@ function makeService(
     id: 20,
     name: '日常',
     slots: [{ category: 'tops', garmentId: 10 }],
+    photo: { fileName: 'look.webp' },
     owner: { id: 1 },
   };
   const sourceCalendar = {
@@ -284,9 +285,18 @@ describe('wardrobe copy', () => {
         calendars: 1,
         feedback: 1,
       },
+      matched: {
+        outfitSlots: 1,
+        outfitSlotsMapped: 1,
+        calendars: 1,
+        calendarsMapped: 1,
+        feedbackGarmentIds: 2,
+        feedbackGarmentIdsMapped: 2,
+      },
     });
 
     expect(ctx.fileService.copyStoredFile).toHaveBeenCalledWith('src.webp', 3);
+    expect(ctx.fileService.copyStoredFile).toHaveBeenCalledWith('look.webp', 3);
     expect(ctx.fileService.storeImageFromFileUpload).not.toHaveBeenCalled();
     expect(ctx.sourceGarment).toEqual({
       id: 10,
@@ -315,6 +325,10 @@ describe('wardrobe copy', () => {
 
     const copiedOutfit = ctx.createdOutfits[0];
     expect(copiedOutfit.slots[0].garmentId).toBe(copiedGarment.id);
+    expect(ctx.outfitService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ photoFileName: 'copy-look.webp' }),
+      3,
+    );
     expect(ctx.createdCalendars[0].outfitId).toBe(copiedOutfit.id);
     expect(ctx.createdFeedback[0]).toMatchObject({
       garmentIds: [copiedGarment.id],
@@ -352,6 +366,22 @@ describe('wardrobe copy', () => {
     await expect(service.preview(12, 1, 3)).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  it('rejects a wardrobe copy when garment ids cannot be remapped onto the sandbox', async () => {
+    const CopyService = loadCopyService();
+    expect(typeof CopyService).toBe('function');
+    const broken = makeService(CopyService!);
+    broken.sourceOutfit.slots[0].garmentId = 999;
+    await expect(
+      broken.service.copy(7, {
+        sourceUserId: 1,
+        targetUserId: 3,
+        ...COUNTS,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(broken.garmentService.create).toHaveBeenCalled();
+    expect(broken.outfitService.create).not.toHaveBeenCalled();
   });
 });
 

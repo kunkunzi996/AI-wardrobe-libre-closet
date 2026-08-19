@@ -94,7 +94,7 @@
 | 备份导入      | `{ imported, skipped }`                        |
 | 标记验收沙盒  | `{ item: { id, acceptanceSandbox } }`          |
 | 衣橱复制预览  | `{ source, target }`                             |
-| 衣橱复制结果  | `{ complete, copied }`                           |
+| 衣橱复制结果  | `{ complete, copied, matched }`                  |
 | 参数错误      | NestJS `BadRequestException`                   |
 | 未登录/无权限 | `ConditionalAuthGuard` 或 Service 抛错         |
 

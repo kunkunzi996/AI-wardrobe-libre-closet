@@ -102,7 +102,7 @@
     <view class="result-dialog">
       <view class="result-header">
         <text class="result-title">衣橱复制结果</text>
-        <text class="result-state">{{copyResult.complete ? '副本已拷全' : '副本未拷全'}}</text>
+        <text class="result-state">{{copyResult.complete ? '副本已拷全，且对上沙盒衣服' : '副本未拷全或未对上'}}</text>
       </view>
       <view class="result-body">
         <view class="result-grid">
@@ -119,9 +119,18 @@
             <text class="result-label">搭配</text>
           </view>
           <view class="result-metric">
+            <text class="result-value">{{copyResult.copied.calendars}}</text>
+            <text class="result-label">今日穿搭</text>
+          </view>
+          <view class="result-metric">
             <text class="result-value">{{copyResult.copied.feedback}}</text>
             <text class="result-label">反馈</text>
           </view>
+        </view>
+        <view class="copy-matched">
+          <text>搭配槽位对上：{{copyResult.matched.outfitSlotsMapped}}/{{copyResult.matched.outfitSlots}}</text>
+          <text>今日穿搭对上：{{copyResult.matched.calendarsMapped}}/{{copyResult.matched.calendars}}</text>
+          <text>反馈衣物对上：{{copyResult.matched.feedbackGarmentIdsMapped}}/{{copyResult.matched.feedbackGarmentIds}}</text>
         </view>
       </view>
       <button class="result-close" bindtap="closeCopyResult">关闭</button>

@@ -152,32 +152,50 @@ export class WardrobeCopyService {
     }
 
     const outfitIdMap = new Map<number, number>();
+    let outfitSlots = 0;
+    let outfitSlotsMapped = 0;
     for (const outfit of sourceItems.outfits) {
-      const slots = (outfit.slots ?? []).map((slot) => ({
-        category: slot.category,
-        garmentId:
-          slot.garmentId == null
-            ? null
-            : (garmentIdMap.get(slot.garmentId) ?? null),
-      }));
+      const slots = (outfit.slots ?? []).map((slot) => {
+        if (slot.garmentId == null) {
+          return { category: slot.category, garmentId: null };
+        }
+        outfitSlots += 1;
+        const mappedId = this.requireMappedId(
+          garmentIdMap,
+          slot.garmentId,
+          '搭配无法对上沙盒里的衣服',
+        );
+        outfitSlotsMapped += 1;
+        return { category: slot.category, garmentId: mappedId };
+      });
+      const outfitPhotoName = outfit.photo?.fileName?.trim();
+      const copiedOutfitPhoto = outfitPhotoName
+        ? await this.fileService.copyStoredFile(
+            outfitPhotoName,
+            input.targetUserId,
+          )
+        : undefined;
       const created = await this.outfitService.create(
         {
           name: outfit.name,
           notes: outfit.notes,
           slots,
-          photoFileName: outfit.photo?.fileName,
+          photoFileName: copiedOutfitPhoto?.fileName,
         },
         input.targetUserId,
       );
       outfitIdMap.set(outfit.id, created.id);
     }
 
+    let calendarsMapped = 0;
     for (const entry of sourceItems.calendars) {
       const sourceOutfitId = Number((entry.outfit as { id?: number })?.id);
-      const resolvedOutfitId = outfitIdMap.get(sourceOutfitId);
-      if (resolvedOutfitId == null) {
-        throw new BadRequestException('今日穿搭无法对上新的搭配');
-      }
+      const resolvedOutfitId = this.requireMappedId(
+        outfitIdMap,
+        sourceOutfitId,
+        '今日穿搭无法对上新的搭配',
+      );
+      calendarsMapped += 1;
       await this.calendarService.create(
         {
           date: entry.date,
@@ -194,7 +212,29 @@ export class WardrobeCopyService {
       );
     }
 
+    let feedbackGarmentIds = 0;
+    let feedbackGarmentIdsMapped = 0;
     for (const item of sourceItems.feedback) {
+      const garmentIds = (item.garmentIds ?? []).map((id) => {
+        feedbackGarmentIds += 1;
+        const mappedId = this.requireMappedId(
+          garmentIdMap,
+          id,
+          '品味记录无法对上沙盒里的衣服',
+        );
+        feedbackGarmentIdsMapped += 1;
+        return mappedId;
+      });
+      let coreGarmentId: number | undefined;
+      if (item.coreGarmentId != null) {
+        feedbackGarmentIds += 1;
+        coreGarmentId = this.requireMappedId(
+          garmentIdMap,
+          item.coreGarmentId,
+          '品味记录无法对上沙盒里的衣服',
+        );
+        feedbackGarmentIdsMapped += 1;
+      }
       await this.feedbackService.create(
         {
           rating: item.rating,
@@ -202,14 +242,9 @@ export class WardrobeCopyService {
           requestText: item.requestText,
           planTitle: item.planTitle,
           planReason: item.planReason,
-          garmentIds: (item.garmentIds ?? []).map(
-            (id) => garmentIdMap.get(id) ?? id,
-          ),
+          garmentIds,
           source: item.source,
-          coreGarmentId:
-            item.coreGarmentId == null
-              ? undefined
-              : (garmentIdMap.get(item.coreGarmentId) ?? item.coreGarmentId),
+          coreGarmentId,
         },
         input.targetUserId,
       );
@@ -224,6 +259,14 @@ export class WardrobeCopyService {
       calendars: sourceItems.calendars.length,
       feedback: sourceItems.feedback.length,
     };
+    const matched = {
+      outfitSlots,
+      outfitSlotsMapped,
+      calendars: sourceItems.calendars.length,
+      calendarsMapped,
+      feedbackGarmentIds,
+      feedbackGarmentIdsMapped,
+    };
 
     return {
       complete:
@@ -231,8 +274,12 @@ export class WardrobeCopyService {
         copied.photos === actual.photoCount &&
         copied.outfits === actual.outfitCount &&
         copied.calendars === actual.calendarCount &&
-        copied.feedback === actual.feedbackCount,
+        copied.feedback === actual.feedbackCount &&
+        matched.outfitSlotsMapped === matched.outfitSlots &&
+        matched.calendarsMapped === matched.calendars &&
+        matched.feedbackGarmentIdsMapped === matched.feedbackGarmentIds,
       copied,
+      matched,
     };
   }
 
@@ -300,5 +347,17 @@ export class WardrobeCopyService {
 
   private displayName(user: User): string {
     return user.nickname || user.email || `用户 #${user.id}`;
+  }
+
+  private requireMappedId(
+    idMap: Map<number, number>,
+    sourceId: number,
+    message: string,
+  ): number {
+    const mappedId = idMap.get(sourceId);
+    if (mappedId == null) {
+      throw new BadRequestException(message);
+    }
+    return mappedId;
   }
 }

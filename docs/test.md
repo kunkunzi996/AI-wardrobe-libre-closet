@@ -9,10 +9,10 @@
 
 | Asset ID | 名称 | 来源类型 | 定义版本 | TEST 状态 | 对应 TASK | P5 状态 |
 |---|---|---|---:|---|---|---|
-| TEST-001 | marks an empty user as an acceptance sandbox and rejects owners who already have wardrobe data | new | 1 | green | TASK-01a/TASK-01b | not-run |
-| TEST-002 | copies a full wardrobe onto an empty sandbox and leaves the source unchanged | new | 1 | green | TASK-02a/TASK-02b | not-run |
-| TEST-003 | overwrites an existing sandbox wardrobe only after confirmed replace | new | 1 | green | TASK-03a/TASK-03b | not-run |
-| TEST-004 | admin inventory page can mark a sandbox and confirm copy counts | new | 1 | green | TASK-04a/TASK-04b | not-run |
+| TEST-001 | marks an empty user as an acceptance sandbox and rejects owners who already have wardrobe data | new | 1 | green | TASK-01a/TASK-01b | passed |
+| TEST-002 | copies a full wardrobe onto an empty sandbox and leaves the source unchanged | new | 1 | green | TASK-02a/TASK-02b | passed |
+| TEST-003 | overwrites an existing sandbox wardrobe only after confirmed replace | new | 1 | green | TASK-03a/TASK-03b | passed |
+| TEST-004 | admin inventory page can mark a sandbox and confirm copy counts | new | 1 | green | TASK-04a/TASK-04b | passed |
 
 ## TEST Asset · TEST-001 · marks an empty user as an acceptance sandbox and rejects owners who already have wardrobe data
 
@@ -43,7 +43,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-01a） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境`，工作目录见上 | 1 | 6 项中 5 项失败、1 项通过、38 项跳过。失败均为 `setAcceptanceSandbox` 不存在（Expected function, Received undefined）。通过项是 Controller 列表透传 mock 字段。无语法/import/环境错误。 | red |
 | P4 绿灯（TASK-01b） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境`，工作目录见上 | 0 | 原样复跑 TEST-001：2 个套件、6 项通过、38 项跳过。相关基线 `npm test -- --runInBand src/wardrobe/miniapp-admin.service.spec.ts src/wardrobe/miniapp-admin.controller.spec.ts` 退出码 0，44 项全部通过。 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归 | 2026-08-19 | `7e406cb` / `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑：2 个套件、6 项通过、39 项跳过。跳过 +1 来自同文件新增的 wardrobe copy 入口用例，被 `-t "acceptance sandbox"` 过滤。 | passed |
 
 ## TEST Asset · TEST-002 · copies a full wardrobe onto an empty sandbox and leaves the source unchanged
 
@@ -74,7 +74,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-02a） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 1 | 3 项失败、16 项跳过。失败均为 `WardrobeCopyService` / `previewWardrobeCopy` / `copyWardrobeCopy` 不存在（Expected function, Received undefined）。无语法/import/环境错误。 | red |
 | P4 绿灯（TASK-02b） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑 TEST-002：2 个套件、3 项通过、16 项跳过。相关基线管理员与文件单测 49 项通过。 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归 | 2026-08-19 | `7e406cb` / `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑：2 个套件、3 项通过、18 项跳过。跳过 +2 来自同文件新增的 overwrite sandbox 用例，被 `-t "wardrobe copy"` 过滤。 | passed |
 
 ## TEST Asset · TEST-003 · overwrites an existing sandbox wardrobe only after confirmed replace
 
@@ -105,7 +105,7 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-03a） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 1 | 2 项中 1 项失败、1 项通过。通过项：未确认覆盖时已拒绝且旧数据仍在。失败项：`overwrite: true` 后目标仍同时留下旧 ID 99 和新 ID，说明还不会整橱覆盖。无语法/import/环境错误。 | red |
 | P4 绿灯（TASK-03b） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑 TEST-003：2 项通过。复制套件连同管理员入口共 21 项通过。 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归 | 2026-08-19 | `7e406cb` / `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑：2 项通过、2 项跳过。 | passed |
 
 ## TEST Asset · TEST-004 · admin inventory page can mark a sandbox and confirm copy counts
 
@@ -136,15 +136,15 @@
 |---|---|---|---:|---|---|
 | P4 红灯（TASK-04a） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 1 | 脚本列出 14 条缺失：api 未导出标记/预览/复制，页面没有验收沙盒、源/目标选择和拷全结果。现有 `showModal` 与用户卡片 `garmentCount` 不算复制流程。无语法/环境错误。 | red |
 | P4 绿灯（TASK-04b） | 2026-08-19 | `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑 `node scripts/validate-admin-wardrobe-copy.cjs`，输出 Admin wardrobe copy page validation passed。 | green |
-| P5 整体回归 | 尚未执行 | 尚未执行 | 尚未执行 | 尚未执行 | not-run |
+| P5 整体回归 | 2026-08-19 | `7e406cb` / `kunkunzi996/把老婆的仓库copy一份用到测试环境` | 0 | 原样复跑，输出 Admin wardrobe copy page validation passed。 | passed |
 
 ## P5 Current 结果
 
 | 检查 | 工作目录 | 完整命令 | 时间 | 退出码 | 结论 |
 |---|---|---|---|---:|---|
-| 证据预检 | `C:\Users\Administrator\orca\workspaces\Libre-Closet\把老婆的仓库copy一份用到测试环境` | `npm test -- --runInBand src/wardrobe/miniapp-admin.service.spec.ts src/wardrobe/miniapp-admin.controller.spec.ts src/wardrobe/miniapp-wardrobe.controller.spec.ts` | 2026-08-19 | 0 | not-run（上列为改前基线，P5 尚未执行） |
-| Manifest 全量执行 | 同上 | TEST-001~TEST-004 各自完整调用命令 | 尚未执行 | 尚未执行 | not-run |
-| 整体回归 | 同上 | `npm test -- --runInBand` | 尚未执行 | 尚未执行 | not-run |
+| 证据预检 | `C:\Users\Administrator\orca\workspaces\Libre-Closet\把老婆的仓库copy一份用到测试环境` | `npm test -- --runInBand src/wardrobe/miniapp-admin.service.spec.ts src/wardrobe/miniapp-admin.controller.spec.ts src/wardrobe/miniapp-wardrobe.controller.spec.ts` | 2026-08-19 | 0 | passed（3 套件、60 项通过。相对改前基线 53 项，+7 来自本轮新增的验收沙盒与衣橱复制用例） |
+| Manifest 全量执行 | 同上 | TEST-001~TEST-004 各自完整调用命令 | 2026-08-19 | 0 | passed（四条命令均退出码 0；跳过项增加均可由同文件新增用例被 `-t` 过滤解释） |
+| 整体回归 | 同上 | `npm test -- --runInBand` | 2026-08-19 | 0 | passed（40 套件、230 项通过） |
 
-- 适用的其它检查：`npm run test:miniapp` 于 2026-08-19 退出码 `1`，失败属于天气穿搭合同，本轮不把它列为通过门禁。
-- P5 评审门禁：blocked
+- 适用的其它检查：`npm run test:miniapp` 仍不作为本轮通过门禁；PLAN 已写明其失败属于既有天气穿搭合同。
+- P5 评审门禁：ready
