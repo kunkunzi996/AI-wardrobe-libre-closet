@@ -1,6 +1,7 @@
 import { EntityRepository } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -11,6 +12,9 @@ import { ConfigService } from '@nestjs/config';
 import { GarmentVisionService } from '../ai/garment-vision.service';
 import type { GarmentVisionResult } from '../ai/dto/garment-vision-result.dto';
 import { Garment } from '../dal/entity/garment.entity';
+import { Outfit } from '../dal/entity/outfit.entity';
+import { OutfitCalendar } from '../dal/entity/outfit-calendar.entity';
+import { OutfitFeedback } from '../dal/entity/outfit-feedback.entity';
 import { User } from '../dal/entity/user.entity';
 import { GarmentService } from './garment.service';
 import { GARMENT_TAG_TAXONOMY } from './garment-tag-taxonomy';
@@ -31,6 +35,7 @@ export interface MiniappAdminUserSummary {
   nickname: string;
   wechatOpenIdMasked: string;
   garmentCount: number;
+  acceptanceSandbox: boolean;
 }
 
 export type BackfillFailureReason =
@@ -121,7 +126,39 @@ export class MiniappAdminService {
       nickname: user.nickname ?? '',
       wechatOpenIdMasked: this.maskOpenId(user.wechatOpenId),
       garmentCount: garmentCounts.get(user.id) ?? 0,
+      acceptanceSandbox: Boolean(user.acceptanceSandbox),
     }));
+  }
+
+  async setAcceptanceSandbox(
+    adminUserId: number | undefined,
+    targetUserId: number,
+    enabled: boolean,
+  ): Promise<{ id: number; acceptanceSandbox: boolean }> {
+    await this.assertAdmin(adminUserId);
+    const user = await this.userRepository.findOne(targetUserId);
+    if (!user) throw new NotFoundException('用户不存在');
+
+    if (enabled && !user.acceptanceSandbox) {
+      const owner = { owner: { id: targetUserId } };
+      const em = this.userRepository.getEntityManager();
+      const [garmentCount, outfitCount, calendarCount, feedbackCount] =
+        await Promise.all([
+          em.count(Garment, owner),
+          em.count(Outfit, owner),
+          em.count(OutfitCalendar, owner),
+          em.count(OutfitFeedback, owner),
+        ]);
+      if (garmentCount + outfitCount + calendarCount + feedbackCount > 0) {
+        throw new BadRequestException(
+          '已有衣橱数据的用户不能标成验收沙盒',
+        );
+      }
+    }
+
+    user.acceptanceSandbox = enabled;
+    await this.userRepository.getEntityManager().persistAndFlush(user);
+    return { id: user.id, acceptanceSandbox: user.acceptanceSandbox };
   }
 
   async findUserGarments(

@@ -29,6 +29,7 @@ import { MiniappOutfitFeedbackController } from './miniapp-outfit-feedback.contr
 import { OutfitFeedbackService } from './outfit-feedback.service';
 import { MiniappAdminController } from './miniapp-admin.controller';
 import { MiniappAdminService } from './miniapp-admin.service';
+import { WardrobeCopyService } from './wardrobe-copy.service';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { MiniappAdminService } from './miniapp-admin.service';
     MiniappProfileService,
     OutfitFeedbackService,
     MiniappAdminService,
+    WardrobeCopyService,
   ],
   exports: [
     GarmentService,

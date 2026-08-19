@@ -59,6 +59,23 @@ export class LocalFileService extends FileService {
     );
   }
 
+  async copyStoredFile(sourceFileName: string, userId: any): Promise<File> {
+    const source = await this.get(sourceFileName);
+    if (!source) {
+      throw new NotFoundException(sourceFileName);
+    }
+    const extension = path.extname(sourceFileName) || '.webp';
+    const storedFileName = randomUUID() + extension;
+    await this.store(storedFileName, source);
+    const file = this.fileRepository.create({
+      fileName: storedFileName,
+      createdOn: new Date().toISOString(),
+      createdBy: userId,
+    });
+    await this.em.persistAndFlush(file);
+    return file;
+  }
+
   private async storeProcessedImageFromFileUpload(
     upload: MultipartFile | undefined,
     userId: any,

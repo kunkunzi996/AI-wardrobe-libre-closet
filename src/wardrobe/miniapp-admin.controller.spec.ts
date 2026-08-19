@@ -18,16 +18,22 @@ describe('MiniappAdminController', () => {
       listUsers: jest.fn(),
       findUserGarments: jest.fn(),
       backfillUserGarmentTags: jest.fn(),
+      setAcceptanceSandbox: jest.fn(),
     };
     const fileService = {
       get: jest.fn(() => Promise.resolve(Readable.from(tinyPng))),
     };
+    const copyService = {
+      preview: jest.fn(),
+      copy: jest.fn(),
+    };
     const controller = new MiniappAdminController(
       adminService as any,
       fileService as any,
+      copyService as any,
     );
     const req = { user: { userId: 7 } } as any;
-    return { controller, adminService, fileService, req };
+    return { controller, adminService, fileService, copyService, req };
   };
 
   // 只认字符串和数字单元格，其余一律读成空串：这样某列意外写进对象时断言会失败，
@@ -222,5 +228,105 @@ describe('MiniappAdminController', () => {
     await expect(
       controller.backfillUserGarmentTags(12, { limit: 1 }, req),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  describe('acceptance sandbox', () => {
+    it('forwards an enabled mark to the admin service', async () => {
+      const { controller, adminService, req } = makeController();
+      adminService.setAcceptanceSandbox.mockResolvedValue({
+        id: 3,
+        acceptanceSandbox: true,
+      });
+
+      const mark = (
+        controller as {
+          setAcceptanceSandbox?: (
+            id: number,
+            body: { enabled: boolean },
+            req: unknown,
+          ) => Promise<unknown>;
+        }
+      ).setAcceptanceSandbox;
+      expect(typeof mark).toBe('function');
+      await expect(mark!(3, { enabled: true }, req)).resolves.toEqual({
+        item: { id: 3, acceptanceSandbox: true },
+      });
+      expect(adminService.setAcceptanceSandbox).toHaveBeenCalledWith(7, 3, true);
+    });
+
+    it('returns sandbox fields from the user list', async () => {
+      const { controller, adminService, req } = makeController();
+      adminService.listUsers.mockResolvedValue([
+        {
+          id: 3,
+          displayName: '第三只微信',
+          nickname: '第三只微信',
+          wechatOpenIdMasked: 'sand...box',
+          garmentCount: 0,
+          acceptanceSandbox: true,
+        },
+      ]);
+
+      await expect(controller.users(req)).resolves.toEqual({
+        items: [
+          expect.objectContaining({
+            id: 3,
+            acceptanceSandbox: true,
+          }),
+        ],
+      });
+    });
+  });
+
+  describe('wardrobe copy', () => {
+    it('forwards preview and confirmed copy to the copy service', async () => {
+      const { controller, copyService, req } = makeController();
+      copyService.preview.mockResolvedValue({
+        source: { id: 1, garmentCount: 1 },
+        target: { id: 3, acceptanceSandbox: true },
+      });
+      copyService.copy.mockResolvedValue({
+        complete: true,
+        copied: { garments: 1, photos: 1, outfits: 1, calendars: 1, feedback: 1 },
+      });
+
+      const preview = (controller as any).previewWardrobeCopy;
+      const copy = (controller as any).copyWardrobeCopy;
+      expect(typeof preview).toBe('function');
+      expect(typeof copy).toBe('function');
+
+      await expect(preview.call(controller, 1, 3, req)).resolves.toEqual({
+        source: { id: 1, garmentCount: 1 },
+        target: { id: 3, acceptanceSandbox: true },
+      });
+      expect(copyService.preview).toHaveBeenCalledWith(7, 1, 3);
+
+      await expect(
+        copy.call(
+          controller,
+          {
+            sourceUserId: 1,
+            targetUserId: 3,
+            sourceGarmentCount: 1,
+            sourcePhotoCount: 1,
+            sourceOutfitCount: 1,
+            sourceCalendarCount: 1,
+            sourceFeedbackCount: 1,
+          },
+          req,
+        ),
+      ).resolves.toEqual({
+        complete: true,
+        copied: { garments: 1, photos: 1, outfits: 1, calendars: 1, feedback: 1 },
+      });
+      expect(copyService.copy).toHaveBeenCalledWith(
+        7,
+        expect.objectContaining({
+          sourceUserId: 1,
+          targetUserId: 3,
+          sourceGarmentCount: 1,
+        }),
+      );
+    });
   });
 });

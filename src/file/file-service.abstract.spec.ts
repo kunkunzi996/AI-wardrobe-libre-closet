@@ -12,6 +12,14 @@ class TestFileService extends FileService {
     return Promise.reject(new Error('Not implemented'));
   }
 
+  storeOriginalImageFromFileUpload(): Promise<File> {
+    return Promise.reject(new Error('Not implemented'));
+  }
+
+  copyStoredFile(): Promise<File> {
+    return Promise.reject(new Error('Not implemented'));
+  }
+
   async delete(): Promise<void> {}
 
   async deleteById(): Promise<any> {}

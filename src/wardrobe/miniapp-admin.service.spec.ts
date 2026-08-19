@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -48,6 +49,9 @@ describe('MiniappAdminService', () => {
       config?: Record<string, string>;
       garments?: any[];
       users?: any[];
+      outfits?: any[];
+      calendars?: any[];
+      feedback?: any[];
       analyzeImage?: (fileName: string) => Promise<any>;
       backfill?: (id: number, userId: number, analysis: any) => Promise<any>;
     } = {},
@@ -61,14 +65,36 @@ describe('MiniappAdminService', () => {
       { id: 1, owner: { id: 12 } },
       { id: 2, owner: { id: 12 } },
     ];
+    const persistAndFlush = jest.fn(() => Promise.resolve());
+    const countOwned = jest.fn(
+      async (entity: { name?: string }, where?: { owner?: { id?: number } }) => {
+        const ownerId = where?.owner?.id;
+        const ownedBy = (items: Array<{ owner?: { id?: number } }>) =>
+          items.filter((item) => item.owner?.id === ownerId).length;
+        switch (entity?.name) {
+          case 'Garment':
+            return ownedBy(garments);
+          case 'Outfit':
+            return ownedBy(options.outfits ?? []);
+          case 'OutfitCalendar':
+            return ownedBy(options.calendars ?? []);
+          case 'OutfitFeedback':
+            return ownedBy(options.feedback ?? []);
+          default:
+            return 0;
+        }
+      },
+    );
     const userRepository = {
       findOne: jest.fn((id: number) =>
         Promise.resolve(users.find((user) => user.id === id)),
       ),
       find: jest.fn(() => Promise.resolve(users)),
+      getEntityManager: jest.fn(() => ({ persistAndFlush, count: countOwned })),
     };
     const garmentRepository = {
       find: jest.fn(() => Promise.resolve(garments)),
+      getEntityManager: jest.fn(() => ({ persistAndFlush, count: countOwned })),
     };
     const configService = {
       get: jest.fn((key: string) => config[key]),
@@ -106,6 +132,7 @@ describe('MiniappAdminService', () => {
       garmentVisionService,
       garmentService,
       garments,
+      persistAndFlush,
     };
   };
 
@@ -746,6 +773,148 @@ describe('MiniappAdminService', () => {
       analyzedThisRun: 1,
       remainingUnattempted: 1,
       failedItems: [{ id: 1, name: '黑色短袖', reason: 'database-error' }],
+    });
+  });
+
+  describe('acceptance sandbox', () => {
+    it('marks an empty user as an acceptance sandbox and lists the sandbox flag', async () => {
+      const emptyUser = {
+        id: 3,
+        nickname: '第三只微信',
+        wechatOpenId: 'sandbox-openid',
+        acceptanceSandbox: false,
+      };
+      const { service, persistAndFlush } = makeService({
+        config: { MINIAPP_ADMIN_USER_IDS: '7' },
+        users: [
+          { id: 7, nickname: '管理员', wechatOpenId: 'admin-openid' },
+          emptyUser,
+        ],
+        garments: [],
+      });
+
+      const mark = (service as any).setAcceptanceSandbox;
+      expect(typeof mark).toBe('function');
+      await expect(mark.call(service, 7, 3, true)).resolves.toMatchObject({
+        id: 3,
+        acceptanceSandbox: true,
+      });
+      expect(emptyUser.acceptanceSandbox).toBe(true);
+      expect(persistAndFlush).toHaveBeenCalled();
+      await expect(service.listUsers(7)).resolves.toEqual([
+        expect.objectContaining({ id: 7, acceptanceSandbox: false }),
+        expect.objectContaining({ id: 3, acceptanceSandbox: true }),
+      ]);
+    });
+
+    it('rejects owners who already have garments, outfits, calendar entries, or feedback', async () => {
+      const garmentOwner = {
+        id: 12,
+        nickname: '有衣服',
+        wechatOpenId: 'g',
+        acceptanceSandbox: false,
+      };
+      const outfitOwner = {
+        id: 13,
+        nickname: '有搭配',
+        wechatOpenId: 'o',
+        acceptanceSandbox: false,
+      };
+      const calendarOwner = {
+        id: 14,
+        nickname: '有日历',
+        wechatOpenId: 'c',
+        acceptanceSandbox: false,
+      };
+      const feedbackOwner = {
+        id: 15,
+        nickname: '有反馈',
+        wechatOpenId: 'f',
+        acceptanceSandbox: false,
+      };
+      const { service } = makeService({
+        config: { MINIAPP_ADMIN_USER_IDS: '7' },
+        users: [
+          { id: 7, nickname: '管理员', wechatOpenId: 'admin-openid' },
+          garmentOwner,
+          outfitOwner,
+          calendarOwner,
+          feedbackOwner,
+        ],
+        garments: [{ id: 1, owner: { id: 12 } }],
+        outfits: [{ id: 1, owner: { id: 13 } }],
+        calendars: [{ id: 1, owner: { id: 14 } }],
+        feedback: [{ id: 1, owner: { id: 15 } }],
+      });
+
+      const mark = (service as any).setAcceptanceSandbox;
+      expect(typeof mark).toBe('function');
+      await expect(mark.call(service, 7, 12, true)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(mark.call(service, 7, 13, true)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(mark.call(service, 7, 14, true)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(mark.call(service, 7, 15, true)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(garmentOwner.acceptanceSandbox).toBe(false);
+      expect(outfitOwner.acceptanceSandbox).toBe(false);
+      expect(calendarOwner.acceptanceSandbox).toBe(false);
+      expect(feedbackOwner.acceptanceSandbox).toBe(false);
+    });
+
+    it('keeps an existing sandbox marked even after it already has wardrobe data', async () => {
+      const sandbox = {
+        id: 3,
+        nickname: '验收沙盒',
+        wechatOpenId: 'sandbox-openid',
+        acceptanceSandbox: true,
+      };
+      const { service } = makeService({
+        config: { MINIAPP_ADMIN_USER_IDS: '7' },
+        users: [
+          { id: 7, nickname: '管理员', wechatOpenId: 'admin-openid' },
+          sandbox,
+        ],
+        garments: [{ id: 9, owner: { id: 3 } }],
+      });
+
+      const mark = (service as any).setAcceptanceSandbox;
+      expect(typeof mark).toBe('function');
+      await expect(mark.call(service, 7, 3, true)).resolves.toMatchObject({
+        id: 3,
+        acceptanceSandbox: true,
+      });
+      expect(sandbox.acceptanceSandbox).toBe(true);
+    });
+
+    it('rejects non-admin callers before changing any sandbox flag', async () => {
+      const emptyUser = {
+        id: 3,
+        nickname: '第三只微信',
+        wechatOpenId: 'sandbox-openid',
+        acceptanceSandbox: false,
+      };
+      const { service, persistAndFlush } = makeService({
+        config: { MINIAPP_ADMIN_USER_IDS: '7' },
+        users: [
+          { id: 7, nickname: '管理员', wechatOpenId: 'admin-openid' },
+          emptyUser,
+        ],
+        garments: [],
+      });
+
+      const mark = (service as any).setAcceptanceSandbox;
+      expect(typeof mark).toBe('function');
+      await expect(mark.call(service, 12, 3, true)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(emptyUser.acceptanceSandbox).toBe(false);
+      expect(persistAndFlush).not.toHaveBeenCalled();
     });
   });
 });

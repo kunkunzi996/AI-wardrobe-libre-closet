@@ -66,6 +66,8 @@
 .retry-btn,
 .export-btn,
 .backfill-btn,
+.sandbox-btn,
+.copy-btn,
 .result-close {
   border-radius: 18rpx;
 }
@@ -73,6 +75,8 @@
 .retry-btn::after,
 .export-btn::after,
 .backfill-btn::after,
+.sandbox-btn::after,
+.copy-btn::after,
 .result-close::after {
   border: none;
 }
@@ -175,8 +179,91 @@
 }
 
 .export-btn[disabled],
-.backfill-btn[disabled] {
+.backfill-btn[disabled],
+.sandbox-btn[disabled],
+.copy-btn[disabled] {
   opacity: 0.52;
+}
+
+.sandbox-badge,
+.sandbox-btn {
+  margin-top: 10rpx;
+}
+
+.sandbox-badge {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: 10rpx;
+  background: #e8f6f5;
+  color: #2a9d99;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.sandbox-btn {
+  height: 52rpx;
+  margin: 10rpx 0 0;
+  padding: 0 16rpx;
+  background: #6f5ae0;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 52rpx;
+}
+
+.copy-card {
+  margin-top: 8rpx;
+  padding: 28rpx;
+  border-radius: 24rpx;
+  background: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(34, 26, 58, 0.05);
+}
+
+.copy-title,
+.copy-hint,
+.copy-picker,
+.copy-preview text {
+  display: block;
+}
+
+.copy-title {
+  color: #221c3a;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.copy-hint {
+  margin-top: 8rpx;
+  color: #6b6580;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+.copy-picker {
+  margin-top: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  background: #f5f3fa;
+  color: #221c3a;
+  font-size: 26rpx;
+}
+
+.copy-preview {
+  margin-top: 16rpx;
+  color: #4e4960;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.copy-btn {
+  height: 72rpx;
+  margin-top: 22rpx;
+  background: #6f5ae0;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 72rpx;
 }
 
 .result-mask {

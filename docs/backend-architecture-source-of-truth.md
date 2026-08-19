@@ -75,6 +75,8 @@
 - 小程序用户隔离必须带 `userId`，有登录用户时查 `owner.id`，无登录模式只查 `owner=null`。
 - 管理员库存导出不新增角色表，使用 `MINIAPP_ADMIN_USER_IDS` / `MINIAPP_ADMIN_WECHAT_OPEN_IDS` 环境变量做白名单；管理员接口读取其他用户库存时必须先校验当前 JWT 用户是否在白名单内。
 - 管理员补标签接口为 `POST /api/miniapp/admin/users/:id/garments/backfill-tags`。它只允许白名单管理员调用，按目标用户隔离并对同一目标用户加进程内运行锁；本版本的正式试点范围仅为老婆账号。
+- 管理员标记验收沙盒接口为 `POST /api/miniapp/admin/users/:id/acceptance-sandbox`。只允许白名单管理员调用；目标用户尚不是沙盒且已有衣物、搭配、今日穿搭或反馈时拒绝标记。
+- 管理员衣橱复制预览为 `GET /api/miniapp/admin/wardrobe-copy/preview`，执行为 `POST /api/miniapp/admin/wardrobe-copy`。只允许白名单管理员调用；目标必须已是验收沙盒；确认件数必须与源一致；照片通过 `FileService.copyStoredFile` 复制，不走抠图。
 
 ## 9. 接口响应规则
 
@@ -90,6 +92,9 @@
 | 今日穿搭保存  | `{ item: {...} }`                              |
 | 删除成功      | `{ ok: true }`                                 |
 | 备份导入      | `{ imported, skipped }`                        |
+| 标记验收沙盒  | `{ item: { id, acceptanceSandbox } }`          |
+| 衣橱复制预览  | `{ source, target }`                             |
+| 衣橱复制结果  | `{ complete, copied }`                           |
 | 参数错误      | NestJS `BadRequestException`                   |
 | 未登录/无权限 | `ConditionalAuthGuard` 或 Service 抛错         |
 

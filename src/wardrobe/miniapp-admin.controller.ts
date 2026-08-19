@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -29,9 +30,17 @@ import {
   BACKFILL_LIMIT_MAX,
   MiniappAdminService,
 } from './miniapp-admin.service';
+import {
+  WardrobeCopyCounts,
+  WardrobeCopyService,
+} from './wardrobe-copy.service';
 
 type BackfillTagsBody = {
   limit?: unknown;
+};
+
+type AcceptanceSandboxBody = {
+  enabled?: unknown;
 };
 
 @UseGuards(ConditionalAuthGuard)
@@ -40,12 +49,50 @@ export class MiniappAdminController {
   constructor(
     private readonly adminService: MiniappAdminService,
     private readonly fileService: FileService,
-  ) {}
+    private readonly copyService: WardrobeCopyService,
+  ) {
+    this.setAcceptanceSandbox = this.setAcceptanceSandbox.bind(this);
+  }
 
   @Get('users')
   async users(@Req() req: FastifyRequest) {
     const items = await this.adminService.listUsers(this.userId(req));
     return { items };
+  }
+
+  @Post('users/:id/acceptance-sandbox')
+  async setAcceptanceSandbox(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AcceptanceSandboxBody = {},
+    @Req() req: FastifyRequest,
+  ) {
+    const item = await this.adminService.setAcceptanceSandbox(
+      this.userId(req),
+      id,
+      body.enabled === true,
+    );
+    return { item };
+  }
+
+  @Get('wardrobe-copy/preview')
+  async previewWardrobeCopy(
+    @Query('sourceUserId', ParseIntPipe) sourceUserId: number,
+    @Query('targetUserId', ParseIntPipe) targetUserId: number,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.copyService.preview(
+      this.userId(req),
+      sourceUserId,
+      targetUserId,
+    );
+  }
+
+  @Post('wardrobe-copy')
+  async copyWardrobeCopy(
+    @Body() body: WardrobeCopyCounts,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.copyService.copy(this.userId(req), body);
   }
 
   @Get('users/:id/garments')

@@ -459,6 +459,30 @@ module.exports = {
       '/garments/export.xlsx'
     );
   },
+  setAdminAcceptanceSandbox: function (userId, enabled) {
+    return request(
+      '/api/miniapp/admin/users/' + userId + '/acceptance-sandbox',
+      {
+        method: 'POST',
+        data: { enabled: enabled === true },
+      },
+    );
+  },
+  previewAdminWardrobeCopy: function (sourceUserId, targetUserId) {
+    return request(
+      '/api/miniapp/admin/wardrobe-copy/preview?sourceUserId=' +
+        sourceUserId +
+        '&targetUserId=' +
+        targetUserId,
+    );
+  },
+  copyAdminWardrobe: function (payload) {
+    return request('/api/miniapp/admin/wardrobe-copy', {
+      method: 'POST',
+      data: payload,
+      timeout: 120000,
+    });
+  },
   adminExcelHeaders: function () {
     return loginMiniapp().then(function () {
       return tokenHeader();

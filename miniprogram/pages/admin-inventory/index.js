@@ -5,9 +5,18 @@ Page({
     loading: false,
     exportingUserId: null,
     backfillingUserId: null,
+    markingUserId: null,
     backfillResult: null,
+    copyResult: null,
+    copying: false,
     error: '',
     users: [],
+    sandboxUsers: [],
+    sourceUserId: '',
+    targetUserId: '',
+    sourceIndex: 0,
+    targetIndex: 0,
+    preview: null,
   },
 
   onLoad() {
@@ -26,7 +35,14 @@ Page({
     return api
       .getAdminUsers()
       .then(function (res) {
-        page.setData({ users: res.items || [] });
+        const users = res.items || [];
+        const sandboxUsers = users.filter(function (item) {
+          return item.acceptanceSandbox;
+        });
+        page.setData({
+          users: users,
+          sandboxUsers: sandboxUsers,
+        });
       })
       .catch(function (error) {
         page.setData({
@@ -40,6 +56,138 @@ Page({
 
   retryLoad() {
     this.loadUsers();
+  },
+
+  markAcceptanceSandbox(event) {
+    const userId = Number(event.currentTarget.dataset.id);
+    if (!userId || this.data.markingUserId || this.data.copying) return;
+    const page = this;
+    this.setData({ markingUserId: userId });
+    api
+      .setAdminAcceptanceSandbox(userId, true)
+      .then(function () {
+        wx.showToast({ title: '已标为验收沙盒', icon: 'success' });
+        return page.loadUsers();
+      })
+      .catch(function (error) {
+        wx.showModal({
+          title: '无法标为验收沙盒',
+          content: error.message || '已有衣橱数据的用户不能标成沙盒',
+          showCancel: false,
+        });
+      })
+      .finally(function () {
+        page.setData({ markingUserId: null });
+      });
+  },
+
+  onSourceChange(event) {
+    const index = Number(event.detail.value);
+    const user = (this.data.users || [])[index];
+    this.setData({
+      sourceIndex: index,
+      sourceUserId: user ? user.id : '',
+      preview: null,
+    });
+  },
+
+  onTargetChange(event) {
+    const index = Number(event.detail.value);
+    const user = (this.data.sandboxUsers || [])[index];
+    this.setData({
+      targetIndex: index,
+      targetUserId: user ? user.id : '',
+      preview: null,
+    });
+  },
+
+  previewAndCopy() {
+    const sourceUserId = Number(this.data.sourceUserId);
+    const targetUserId = Number(this.data.targetUserId);
+    if (!sourceUserId || !targetUserId || this.data.copying) return;
+    const page = this;
+    this.setData({ copying: true, error: '' });
+    api
+      .previewAdminWardrobeCopy(sourceUserId, targetUserId)
+      .then(function (preview) {
+        page.setData({ preview: preview });
+        const source = preview.source || {};
+        const target = preview.target || {};
+        const overwrite =
+          Number(target.garmentCount || 0) +
+            Number(target.outfitCount || 0) +
+            Number(target.calendarCount || 0) +
+            Number(target.feedbackCount || 0) >
+          0;
+        const lines = [
+          '源：' + (source.displayName || sourceUserId),
+          '目标：' + (target.displayName || targetUserId),
+          '衣物 ' + (source.garmentCount || 0) + ' / 照片 ' + (source.photoCount || 0),
+          '搭配 ' +
+            (source.outfitCount || 0) +
+            ' / 今日穿搭 ' +
+            (source.calendarCount || 0) +
+            ' / 反馈 ' +
+            (source.feedbackCount || 0),
+        ];
+        if (overwrite) {
+          lines.push('目标已有副本，确认后将整橱覆盖。');
+        }
+        wx.showModal({
+          title: '确认复制衣橱',
+          content: lines.join('\n'),
+          confirmText: overwrite ? '确认覆盖' : '开始复制',
+          success: function (modal) {
+            if (!modal.confirm) return;
+            page.runCopy(sourceUserId, targetUserId, source, overwrite);
+          },
+        });
+      })
+      .catch(function (error) {
+        wx.showModal({
+          title: '无法预览',
+          content: error.message || '请稍后重试',
+          showCancel: false,
+        });
+      })
+      .finally(function () {
+        if (!page.data.copyResult) page.setData({ copying: false });
+      });
+  },
+
+  runCopy(sourceUserId, targetUserId, source, overwrite) {
+    const page = this;
+    this.setData({ copying: true });
+    api
+      .copyAdminWardrobe({
+        sourceUserId: sourceUserId,
+        targetUserId: targetUserId,
+        sourceGarmentCount: source.garmentCount || 0,
+        sourcePhotoCount: source.photoCount || 0,
+        sourceOutfitCount: source.outfitCount || 0,
+        sourceCalendarCount: source.calendarCount || 0,
+        sourceFeedbackCount: source.feedbackCount || 0,
+        overwrite: overwrite === true,
+      })
+      .then(function (result) {
+        page.setData({
+          copyResult: result,
+          copying: false,
+        });
+        return page.loadUsers();
+      })
+      .catch(function (error) {
+        page.setData({ copying: false });
+        wx.showModal({
+          title: '复制未完成',
+          content: error.message || '源衣橱未被改动，请稍后重试',
+          showCancel: false,
+        });
+      });
+  },
+
+  closeCopyResult() {
+    this.setData({ copyResult: null });
   },
 
   exportUserInventory(event) {

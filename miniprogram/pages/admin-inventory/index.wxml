@@ -1,7 +1,7 @@
 <view class="admin-page">
   <view class="header">
     <text class="title">库存管理</text>
-    <text class="subtitle">按用户查看库存、导出与补标签</text>
+    <text class="subtitle">按用户查看库存、导出、补标签，并把衣橱复制到验收沙盒</text>
   </view>
 
   <view wx:if="{{error}}" class="notice error-card">
@@ -24,6 +24,17 @@
         <text class="user-name">{{item.displayName}}</text>
         <text class="user-meta">用户ID: {{item.id}}</text>
         <text wx:if="{{item.wechatOpenIdMasked}}" class="user-meta">微信: {{item.wechatOpenIdMasked}}</text>
+        <text wx:if="{{item.acceptanceSandbox}}" class="sandbox-badge">验收沙盒</text>
+        <button
+          wx:else
+          class="sandbox-btn"
+          loading="{{markingUserId === item.id}}"
+          disabled="{{copying}}"
+          data-id="{{item.id}}"
+          bindtap="markAcceptanceSandbox"
+        >
+          设为验收沙盒
+        </button>
       </view>
       <view class="user-side">
         <text class="count">{{item.garmentCount}}</text>
@@ -47,6 +58,73 @@
           AI补标签
         </button>
       </view>
+    </view>
+
+    <view class="copy-card">
+      <text class="copy-title">衣橱复制</text>
+      <text class="copy-hint">先选源衣橱和验收沙盒，确认件数后再写入。</text>
+      <picker
+        mode="selector"
+        range="{{users}}"
+        range-key="displayName"
+        value="{{sourceIndex}}"
+        bindchange="onSourceChange"
+      >
+        <view class="copy-picker">源 sourceUserId：{{sourceUserId || '未选'}}</view>
+      </picker>
+      <picker
+        mode="selector"
+        range="{{sandboxUsers}}"
+        range-key="displayName"
+        value="{{targetIndex}}"
+        bindchange="onTargetChange"
+      >
+        <view class="copy-picker">沙盒 targetUserId：{{targetUserId || '未选'}}</view>
+      </picker>
+      <view wx:if="{{preview}}" class="copy-preview">
+        <text>源衣物 garmentCount：{{preview.source.garmentCount}}</text>
+        <text>源照片：{{preview.source.photoCount}} 源搭配：{{preview.source.outfitCount}}</text>
+        <text>今日穿搭：{{preview.source.calendarCount}} 反馈：{{preview.source.feedbackCount}}</text>
+        <text>目标现有衣物：{{preview.target.garmentCount}}</text>
+      </view>
+      <button
+        class="copy-btn"
+        loading="{{copying}}"
+        disabled="{{copying || !sourceUserId || !targetUserId}}"
+        bindtap="previewAndCopy"
+      >
+        预览并复制
+      </button>
+    </view>
+  </view>
+
+  <view wx:if="{{copyResult}}" class="result-mask">
+    <view class="result-dialog">
+      <view class="result-header">
+        <text class="result-title">衣橱复制结果</text>
+        <text class="result-state">{{copyResult.complete ? '副本已拷全' : '副本未拷全'}}</text>
+      </view>
+      <view class="result-body">
+        <view class="result-grid">
+          <view class="result-metric">
+            <text class="result-value">{{copyResult.copied.garments}}</text>
+            <text class="result-label">衣物</text>
+          </view>
+          <view class="result-metric">
+            <text class="result-value">{{copyResult.copied.photos}}</text>
+            <text class="result-label">照片</text>
+          </view>
+          <view class="result-metric">
+            <text class="result-value">{{copyResult.copied.outfits}}</text>
+            <text class="result-label">搭配</text>
+          </view>
+          <view class="result-metric">
+            <text class="result-value">{{copyResult.copied.feedback}}</text>
+            <text class="result-label">反馈</text>
+          </view>
+        </view>
+      </view>
+      <button class="result-close" bindtap="closeCopyResult">关闭</button>
     </view>
   </view>
 

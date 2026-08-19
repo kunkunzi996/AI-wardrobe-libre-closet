@@ -48,6 +48,7 @@ export abstract class FileService implements FileServiceInterface {
     userId: any,
     fileName?: string,
   ): Promise<File>;
+  abstract copyStoredFile(sourceFileName: string, userId: any): Promise<File>;
   abstract delete(fileName: string): Promise<void>;
 
   async storeNobgVariantFromStream(

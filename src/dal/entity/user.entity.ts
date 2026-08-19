@@ -38,6 +38,9 @@ export class User extends ShareableId {
   @Property({ nullable: true })
   public nickname?: string;
 
+  @Property({ default: false })
+  public acceptanceSandbox = false;
+
   @Property({ type: 'text', nullable: true })
   public bio?: string;
 
