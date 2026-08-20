@@ -81,9 +81,9 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 
 当前可用状态：
 
-- **生产环境**：`https://aimatchwear.asia` 正常服务，生产业务代码基线为 `52d124c`（2026-08-18 服务器本地构建）。候选镜像 `ai-wardrobe:candidate-52d124c`，回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`，停机备份 `/root/ai-wardrobe-backup-20260818T031559Z`。
-- **本轮功能**：小程序结构化标签穿搭与天气已部署。P6 可验项已于 2026-08-18 收口；2026-08-19 用户确认剩余项不再补验，补验窗口关闭。结论见 `docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。无用户拍板 FAIL；非正式启用。
-- **轮次文档**：当前无活跃 `docs/spec.md` / `plan.md` / `task.md` / `test.md`。已冻结在 `docs/archive/2026-08-18-小程序穿搭出口与调用模式收敛/`。
+- **生产环境**：`https://aimatchwear.asia` 正常服务，生产业务代码基线为 `f12563b`（2026-08-19 服务器本地构建，镜像 `ai-wardrobe:candidate-f12563b` / `3a57481e4c89`）。上一业务镜像 `ai-wardrobe:rollback-52d124c-live-20260819`（`7f00f77c5cae`）。更早回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`（`c0a6043b4588`）保留未改。本次停机备份 `/root/ai-wardrobe-backup-20260819T141659Z`。
+- **本轮功能**：管理员可将衣橱整橱复制到验收沙盒。P6 用户已确认：第三只微信（ID 4）标成沙盒、从老婆号（ID 3）拷全且编号对上沙盒新衣物、ID 3 内容未少。非正式启用。整橱覆盖路径本轮未再验。
+- **轮次文档**：衣橱复制的 `docs/spec.md` / `plan.md` / `task.md` / `test.md` 仍在仓库根 docs 下，尚未洁癖归档。上一轮穿搭文档冻结在 `docs/archive/2026-08-18-小程序穿搭出口与调用模式收敛/`。
 - **小程序体验版**：仍为 `1.0.1`（2026-07-12）。用户只要自己预览，未上传新体验版；老婆手机仍是旧包。
 - **数据隔离**：微信登录 + 按 `openid` 隔离已验收。本轮双账号串衣未再验。
 - **补标**：困困子账号仍剩 11 件未补标（硬约束 8 未满足）。
@@ -92,20 +92,20 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 最新已验收功能提交为：
 
 ```text
-52d124c 合并：小程序结构化标签穿搭消费与天气模块实测契约修复（PR #5）
+f12563b fix: 关闭衣橱复制评审三项阻断
 ```
 
 最新主分支部署验收提交为：
 
 ```text
-52d124c 合并：小程序结构化标签穿搭消费与天气模块实测契约修复（PR #5）
+f12563b（服务器本地构建 candidate-f12563b；GitHub main 随后快进合并）
 ```
 
-> 说明：`52d124c` 于 2026-08-18 通过**服务器本地构建**部署。上一业务基线是 2026-08-11 的 `4bc13bcd`（日志脱敏与密钥轮换）。小程序前端自 `a5c1fdd` 起的改动仍未上传体验版。
+> 说明：`f12563b` 于 2026-08-19 通过**服务器本地构建**部署。上一业务基线是 2026-08-18 的 `52d124c`。小程序前端自 `a5c1fdd` 起的改动仍未上传体验版。
 
 ## 当前阶段
 
-阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收 / AI 搭配反馈导出和管理员库存导出 已完成服务器部署和微信开发者工具验收 / 衣物结构化标签库 已完成生产部署和微信开发者工具验收 / 衣物表单折叠选择框改版 已验收并合入 main（纯前端，无需部署，未传体验版）/ 存量衣物 AI 补标签 已完成 4 件生产试点（困困子账号剩 11 件）/ AI 客观标签白名单、请求日志脱敏与生产密钥轮换 已完成部署和安全验收（`4bc13bcd`）/ 小程序结构化标签穿搭与天气已部署（`52d124c`），P6 可验项已收口、补验窗口已于 2026-08-19 关闭（非正式启用）
+阶段：MVP 完成 / 体验版微信登录隔离已验收 / Qwen 3.7 识图升级已验收 / 重复衣物入库提醒已验收 / 重复判断结构化细化 V2.1 已验收 / 查看类似衣服 已验收 / 前端换肤方案B柔彩卡片 已验收并合入 main（未传体验版）/ 手动添加今日穿搭 已验收并合入 main / 今日穿搭删除 已完成服务器部署和微信开发者工具验收 / 今日穿搭修改 已完成服务器部署和微信开发者工具验收 / AI 搭配反馈导出和管理员库存导出 已完成服务器部署和微信开发者工具验收 / 衣物结构化标签库 已完成生产部署和微信开发者工具验收 / 衣物表单折叠选择框改版 已验收并合入 main（纯前端，无需部署，未传体验版）/ 存量衣物 AI 补标签 已完成 4 件生产试点（困困子账号剩 11 件）/ AI 客观标签白名单、请求日志脱敏与生产密钥轮换 已完成部署和安全验收（`4bc13bcd`）/ 小程序结构化标签穿搭与天气已部署（`52d124c`），P6 可验项已收口、补验窗口已于 2026-08-19 关闭（非正式启用）/ 衣橱复制到验收沙盒已完成生产部署和用户验收（`f12563b`，非正式启用）
 
 后端骨架验收状态：已验收（2026-06-19，后端验收官通过）
 
@@ -143,6 +143,7 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 - 重复判断结构化细化 V2 / V2.1：已通过服务器部署和微信开发者工具体验版验收，系统现在会结合口袋、胸前标识类型/位置/文字等结构化字段来判断是否重复，并降低“共同缺少特征”导致的误报
 - 查看类似衣服：当系统识别出相似衣物时，表单页会提供“查看类似衣服”入口，用户可以把本次新增衣服和库存里的相似衣物放在一起对比后，再决定是否继续录入
 - 后端架构基线：已补齐 `docs/backend-architecture-source-of-truth.md`，后续业务开发必须遵守 Controller / Service / Entity / Guard / Config 分层规则
+- 衣橱复制到验收沙盒：管理员可把空用户标成验收沙盒（困困子/老婆等已有衣橱数据的号不能新标），确认件数后把源衣橱的衣物、照片、标签、搭配、今日穿搭和反馈拷成独立副本；源只读。已在生产拷过老婆号 → 第三只微信（ID 4）。非正式启用。整橱覆盖能力代码在，本轮未再验。
 
 ## 关键入口
 
@@ -155,7 +156,7 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 - `miniprogram/pages/daily-outfit/index.*`：今日穿搭
 - `miniprogram/pages/add-outfit/index.*`：手动添加今日穿搭，全身照必填，衣柜单品可选
 - `miniprogram/pages/profile/index.*`：我的页面、反馈数据导出入口、管理员库存导出入口
-- `miniprogram/pages/admin-inventory/index.*`：管理员库存导出页面，按用户导出当前库存 Excel
+- `miniprogram/pages/admin-inventory/index.*`：管理员库存导出、验收沙盒标记、衣橱复制预览与拷全结果
 - `miniprogram/utils/api.js`：小程序登录、token 保存、所有 API 请求头
 
 后端入口：
@@ -166,15 +167,16 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 - `src/wardrobe/miniapp-wardrobe.controller.ts`：小程序衣物 API、AI 分析、备份导入导出
 - `src/wardrobe/miniapp-outfit.controller.ts`：小程序搭配推荐 API
 - `src/wardrobe/miniapp-daily-outfit.controller.ts`：小程序今日穿搭 API
-- `src/wardrobe/miniapp-admin.controller.ts`：小程序管理员用户列表 / 用户库存导出 API
-- `src/wardrobe/miniapp-admin.service.ts`：管理员白名单校验、用户列表、按用户读取库存
+- `src/wardrobe/miniapp-admin.controller.ts`：小程序管理员用户列表 / 用户库存导出 / 验收沙盒标记 / 衣橱复制预览与复制 API
+- `src/wardrobe/miniapp-admin.service.ts`：管理员白名单校验、用户列表、按用户读取库存、验收沙盒标记
+- `src/wardrobe/wardrobe-copy.service.ts`：衣橱整橱复制与覆盖
 - `src/wardrobe/miniapp-outfit-feedback.controller.ts`：AI 搭配反馈保存 / 导出 API
 - `src/wardrobe/outfit-feedback.service.ts`：反馈保存与按用户查询
 - `src/dal/entity/outfit-feedback.entity.ts`：反馈数据表实体
 - `src/wardrobe/recommendation/outfit-generator.service.ts`：穿搭推荐生成
 - `src/ai/outfit-ai.service.ts`：AI 搭配提示词与返回结果规范
 - `src/ai/garment-vision.service.ts`：衣物图片识别
-- `src/file/file-service.abstract.ts`：图片标准化与阿里云抠图
+- `src/file/file-service.abstract.ts`：图片标准化、阿里云抠图、`copyStoredFile` 复制已存照片（复制衣橱不走抠图）
 
 ## 生产服务器
 
@@ -199,7 +201,7 @@ port: 127.0.0.1:3000->3000
 volume: ai_wardrobe_data:/app/data
 ```
 
-最近一次生产服务器验收：2026-08-18，`52d124c` 已通过服务器本地构建部署；回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`，备份 `/root/ai-wardrobe-backup-20260818T031559Z`。上一次安全修复基线为 2026-08-11 的 `4bc13bcd`（镜像 `sha256:c0a6043b...`）。
+最近一次生产服务器验收：2026-08-19，`f12563b` 已通过服务器本地构建部署；在跑镜像 `ai-wardrobe:candidate-f12563b`。切前业务回滚点 `ai-wardrobe:rollback-52d124c-live-20260819`，更早回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z` 保留。本次备份 `/root/ai-wardrobe-backup-20260819T141659Z`。上一次业务基线为 2026-08-18 的 `52d124c`。
 
 ### 服务器规格与已知约束（2026-08-06 实测）
 
@@ -207,7 +209,7 @@ volume: ai_wardrobe_data:/app/data
 - 已配置 **4GB swapfile**（`/swapfile`，已写入 `/etc/fstab` 并实测重挂），`vm.swappiness=10`（已写入 `/etc/sysctl.conf`）。加 Swap 前为 0，任何内存尖峰都可能触发 OOM Killer 杀掉生产容器。
 - **服务器到 GitHub 的链路基本不通**：连测 3 次 `github.com` 全部 20 秒超时；而 `registry.npmjs.org` 正常（0.7~1.3 秒）。所有依赖 GitHub 的环节都会卡：Releases 上的预编译二进制、`git fetch`、GitHub Actions 的镜像包传输。
 - 因此仓库变量 **`AUTO_DEPLOY_MAIN` 已于 2026-08-06 置为 `false`**，推 `main` 不再自动部署。需要部署时手动触发工作流，或走服务器本地构建（步骤见 `docs/github-actions-auto-deploy.md`）。
-- 镜像标签约定：`ai-wardrobe:latest` 为在跑版本，`candidate-<sha>` 为待验证构建产物，`rollback-<sha>` 为回滚点。当前回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`。
+- 镜像标签约定：`ai-wardrobe:latest` 为在跑版本，`candidate-<sha>` 为待验证构建产物，`rollback-<sha>` 为回滚点。当前在跑 `candidate-f12563b`（与 `latest` 同镜像）。切回上一业务版用 `rollback-52d124c-live-20260819`；更早点 `rollback-52d124c-20260818T031630Z` 仍保留。
 - 清理 Docker 垃圾只用 `docker image prune`（删无标签镜像）；**不要用 `docker builder prune`**，那会清掉构建层缓存，导致下次构建重新耗时约 47 分钟。
 
 GitHub Actions 自动部署工作流 `.github/workflows/deploy-main.yml` 仍然可用：推送 `main` 会先执行 `npm run test:miniapp` 和 `npm run build`；部署环节由 `if: github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY_MAIN == 'true'` 控制。镜像在 GitHub runner 上构建后 `docker save` 打包传到服务器 `docker load`，服务器不重新构建。配置与排查见 `docs/github-actions-auto-deploy.md`。
@@ -361,13 +363,14 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：小程序结构化标签穿搭与天气已部署在 `52d124c`。P6 可验项已收口；2026-08-19 补验窗口已关闭，剩余项维持 SPEC GAP / 本轮不验。非正式启用。体验版仍为 `1.0.1`。困困子账号剩 11 件未补标。
+- 当前状态：衣橱复制到验收沙盒已部署 `f12563b` 并通过用户验收（非正式启用）。上一轮穿搭 P6 补验窗口仍关闭。体验版仍为 `1.0.1`。困困子账号剩 11 件未补标。沙盒为用户 ID 4，已有老婆衣橱副本 143 件。
 - 建议任务：
+  - 需要时再做洁癖门归档本轮 `docs/spec.md` / `plan.md` / `task.md` / `test.md`（当前 `test.md` 定义哈希仍为 planned，归档前要先补）。
+  - 整橱覆盖路径如需验收，对已有沙盒再拷一次并确认只剩新副本。
   - 继续「存量衣物 AI 补标签」——还剩 11 件；扩大前先确认数量和可用备份。
-  - 几天后确认日切正常，再决定是否删 `/root/ai-wardrobe-app.log.bak-20260818T125420Z`。
-  - 体验版按 2026-08-18 / 2026-08-19 决定先不上传，老婆维持 `1.0.1`。
-  - 不要重开 P6 补验，也不要把「本轮不验」改成 PASS。
-- 继续文件：优先看 `PROJECT_STATE.md`、`docs/p6-miniapp-outfit-acceptance-2026-08-18.md`、`docs/backend-architecture-source-of-truth.md`。
+  - 体验版按既有决定先不上传，老婆维持 `1.0.1`。
+  - 不要宣布新版穿搭正式启用。
+- 继续文件：优先看 `PROJECT_STATE.md`、`docs/PROJECT_LOG.md`、`docs/backend-architecture-source-of-truth.md`。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 小程序表单改动前必须知道：衣物表单的字段选择框由 `miniprogram/pages/garment-form/index.js` 里的 `fieldSelectorConfigs` 驱动（决定每个字段单选/多选、选项来自本地常量还是标签库）；`buildFieldGroups` 每次都从当前 `form` 值重建视图模型，所以 AI 回显、编辑回显、批量导入三条路径都能自动同步。改这里时**不要动提交格式**：单值字段是字符串，季节/风格/场景是「、」拼接串，后端靠 `GarmentService.normalizeTags` 拆数组。
 - 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在；`.github/workflows/deploy-main.yml` 尚未具备本轮人工部署使用的 SQLite WAL 停机备份、候选验证和回滚门禁，`AUTO_DEPLOY_MAIN` 在单独加固验收前必须保持 `false`。

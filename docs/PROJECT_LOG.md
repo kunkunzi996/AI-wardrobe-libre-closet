@@ -6,6 +6,10 @@ This document is intended for the maintaining team to use to document decisions.
 >
 > The team agrees to _BLANK_ project business decision(s)...
 
+## 2026-08-20
+
+衣橱复制到验收沙盒已完成生产部署和用户验收。功能提交 `7e406cb` / `f12563b`，生产以服务器本地构建部署为 `ai-wardrobe:candidate-f12563b`。用户在库存页把第三只微信（用户 ID 4）标成验收沙盒，从老婆号（ID 3，143 件）确认复制到该沙盒；沙盒得到独立副本（衣物 ID 238～380），AI 搭配引用的是沙盒新 ID（如连衣裙 380 / 外套 365），对应源 ID 为 235 / 219。用户确认 ID 3 内容未少。非正式启用；整橱覆盖路径本轮未再验。轮次文档仍在 `docs/spec.md` / `plan.md` / `task.md` / `test.md`，尚未做洁癖归档。
+
 ## 2026-08-19
 
 P6 补验窗口关闭。用户确认剩余未验项不再补验：P6-08 / P6-12 坐标精度维持 SPEC GAP；P6-09 空衣橱、P6-10 待洗提醒、P6-11 网页端、P6-12 双账号维持本轮不验。未改原十三条结论，未宣布正式启用，体验版仍 `1.0.1`。详见 `docs/p6-miniapp-outfit-acceptance-2026-08-18.md`。
