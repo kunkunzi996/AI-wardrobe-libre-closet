@@ -23,7 +23,7 @@
 - 历史来源：无
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-20 洁癖门将 planned 占位改为未记录，口径同 2026-08-18 归档）
 - 覆盖条目：MVP-01、AC-01、HC-02、HC-03、EX-01
 - Test Seam：`MiniappAdminService.setAcceptanceSandbox` / `listUsers`，以及 `MiniappAdminController` 标记入口
 - 测试定义载体：`src/wardrobe/miniapp-admin.service.spec.ts`、`src/wardrobe/miniapp-admin.controller.spec.ts`
@@ -54,7 +54,7 @@
 - 历史来源：无
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-20 洁癖门将 planned 占位改为未记录，口径同 2026-08-18 归档）
 - 覆盖条目：MVP-02、MVP-03、MVP-05、AC-02、AC-03、AC-05、EX-01、EX-03、EX-04、HC-01、HC-04、HC-06、HC-07
 - Test Seam：`WardrobeCopyService.preview` / `copy`，以及管理员复制入口
 - 测试定义载体：`src/wardrobe/wardrobe-copy.service.spec.ts`、`src/wardrobe/miniapp-admin.controller.spec.ts`
@@ -85,7 +85,7 @@
 - 历史来源：无
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-20 洁癖门将 planned 占位改为未记录，口径同 2026-08-18 归档）
 - 覆盖条目：MVP-04、AC-04、EX-02、HC-05
 - Test Seam：`WardrobeCopyService.copy`
 - 测试定义载体：`src/wardrobe/wardrobe-copy.service.spec.ts`
@@ -116,7 +116,7 @@
 - 历史来源：无
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：未记录（本项目未建立定义哈希机制，以测试名称加文件路径作为身份；2026-08-20 洁癖门将 planned 占位改为未记录，口径同 2026-08-18 归档）
 - 覆盖条目：MVP-01、MVP-03、MVP-05、HC-08
 - Test Seam：`scripts/validate-admin-wardrobe-copy.cjs`
 - 测试定义载体：`scripts/validate-admin-wardrobe-copy.cjs`
@@ -148,3 +148,15 @@
 
 - 适用的其它检查：`npm run test:miniapp` 仍不作为本轮通过门禁；PLAN 已写明其失败属于既有天气穿搭合同。
 - P5 评审门禁：ready
+
+## P6 用户验收
+
+| 项 | 结论 | 证据 |
+|---|---|---|
+| AC-01 第三只微信标成沙盒；困困子/老婆不标 | 用户确认已标 ID 4；未对 ID 1 / ID 3 执行标记 | 库存页操作；库内 `user 4 sandbox=1`，`user 1/3 sandbox=0` |
+| AC-02 拷全且对上沙盒衣服 | 用户确认复制成功；库内沙盒衣物 ID 238～380，AI 搭配 380/365 属 ID 4，源对应 235/219 | 用户陈述 + 只读查询 |
+| AC-03 源未改 | 用户确认 ID 3 内容未少；库内 ID 3 仍 143 件 | 用户陈述 + `owner_id=3 count=143` |
+| AC-04 整橱覆盖 | 本轮未再验 | 用户确认首次拷贝后未要求覆盖验收 |
+| AC-05 非沙盒拒绝写入 | 工程测试覆盖；本轮生产未对非沙盒发起复制 | TEST-002 |
+
+结论：用户于 2026-08-20 标记复制功能完成。非正式启用。整橱覆盖不计入本次 P6 通过项。

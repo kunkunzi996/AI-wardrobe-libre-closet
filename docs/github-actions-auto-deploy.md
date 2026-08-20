@@ -65,6 +65,8 @@ AUTO_DEPLOY_MAIN=true
 **当前取值：`AUTO_DEPLOY_MAIN=false`（2026-08-06 起）。** 关闭原因见下方「已知网络约束」，推 `main` 不再自动部署，改为按需手动触发或走服务器本地构建。
 
 > **2026-08-11 洁癖门审计提醒**：当前工作流的生产脚本仍会直接执行 `docker rm -f ai-wardrobe`，且没有覆盖 SQLite WAL 停机备份、候选镜像原生依赖验证、回滚标签确认和日志脱敏哨兵。`AUTO_DEPLOY_MAIN` 应继续保持 `false`；在单独完成工作流安全加固和真实验收前，不要重新开启 push 自动部署。
+>
+> **2026-08-19 部署复盘**：SQLite 备份完整性检查必须在镜像工作目录 `/app` 下执行（例如把脚本挂到 `/app/check-backup.js` 并 `node /app/check-backup.js`）。脚本若放在容器根目录 `/check-backup.js`，`require('better-sqlite3')` 会 `MODULE_NOT_FOUND`，这不能当成数据库损坏。切回上一业务版用当时打的 live 回滚标签；名字带旧 sha 的 rollback 标签可能指向更早的镜像，不要误用。
 
 ## 服务器侧前提
 

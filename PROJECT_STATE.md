@@ -83,7 +83,7 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 
 - **生产环境**：`https://aimatchwear.asia` 正常服务，生产业务代码基线为 `f12563b`（2026-08-19 服务器本地构建，镜像 `ai-wardrobe:candidate-f12563b` / `3a57481e4c89`）。上一业务镜像 `ai-wardrobe:rollback-52d124c-live-20260819`（`7f00f77c5cae`）。更早回滚点 `ai-wardrobe:rollback-52d124c-20260818T031630Z`（`c0a6043b4588`）保留未改。本次停机备份 `/root/ai-wardrobe-backup-20260819T141659Z`。
 - **本轮功能**：管理员可将衣橱整橱复制到验收沙盒。P6 用户已确认：第三只微信（ID 4）标成沙盒、从老婆号（ID 3）拷全且编号对上沙盒新衣物、ID 3 内容未少。非正式启用。整橱覆盖路径本轮未再验。
-- **轮次文档**：衣橱复制的 `docs/spec.md` / `plan.md` / `task.md` / `test.md` 仍在仓库根 docs 下，尚未洁癖归档。上一轮穿搭文档冻结在 `docs/archive/2026-08-18-小程序穿搭出口与调用模式收敛/`。
+- **轮次文档**：当前无活跃 `docs/spec.md` / `plan.md` / `task.md` / `test.md`。衣橱复制轮次已冻结在 `docs/archive/2026-08-20-衣橱复制到验收沙盒/`。上一轮穿搭文档冻结在 `docs/archive/2026-08-18-小程序穿搭出口与调用模式收敛/`。
 - **小程序体验版**：仍为 `1.0.1`（2026-07-12）。用户只要自己预览，未上传新体验版；老婆手机仍是旧包。
 - **数据隔离**：微信登录 + 按 `openid` 隔离已验收。本轮双账号串衣未再验。
 - **补标**：困困子账号仍剩 11 件未补标（硬约束 8 未满足）。
@@ -365,7 +365,6 @@ npm run build
 
 - 当前状态：衣橱复制到验收沙盒已部署 `f12563b` 并通过用户验收（非正式启用）。上一轮穿搭 P6 补验窗口仍关闭。体验版仍为 `1.0.1`。困困子账号剩 11 件未补标。沙盒为用户 ID 4，已有老婆衣橱副本 143 件。
 - 建议任务：
-  - 需要时再做洁癖门归档本轮 `docs/spec.md` / `plan.md` / `task.md` / `test.md`（当前 `test.md` 定义哈希仍为 planned，归档前要先补）。
   - 整橱覆盖路径如需验收，对已有沙盒再拷一次并确认只剩新副本。
   - 继续「存量衣物 AI 补标签」——还剩 11 件；扩大前先确认数量和可用备份。
   - 体验版按既有决定先不上传，老婆维持 `1.0.1`。
@@ -373,4 +372,4 @@ npm run build
 - 继续文件：优先看 `PROJECT_STATE.md`、`docs/PROJECT_LOG.md`、`docs/backend-architecture-source-of-truth.md`。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 小程序表单改动前必须知道：衣物表单的字段选择框由 `miniprogram/pages/garment-form/index.js` 里的 `fieldSelectorConfigs` 驱动（决定每个字段单选/多选、选项来自本地常量还是标签库）；`buildFieldGroups` 每次都从当前 `form` 值重建视图模型，所以 AI 回显、编辑回显、批量导入三条路径都能自动同步。改这里时**不要动提交格式**：单值字段是字符串，季节/风格/场景是「、」拼接串，后端靠 `GarmentService.normalizeTags` 拆数组。
-- 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在；`.github/workflows/deploy-main.yml` 尚未具备本轮人工部署使用的 SQLite WAL 停机备份、候选验证和回滚门禁，`AUTO_DEPLOY_MAIN` 在单独加固验收前必须保持 `false`。
+- 风险提醒：不要丢 `.env`；不要提交本地微信开发者工具配置；旧的 `owner=null` 公共衣橱数据不会自动迁移到某个微信用户；服务器 GitHub 连接不稳定时不要误判为分支不存在；`.github/workflows/deploy-main.yml` 尚未具备本轮人工部署使用的 SQLite WAL 停机备份、候选验证和回滚门禁，`AUTO_DEPLOY_MAIN` 在单独加固验收前必须保持 `false`。SQLite 备份完整性检查必须在镜像 `/app` 下加载 `better-sqlite3`，不要把脚本挂在容器根目录。
