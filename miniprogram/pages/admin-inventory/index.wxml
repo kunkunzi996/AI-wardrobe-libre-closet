@@ -1,7 +1,7 @@
 <view class="admin-page">
   <view class="header">
     <text class="title">库存管理</text>
-    <text class="subtitle">按用户查看库存、导出、补标签，并把衣橱复制到验收沙盒</text>
+    <text class="subtitle">按用户查看库存、导出、补标签，并把衣橱复制到验收沙盒。全量补标只给验收沙盒用。</text>
   </view>
 
   <view wx:if="{{error}}" class="notice error-card">
@@ -50,7 +50,7 @@
         </button>
         <button
           class="backfill-btn"
-          loading="{{backfillingUserId === item.id}}"
+          loading="{{backfillingUserId === item.id && !fullBackfillRunning}}"
           disabled="{{backfillingUserId !== null}}"
           data-id="{{item.id}}"
           bindtap="backfillUserTags"
@@ -90,7 +90,7 @@
       <button
         class="copy-btn"
         loading="{{copying}}"
-        disabled="{{copying || !sourceUserId || !targetUserId}}"
+        disabled="{{copying || backfillingUserId || !sourceUserId || !targetUserId}}"
         bindtap="previewAndCopy"
       >
         预览并复制
@@ -140,14 +140,14 @@
   <view wx:if="{{backfillResult}}" class="result-mask">
     <view class="result-dialog">
       <view class="result-header">
-        <text class="result-title">本批补标签结果</text>
+        <text class="result-title">{{backfillResult.fullRun ? '全量补标签结果' : '本批补标签结果'}}</text>
         <text class="result-state">{{backfillResult.completionText}}</text>
       </view>
       <scroll-view scroll-y class="result-body">
         <view class="result-grid">
           <view class="result-metric">
             <text class="result-value">{{backfillResult.analyzedThisRun}}</text>
-            <text class="result-label">本次分析</text>
+            <text class="result-label">{{backfillResult.fullRun ? '累计分析' : '本次分析'}}</text>
           </view>
           <view class="result-metric">
             <text class="result-value">{{backfillResult.filledFieldCount}}</text>
@@ -195,5 +195,19 @@
       </scroll-view>
       <button class="result-close" bindtap="closeBackfillResult">关闭</button>
     </view>
+  </view>
+
+  <view wx:if="{{fullBackfillRunning}}" class="full-backfill-bar">
+    <view class="full-backfill-copy">
+      <text class="full-backfill-title">{{fullBackfillStopping ? '正在停在本批…' : '全量补标进行中'}}</text>
+      <text class="full-backfill-meta">已分析 {{fullBackfillProgress.analyzedCount}} · 还剩 {{fullBackfillProgress.remainingUnattempted}} · 第 {{fullBackfillProgress.batches}} 批</text>
+    </view>
+    <button
+      class="full-backfill-stop"
+      disabled="{{fullBackfillStopping}}"
+      bindtap="stopFullBackfill"
+    >
+      停止
+    </button>
   </view>
 </view>

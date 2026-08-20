@@ -29,6 +29,7 @@ const requiredFiles = [
   'miniprogram/pages/admin-inventory/index.wxml',
   'miniprogram/pages/admin-inventory/index.wxss',
   'miniprogram/pages/admin-inventory/index.js',
+  'miniprogram/utils/full-backfill.js',
 ];
 
 const jsonFiles = [
@@ -211,17 +212,22 @@ const adminInventoryJs = readRequiredFile(
 if (
   !adminInventoryWxml.includes('AI补标签') ||
   !adminInventoryWxml.includes('backfillUserTags') ||
-  !adminInventoryWxml.includes('backfillResult')
+  !adminInventoryWxml.includes('backfillResult') ||
+  !adminInventoryWxml.includes('stopFullBackfill') ||
+  !adminInventoryWxml.includes('全量补标进行中')
 ) {
   throw new Error(
-    'admin inventory page must render the AI tag backfill action and result dialog',
+    'admin inventory page must render the AI tag backfill action, full-run progress, and result dialog',
   );
 }
 if (
   !adminInventoryJs.includes('backfillAdminUserGarmentTags') ||
   !adminInventoryJs.includes('closeBackfillResult') ||
   !adminInventoryJs.includes('showActionSheet') ||
-  !adminInventoryJs.includes('confirmBackfill')
+  !adminInventoryJs.includes('confirmBackfill') ||
+  !adminInventoryJs.includes('confirmFullBackfill') ||
+  !adminInventoryJs.includes('runFullBackfill') ||
+  !adminInventoryJs.includes('acceptanceSandbox')
 ) {
   throw new Error(
     'admin inventory page must select, confirm, and close the tag backfill workflow',
@@ -238,20 +244,32 @@ delete global.Page;
 const originalWx = global.wx;
 let actionSheetOptions;
 const selectedBackfillRuns = [];
+const selectedFullRuns = [];
 const adminInventoryContext = {
   data: {
     backfillingUserId: null,
-    users: [{ id: 3, displayName: '老婆账号', garmentCount: 143 }],
+    users: [
+      { id: 3, displayName: '老婆账号', garmentCount: 143 },
+      {
+        id: 4,
+        displayName: '验收沙盒',
+        garmentCount: 143,
+        acceptanceSandbox: true,
+      },
+    ],
   },
   confirmBackfill(userId, displayName, garmentCount, limit) {
     selectedBackfillRuns.push({ userId, displayName, garmentCount, limit });
   },
+  confirmFullBackfill(userId, displayName, garmentCount) {
+    selectedFullRuns.push({ userId, displayName, garmentCount });
+  },
 };
 
-function selectBackfillLimit(tapIndex) {
+function selectBackfill(userId, tapIndex) {
   actionSheetOptions = null;
   adminInventoryPage.backfillUserTags.call(adminInventoryContext, {
-    currentTarget: { dataset: { id: 3 } },
+    currentTarget: { dataset: { id: userId } },
   });
 
   if (!actionSheetOptions || typeof actionSheetOptions.success !== 'function') {
@@ -261,7 +279,11 @@ function selectBackfillLimit(tapIndex) {
   }
 
   actionSheetOptions.success({ tapIndex });
-  return selectedBackfillRuns.pop();
+  return {
+    itemList: actionSheetOptions.itemList,
+    batch: selectedBackfillRuns.pop(),
+    full: selectedFullRuns.pop(),
+  };
 }
 
 try {
@@ -269,6 +291,7 @@ try {
     showActionSheet(options) {
       actionSheetOptions = options;
     },
+    showToast() {},
   };
 
   for (const [tapIndex, expectedLimit] of [
@@ -276,17 +299,69 @@ try {
     [undefined, 1],
     [1, 3],
   ]) {
-    const selectedRun = selectBackfillLimit(tapIndex);
+    const selectedRun = selectBackfill(3, tapIndex);
     if (
-      !selectedRun ||
-      selectedRun.userId !== 3 ||
-      selectedRun.garmentCount !== 143 ||
-      selectedRun.limit !== expectedLimit
+      !selectedRun.batch ||
+      selectedRun.full ||
+      selectedRun.batch.userId !== 3 ||
+      selectedRun.batch.garmentCount !== 143 ||
+      selectedRun.batch.limit !== expectedLimit
     ) {
       throw new Error(
         `admin inventory backfill selection must use limit ${expectedLimit} for tapIndex ${tapIndex}`,
       );
     }
+    if (
+      !Array.isArray(selectedRun.itemList) ||
+      selectedRun.itemList.length !== 2 ||
+      selectedRun.itemList.some((item) => String(item).includes('全量'))
+    ) {
+      throw new Error(
+        'non-sandbox backfill sheet must not include a full-run option',
+      );
+    }
+  }
+
+  const deniedFull = selectBackfill(3, 2);
+  if (
+    !deniedFull.batch ||
+    deniedFull.full ||
+    deniedFull.batch.userId !== 3 ||
+    deniedFull.batch.limit !== 1
+  ) {
+    throw new Error(
+      'non-sandbox full-run tap must fall back to the 1-item pilot batch',
+    );
+  }
+
+  const sandboxSheet = selectBackfill(4, 0);
+  if (
+    !Array.isArray(sandboxSheet.itemList) ||
+    sandboxSheet.itemList.length !== 3 ||
+    !sandboxSheet.itemList[2] ||
+    !String(sandboxSheet.itemList[2]).includes('全量补标')
+  ) {
+    throw new Error('sandbox backfill sheet must include a full-run option');
+  }
+  if (
+    !sandboxSheet.batch ||
+    sandboxSheet.full ||
+    sandboxSheet.batch.userId !== 4 ||
+    sandboxSheet.batch.limit !== 1
+  ) {
+    throw new Error('sandbox tapIndex 0 must still start the 1-item pilot batch');
+  }
+
+  const sandboxFull = selectBackfill(4, 2);
+  if (
+    sandboxFull.batch ||
+    !sandboxFull.full ||
+    sandboxFull.full.userId !== 4 ||
+    sandboxFull.full.garmentCount !== 143
+  ) {
+    throw new Error(
+      'sandbox full-run selection must confirm a full backfill instead of raising the batch limit',
+    );
   }
 } finally {
   if (originalWx === undefined) {
@@ -294,6 +369,55 @@ try {
   } else {
     global.wx = originalWx;
   }
+}
+
+const fullBackfillUtil = require(path.join(
+  root,
+  'miniprogram/utils/full-backfill.js',
+));
+const continueNoProgress = fullBackfillUtil.shouldContinue(
+  {
+    analyzedThisRun: 0,
+    remainingUnattempted: 140,
+    completionState: 'needs-retry',
+  },
+  false,
+);
+if (continueNoProgress.continue || continueNoProgress.reason !== 'no-progress') {
+  throw new Error('full backfill must stop when a batch marks zero garments');
+}
+const continueHasMore = fullBackfillUtil.shouldContinue(
+  {
+    analyzedThisRun: 3,
+    remainingUnattempted: 140,
+    completionState: 'has-more',
+  },
+  false,
+);
+if (!continueHasMore.continue) {
+  throw new Error('full backfill must continue while a batch marks garments and more remain');
+}
+const continueComplete = fullBackfillUtil.shouldContinue(
+  {
+    analyzedThisRun: 3,
+    remainingUnattempted: 0,
+    completionState: 'photo-complete',
+  },
+  false,
+);
+if (continueComplete.continue || continueComplete.reason !== 'complete') {
+  throw new Error('full backfill must stop when no pending garments remain');
+}
+const continueStopped = fullBackfillUtil.shouldContinue(
+  {
+    analyzedThisRun: 3,
+    remainingUnattempted: 140,
+    completionState: 'has-more',
+  },
+  true,
+);
+if (continueStopped.continue || continueStopped.reason !== 'stopped') {
+  throw new Error('full backfill must stop when the operator requests a stop');
 }
 
 const weatherContractFailures = [];
@@ -316,7 +440,7 @@ requireWeatherContract(
 );
 
 const recommendOutfitMatch = apiJs.match(
-  /recommendOutfit\s*:\s*function\s*\(([^)]*)\)\s*\{([\s\S]*?)\n\s*\},\n\s*submitOutfitFeedback/,
+  /recommendOutfit\s*:\s*function\s*\(([^)]*)\)\s*\{([\s\S]*?)\r?\n\s*\},\r?\n\s*submitOutfitFeedback/,
 );
 const recommendOutfitParameters = recommendOutfitMatch
   ? recommendOutfitMatch[1]
