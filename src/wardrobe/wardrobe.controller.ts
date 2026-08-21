@@ -20,7 +20,7 @@ import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import { Payload } from '../auth/dto/payload.dto';
 import { GarmentCategory } from './garment-category.enum';
 import { GarmentColor } from './garment-color.enum';
-import { GarmentStatus } from './garment-status.enum';
+
 import { GarmentService } from './garment.service';
 import { WardrobeRecommendationService } from './recommendation/wardrobe-recommendation.service';
 import type { SearchGarmentDto } from './dto/search-garment.dto';
@@ -72,7 +72,6 @@ export class WardrobeController {
             i18n,
           ),
           colorLabel: this.garmentService.resolveColorLabel(garment.color),
-          statusLabel: this.garmentService.resolveStatusLabel(garment.status),
         }),
       ),
       availableCategories,
@@ -86,11 +85,7 @@ export class WardrobeController {
         color: query.color
           ? this.garmentService.resolveColorLabel(query.color)
           : '',
-        status: query.status
-          ? this.garmentService.resolveStatusLabel(query.status)
-          : '',
       },
-      statuses: this.statusOptions(),
     };
   }
 
@@ -100,7 +95,6 @@ export class WardrobeController {
     return {
       categories: await this.categoryOptions(req, i18n),
       colors: this.colorOptions(),
-      statuses: this.statusOptions(),
       garment: null,
     };
   }
@@ -151,7 +145,6 @@ export class WardrobeController {
       draft,
       categories: await this.categoryOptions(req, i18n),
       colors: this.colorOptions(),
-      statuses: this.statusOptions(),
     };
   }
 
@@ -173,13 +166,6 @@ export class WardrobeController {
     return Object.values(GarmentColor).map((value) => ({
       value,
       label: this.garmentService.resolveColorLabel(value),
-    }));
-  }
-
-  private statusOptions() {
-    return Object.values(GarmentStatus).map((value) => ({
-      value,
-      label: this.garmentService.resolveStatusLabel(value),
     }));
   }
 
@@ -205,17 +191,6 @@ export class WardrobeController {
     return labels[color];
   }
 
-  private statusLabel(status: GarmentStatus): string {
-    const labels: Record<GarmentStatus, string> = {
-      [GarmentStatus.Wearable]: '可穿',
-      [GarmentStatus.Laundry]: '待洗',
-      [GarmentStatus.Stored]: '收纳中',
-      [GarmentStatus.Damaged]: '需修补',
-      [GarmentStatus.Archived]: '已归档',
-    };
-    return labels[status];
-  }
-
   @Post()
   async create(
     @Body()
@@ -232,7 +207,6 @@ export class WardrobeController {
       material?: string;
       thickness?: string;
       fit?: string;
-      status?: GarmentStatus;
       price?: string;
       purchaseDate?: string;
       purchaseChannel?: string;
@@ -256,7 +230,6 @@ export class WardrobeController {
         material: body.material,
         thickness: body.thickness,
         fit: body.fit,
-        status: body.status,
         price: body.price,
         purchaseDate: body.purchaseDate,
         purchaseChannel: body.purchaseChannel,
@@ -307,7 +280,6 @@ export class WardrobeController {
         i18n,
       ),
       colorLabel: this.garmentService.resolveColorLabel(garment.color),
-      statusLabel: this.garmentService.resolveStatusLabel(garment.status),
     };
   }
 
@@ -323,7 +295,6 @@ export class WardrobeController {
       garment,
       categories: await this.categoryOptions(req, i18n),
       colors: this.colorOptions(),
-      statuses: this.statusOptions(),
     };
   }
 
@@ -344,7 +315,6 @@ export class WardrobeController {
       material?: string;
       thickness?: string;
       fit?: string;
-      status?: GarmentStatus;
       price?: string;
       purchaseDate?: string;
       purchaseChannel?: string;
@@ -368,7 +338,6 @@ export class WardrobeController {
         material: body.material,
         thickness: body.thickness,
         fit: body.fit,
-        status: body.status,
         price: body.price,
         purchaseDate: body.purchaseDate,
         purchaseChannel: body.purchaseChannel,

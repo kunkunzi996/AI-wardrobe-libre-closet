@@ -97,7 +97,8 @@ describe('MiniappWardrobeController', () => {
     const { controller, garmentService, req } = makeController();
     garmentService.findAll.mockResolvedValue([makeGarment()]);
 
-    await expect(controller.index(req)).resolves.toEqual({
+    const listed = await controller.index(req);
+    expect(listed).toEqual({
       items: [
         expect.objectContaining({
           id: 7,
@@ -106,8 +107,6 @@ describe('MiniappWardrobeController', () => {
           categoryLabel: '外套',
           color: GarmentColor.BLACK,
           colorLabel: '黑色',
-          status: GarmentStatus.Wearable,
-          statusLabel: '可穿',
           season: 'winter',
           brand: 'Sample',
           size: 'M',
@@ -116,6 +115,8 @@ describe('MiniappWardrobeController', () => {
         }),
       ],
     });
+    expect(listed.items[0]).not.toHaveProperty('status');
+    expect(listed.items[0]).not.toHaveProperty('statusLabel');
     expect(garmentService.findAll).toHaveBeenCalledWith(undefined, {});
   });
 
@@ -154,6 +155,7 @@ describe('MiniappWardrobeController', () => {
     expect(zip.subarray(0, 2).toString()).toBe('PK');
     expect(zip.toString('utf8')).toContain('manifest.json');
     expect(zip.toString('utf8')).toContain('photos/7-coat.webp');
+    expect(zip.toString('utf8')).not.toMatch(/"status"\s*:/);
   });
 
   it('imports wardrobe backup zip files', async () => {
@@ -196,6 +198,7 @@ describe('MiniappWardrobeController', () => {
       }),
       undefined,
     );
+    expect(garmentService.create.mock.calls[0][0]).not.toHaveProperty('status');
   });
 
   it('creates a garment from miniapp multipart upload data', async () => {

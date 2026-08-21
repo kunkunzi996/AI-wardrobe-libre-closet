@@ -11,7 +11,6 @@ import type { FastifyRequest } from 'fastify';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
-import { GarmentStatus } from './garment-status.enum';
 import { GarmentService } from './garment.service';
 import { OutfitGeneratorService } from './recommendation/outfit-generator.service';
 import { MiniappOutfitRecommendDto } from './dto/miniapp-outfit-recommend.dto';
@@ -44,13 +43,9 @@ export class MiniappOutfitController {
   @Get('ready')
   async ready(@Req() req: MiniappRequest) {
     const garments = await this.garmentService.findAll(this.userId(req), {});
-    const wearable = garments.filter(
-      (garment) => garment.status === GarmentStatus.Wearable,
-    );
     return {
       ready: garments.length > 0,
       garmentCount: garments.length,
-      wearableCount: wearable.length,
     };
   }
 
@@ -122,8 +117,6 @@ export class MiniappOutfitController {
       categoryLabel: this.categoryLabel(garment.category),
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
-      status: garment.status,
-      statusLabel: this.statusLabel(garment.status),
       photoUrl: photoFileName
         ? `${this.origin(req)}/file/${photoFileName}`
         : '',
@@ -174,17 +167,6 @@ export class MiniappOutfitController {
       other: '其他',
     };
     return color ? (labels[color] ?? color) : '';
-  }
-
-  private statusLabel(status: GarmentStatus): string {
-    const labels: Record<GarmentStatus, string> = {
-      [GarmentStatus.Wearable]: '可穿',
-      [GarmentStatus.Laundry]: '待洗',
-      [GarmentStatus.Stored]: '收纳中',
-      [GarmentStatus.Damaged]: '需修补',
-      [GarmentStatus.Archived]: '已归档',
-    };
-    return labels[status];
   }
 
   private weatherRequest(value: unknown): WeatherRequestInput {

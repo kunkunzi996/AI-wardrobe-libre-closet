@@ -24,13 +24,13 @@ describe('wardrobe views', () => {
       'material',
       'thickness',
       'fit',
-      'status',
       'price',
       'purchaseDate',
       'purchaseChannel',
     ]) {
       expect(form).toContain(`name="${field}"`);
     }
+    expect(form).not.toContain('name="status"');
   });
 
   it('renders localized option labels without changing submitted values', () => {
@@ -40,19 +40,20 @@ describe('wardrobe views', () => {
     expect(form).toContain('value="{{this.value}}"');
     expect(form).toContain('{{this.label}}');
     expect(form).toContain('{{#ifEquals this.value ../garment.color}}');
-    expect(form).toContain('{{#ifEquals this.value ../garment.status}}');
+    expect(form).not.toContain('{{#ifEquals this.value ../garment.status}}');
   });
 
   it('exposes metadata filters and detail fields', () => {
     const index = readView('index.hbs');
     const show = readView('show.hbs');
 
-    for (const field of ['status', 'season', 'style', 'scene']) {
+    for (const field of ['season', 'style', 'scene']) {
       expect(index).toContain(`name="${field}"`);
     }
 
-    expect(index).toContain('{{this.statusLabel}}');
-    expect(show).toContain('{{statusLabel}}');
+    expect(index).not.toContain('name="status"');
+    expect(index).not.toContain('{{this.statusLabel}}');
+    expect(show).not.toContain('{{statusLabel}}');
     expect(show).toContain('{{colorLabel}}');
 
     for (const field of [
@@ -95,5 +96,14 @@ describe('wardrobe views', () => {
     const aiIntake = readView('ai-intake.hbs');
 
     expect(aiIntake).toContain('AI 会先草拟衣物信息');
+  });
+
+  it('omits inventory status from wardrobe and analytics pages', () => {
+    const confirm = readView('ai-confirm.hbs');
+    const analytics = readProjectView('analytics', 'index.hbs');
+
+    expect(confirm).not.toContain('name="status"');
+    expect(analytics).not.toContain('ANALYTICS_WEARABLE');
+    expect(analytics).not.toContain('ANALYTICS_LAUNDRY');
   });
 });

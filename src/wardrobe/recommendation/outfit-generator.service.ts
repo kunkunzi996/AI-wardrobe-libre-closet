@@ -105,13 +105,12 @@ export class OutfitGeneratorService {
       return { plans: [] };
     }
     const candidatePool = miniappMode ? orderedGarments : wearable;
-    // 默认核心衣物选择属于小程序新版规则（SPEC 硬约束 5）：优先最新的可穿衣物，
-    // 没有可穿衣物时才退到最新的其它状态衣物。网页旧模式不参与该规则，核心必须显式
-    // 指定，且只在可穿衣物范围内查找。
+    // 小程序不做待洗/收纳工作流，衣橱里的衣服一律可搭配，默认核心就是最新一件。
+    // 网页旧模式仍只在可穿范围内查找核心，且必须显式指定。
     const core = miniappMode
       ? input.coreGarmentId != null
         ? orderedGarments.find((garment) => garment.id === input.coreGarmentId)
-        : (wearable[0] ?? orderedGarments[0])
+        : orderedGarments[0]
       : wearable.find((garment) => garment.id === input.coreGarmentId);
     if (!core) throw new NotFoundException('Core garment not found');
 
@@ -176,7 +175,7 @@ export class OutfitGeneratorService {
               seasons: garment.seasons,
               styleTags: garment.styleTags,
               sceneTags: garment.sceneTags,
-              status: garment.status,
+              ...(miniappMode ? {} : { status: garment.status }),
               ...(profile
                 ? {
                     tagsByGroup: profile.tagsByGroup,
@@ -568,23 +567,6 @@ export class OutfitGeneratorService {
     return tokens.some((token) => values.includes(token));
   }
 
-  private statusCautions(garments: Garment[]): string[] {
-    const labels: Record<string, string> = {
-      [GarmentStatus.Laundry]: '待洗',
-      [GarmentStatus.Stored]: '收纳中',
-      [GarmentStatus.Damaged]: '需修补',
-      [GarmentStatus.Archived]: '已归档',
-    };
-    return Array.from(
-      new Set(
-        garments
-          .map((garment) => labels[garment.status])
-          .filter(Boolean)
-          .map((label) => `状态提醒：${label}衣物请先确认。`),
-      ),
-    );
-  }
-
   private normalizeMiniappPlan(
     reason: string,
     cautions: string[],
@@ -598,7 +580,6 @@ export class OutfitGeneratorService {
       cautions: Array.from(
         new Set([
           ...cautions,
-          ...this.statusCautions(garments),
           ...this.temperatureCautions(
             garments,
             requestText,

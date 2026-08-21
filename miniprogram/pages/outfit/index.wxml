@@ -96,11 +96,6 @@
         <text class="meta"
           >{{garment.categoryLabel}} · {{garment.colorLabel}}</text
         >
-        <text
-          wx:if="{{garment.statusLabel && garment.statusLabel !== '可穿'}}"
-          class="status-label"
-          >状态：{{garment.statusLabel}}</text
-        >
       </view>
     </view>
     <button

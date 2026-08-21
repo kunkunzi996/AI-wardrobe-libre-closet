@@ -165,6 +165,7 @@ describe('MiniappAdminController', () => {
     expect(headers).toEqual(
       expect.arrayContaining(['版型', '结构化标签', 'AI补标时间(北京时间)']),
     );
+    expect(headers).not.toContain('状态');
     expect(rows[0]).toMatchObject({
       版型: '宽松',
       结构化标签: '季节：夏季；风格：简约、休闲；版型：宽松',

@@ -10,7 +10,7 @@ export interface OutfitAiGarment {
   seasons?: string[];
   styleTags?: string[];
   sceneTags?: string[];
-  status: string;
+  status?: string;
   tagsByGroup?: Record<string, string[]>;
   sourceByGroup?: Record<string, 'taxonomy' | 'legacy'>;
 }
@@ -109,8 +109,12 @@ export class OutfitAiService {
 
   private buildRequest(input: OutfitAiInput) {
     const miniappMode = input.mode === 'miniapp-taxonomy-v1';
+    const availableGarments = input.availableGarments.map((garment) => {
+      const { status: _inventoryStatus, ...rest } = garment;
+      return rest;
+    });
     const coreGarment = input.coreGarmentId
-      ? input.availableGarments.find(
+      ? availableGarments.find(
           (garment) => garment.id === input.coreGarmentId,
         )
       : undefined;
@@ -139,7 +143,7 @@ export class OutfitAiService {
                   '每个有效标签组等权，只能在同一组内计分一次，不能重复累加新旧字段。',
                   '色彩关系必须根据整套衣物动态判断，不能把单件色彩感觉当固定关系。',
                   '遵守天气温度边界和用户明确的冷热反向需求；标签缺失时不推断。',
-                  '可从所有库存状态中选择，但非可穿状态必须在 cautions 中明确提醒。',
+                  '所有衣物均视为可穿，不要因待洗、收纳、清洁或归档状态排除或提醒。',
                   '每套必须包含核心单品（若提供），最多返回三套且衣物 id 集合不得重复。',
                 ]
               : [
@@ -148,7 +152,7 @@ export class OutfitAiService {
                   'Do not replace the core garment with another garment in the same category.',
                   'Mention the core garment by name or category in the reason.',
                 ],
-            availableGarments: input.availableGarments,
+            availableGarments,
             requiredShape: {
               recommendations: [
                 {

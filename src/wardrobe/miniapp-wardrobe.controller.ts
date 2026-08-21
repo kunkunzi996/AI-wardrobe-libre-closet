@@ -194,7 +194,6 @@ export class MiniappWardrobeController {
               name: garment.name ?? '',
               category: garment.category,
               color: garment.color ?? '',
-              status: garment.status,
               seasons: garment.seasons ?? [],
               subcategory: garment.subcategory ?? '',
               styleTags: garment.styleTags ?? [],
@@ -270,7 +269,6 @@ export class MiniappWardrobeController {
           name: item.name,
           category: item.category,
           color: item.color as GarmentColor | undefined,
-          status: item.status as GarmentStatus | undefined,
           seasons: item.seasons,
           subcategory: item.subcategory,
           styleTags: item.styleTags,
@@ -513,8 +511,6 @@ export class MiniappWardrobeController {
       categoryLabel: this.categoryLabel(garment.category),
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
-      status: garment.status,
-      statusLabel: this.statusLabel(garment.status),
       season: garment.seasons?.[0] ?? '',
       seasons: garment.seasons ?? [],
       subcategory: garment.subcategory ?? '',
@@ -611,17 +607,6 @@ export class MiniappWardrobeController {
       other: '其他',
     };
     return color ? (labels[color] ?? color) : '';
-  }
-
-  private statusLabel(status?: string): string {
-    const labels: Record<string, string> = {
-      wearable: '可穿',
-      laundry: '待洗',
-      stored: '收纳中',
-      damaged: '需修补',
-      archived: '已归档',
-    };
-    return status ? (labels[status] ?? status) : '';
   }
 
   private buildZip(entries: ZipEntry[]): Buffer {

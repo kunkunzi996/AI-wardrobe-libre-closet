@@ -487,7 +487,6 @@ export class GarmentService {
       ...(dto.category ? { category: dto.category } : {}),
       ...(dto.color ? { color: dto.color } : {}),
       ...(dto.subcategory ? { subcategory: dto.subcategory } : {}),
-      ...(dto.status ? { status: dto.status } : {}),
       ...(normalizedSize ? { size: normalizedSize } : {}),
     };
     const options = {
@@ -646,7 +645,7 @@ export class GarmentService {
       ),
       fit: dto.fit,
       taxonomyTags: sanitizeGarmentTaxonomySelection(dto.taxonomyTags),
-      status: dto.status ?? GarmentStatus.Wearable,
+      status: GarmentStatus.Wearable,
       price: this.normalizeNumber(dto.price),
       purchaseDate: this.normalizeDate(dto.purchaseDate),
       purchaseChannel: dto.purchaseChannel,
@@ -802,7 +801,6 @@ export class GarmentService {
     if ('taxonomyTags' in dto) {
       garment.taxonomyTags = sanitizeGarmentTaxonomySelection(dto.taxonomyTags);
     }
-    if ('status' in dto) garment.status = dto.status ?? GarmentStatus.Wearable;
     if ('price' in dto) garment.price = this.normalizeNumber(dto.price);
     if ('purchaseDate' in dto)
       garment.purchaseDate = this.normalizeDate(dto.purchaseDate);

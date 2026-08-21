@@ -646,7 +646,7 @@ describe('OutfitGeneratorService', () => {
     );
   });
 
-  it('allows every inventory status in mini-program AI output and adds deterministic status reminders', async () => {
+  it('allows every inventory status in mini-program AI output without status reminders', async () => {
     const core = makeGarment({
       id: 1,
       name: '白色衬衫',
@@ -692,9 +692,19 @@ describe('OutfitGeneratorService', () => {
     expect(
       result.ai?.recommendations[0].garments.map((garment) => garment.id),
     ).toEqual(expect.arrayContaining([1, 2, 3]));
-    expect(result.ai?.recommendations[0].cautions.join(' ')).toMatch(
-      /待洗|收纳/,
+    expect(result.ai?.recommendations[0].cautions.join(' ')).not.toMatch(
+      /待洗|收纳|状态提醒/,
     );
+    const aiInput = outfitAiService.recommend.mock.calls[0][0] as {
+      availableGarments: Array<{ id: number }>;
+    };
+    const sent = aiInput.availableGarments;
+    expect(sent.map((garment) => garment.id)).toEqual(
+      expect.arrayContaining([2, 3]),
+    );
+    for (const garment of sent) {
+      expect(garment).not.toHaveProperty('status');
+    }
   });
 
   it('explains a same-color relationship from the actual selected garments', async () => {
@@ -851,7 +861,7 @@ describe('OutfitGeneratorService', () => {
     ).not.toContain(2);
   });
 
-  it('adds status and core temperature cautions to local plans when AI falls back', async () => {
+  it('adds core temperature cautions to local plans when AI falls back, without inventory-status reminders', async () => {
     const core = makeGarment({
       id: 1,
       name: '厚重羽绒服',
@@ -884,7 +894,7 @@ describe('OutfitGeneratorService', () => {
     } as any);
 
     const cautions = ((result.plans[0] as any).cautions ?? []).join(' ');
-    expect(cautions).toMatch(/待洗/);
+    expect(cautions).not.toMatch(/待洗|收纳|状态提醒/);
     expect(cautions).toMatch(/温度|冲突|厚/);
   });
 
@@ -1014,7 +1024,7 @@ describe('OutfitGeneratorService', () => {
       } as any),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    // 小程序模式保留该默认核心规则：没有可穿衣物时选最新的其它状态衣物
+    // 小程序把衣橱里所有衣服都当作可穿，默认核心就是最新一件
     const miniapp = await service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
       requestText: '默认核心',
@@ -1070,7 +1080,7 @@ describe('OutfitGeneratorService', () => {
     expect(result.ai?.recommendations).toHaveLength(4);
   });
 
-  it('selects the highest-id wearable garment as the default core', async () => {
+  it('selects the newest garment as the default core regardless of inventory status', async () => {
     const lowerWearable = makeGarment({
       id: 12,
       name: '较旧上衣',
@@ -1108,7 +1118,7 @@ describe('OutfitGeneratorService', () => {
     );
     expect(
       result.every((plan) =>
-        plan.garments.some((garment) => garment.id === 19),
+        plan.garments.some((garment) => garment.id === 25),
       ),
     ).toBe(true);
   });

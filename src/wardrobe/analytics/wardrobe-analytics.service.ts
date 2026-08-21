@@ -13,8 +13,6 @@ export interface DistributionItem {
 export interface WardrobeAnalyticsResult {
   summary: {
     total: number;
-    wearable: number;
-    laundry: number;
     longUnworn: number;
   };
   mostWorn: Garment[];
@@ -45,10 +43,6 @@ export class WardrobeAnalyticsService {
     return {
       summary: {
         total: garments.length,
-        wearable: garments.filter((g) => g.status === GarmentStatus.Wearable)
-          .length,
-        laundry: garments.filter((g) => g.status === GarmentStatus.Laundry)
-          .length,
         longUnworn: longUnworn.length,
       },
       mostWorn: [...garments]

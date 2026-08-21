@@ -56,7 +56,6 @@ describe('MiniappOutfitController', () => {
     await expect(controller.ready(req)).resolves.toEqual({
       ready: true,
       garmentCount: 2,
-      wearableCount: 1,
     });
   });
 
@@ -98,9 +97,11 @@ describe('MiniappOutfitController', () => {
       },
     });
 
-    await expect(
-      controller.recommend({ requestText: '明天上班穿什么' }, req),
-    ).resolves.toEqual({
+    const recommended = await controller.recommend(
+      { requestText: '明天上班穿什么' },
+      req,
+    );
+    expect(recommended).toEqual({
       source: 'ai',
       message: undefined,
       recommendations: [
@@ -124,6 +125,10 @@ describe('MiniappOutfitController', () => {
       ],
       weather: unavailableContext,
     });
+    for (const garment of recommended.recommendations[0].garments) {
+      expect(garment).not.toHaveProperty('status');
+      expect(garment).not.toHaveProperty('statusLabel');
+    }
     expect(outfitGeneratorService.generateWithAi).toHaveBeenCalledWith({
       mode: 'miniapp-taxonomy-v1',
       coreGarmentId: undefined,
@@ -183,7 +188,6 @@ describe('MiniappOutfitController', () => {
     await expect(controller.ready(req)).resolves.toEqual({
       ready: true,
       garmentCount: 1,
-      wearableCount: 0,
     });
     expect(garmentService.findAll).toHaveBeenCalledWith(42, {});
   });
@@ -368,7 +372,7 @@ describe('MiniappOutfitController', () => {
         {
           title: '本地规则方案',
           reason: '按衣橱标签生成。',
-          cautions: ['状态提醒：待洗衣物请先确认。'],
+          cautions: [],
           garments: [laundry],
         },
       ],
@@ -380,9 +384,7 @@ describe('MiniappOutfitController', () => {
       req,
     );
 
-    expect(result.recommendations[0].cautions).toEqual([
-      '状态提醒：待洗衣物请先确认。',
-    ]);
+    expect(result.recommendations[0].cautions).toEqual([]);
   });
 
   it('delegates default core selection to the generator when no core is supplied', async () => {
@@ -451,8 +453,8 @@ describe('MiniappOutfitController', () => {
         recommendations: [
           {
             title: '状态提醒方案',
-            reason: '包含待洗单品，请先确认。',
-            cautions: ['状态提醒：待洗衣物请先确认。'],
+            reason: '包含衣橱现有单品。',
+            cautions: [],
             garmentIds: [31, 32],
             garments: [shirt, laundry],
           },
@@ -473,18 +475,20 @@ describe('MiniappOutfitController', () => {
         weather: unavailableContext,
         recommendations: [
           expect.objectContaining({
-            cautions: ['状态提醒：待洗衣物请先确认。'],
+            cautions: [],
             garments: expect.arrayContaining([
               expect.objectContaining({
                 id: 32,
-                status: GarmentStatus.Laundry,
-                statusLabel: '待洗',
               }),
             ]),
           }),
         ],
       }),
     );
+    for (const garment of result.recommendations[0].garments) {
+      expect(garment).not.toHaveProperty('status');
+      expect(garment).not.toHaveProperty('statusLabel');
+    }
   });
 
   it.each([
@@ -635,7 +639,7 @@ describe('MiniappOutfitController', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('drops the legacy no-wearable fallback message and returns status-caution plans without a weather field', async () => {
+  it('drops the legacy no-wearable fallback message and still returns laundry garments without status cautions', async () => {
     const laundryTop = makeGarment({
       id: 81,
       name: '待洗上衣',
@@ -686,13 +690,12 @@ describe('MiniappOutfitController', () => {
 
     expect(result.message).not.toBe('衣橱里还没有可穿衣物，请先添加衣服。');
     expect(result.recommendations.length).toBeGreaterThan(0);
-    expect(result.recommendations[0].cautions).toContain(
-      '状态提醒：待洗衣物请先确认。',
+    expect(result.recommendations[0].cautions.join(' ')).not.toMatch(
+      /状态提醒|待洗|收纳/,
     );
-    expect(result.recommendations[0].garments).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ statusLabel: '待洗' }),
-      ]),
-    );
+    for (const garment of result.recommendations[0].garments) {
+      expect(garment).not.toHaveProperty('status');
+      expect(garment).not.toHaveProperty('statusLabel');
+    }
   });
 });
