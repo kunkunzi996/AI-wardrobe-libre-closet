@@ -83,7 +83,7 @@ AI 衣橱已完成 MVP 并进入迭代期。`main` 包含全部已验收能力�
 
 - **生产环境**：`https://aimatchwear.asia` 正常服务，生产业务代码基线为 `b356919`（2026-08-21 服务器本地构建，镜像 `ai-wardrobe:candidate-b356919` / `f75fdaa6c75f`）。上一业务镜像 `ai-wardrobe:rollback-f12563b-live-20260822`（`3a57481e4c89`）。更早回滚点 `rollback-52d124c-live-20260819` 与 `rollback-52d124c-20260818T031630Z` 保留未改。本次停机备份 `/root/ai-wardrobe-backup-20260821T174930Z`。
 - **本轮功能**：废除衣物库存状态。小程序接口、备份、Excel 不再出现 `status`/`statusLabel`/`wearableCount`；网页衣橱去掉状态下拉。数据库列保留。用户 2026-08-22 确认启用。
-- **轮次文档**：本轮无 `docs/spec.md`（用户指定以 `docs/plan.md` AC/EX + ADR 0005/0006 为验收依据）。`docs/plan.md` / `task.md` / `test.md` 仍在工作区；因缺 spec 未能做四文件事务归档。衣橱复制轮次在 `docs/archive/2026-08-20-衣橱复制到验收沙盒/`。
+- **轮次文档**：当前无活跃 `docs/spec.md` / `plan.md` / `task.md` / `test.md`。本轮已冻结在 `docs/archive/2026-08-22-废除衣物库存状态/`。衣橱复制轮次在 `docs/archive/2026-08-20-衣橱复制到验收沙盒/`。
 - **小程序体验版**：仍为 `1.0.1`（2026-07-12）。用户只要自己预览，未上传新体验版；老婆手机仍是旧包。
 - **数据隔离**：微信登录 + 按 `openid` 隔离已验收。本轮双账号串衣未再验。
 - **补标**：沙盒（用户 ID 4）143 件已全量分析。困困子账号仍剩 11 件未补标。老婆真人衣橱未跑补标。
@@ -365,10 +365,9 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：废除库存状态已部署 `b356919` 并经用户 P6 确认启用。体验版仍 `1.0.1`。困困子仍剩 11 件未补标。本轮 `docs/plan.md`/`task.md`/`test.md` 因缺 `docs/spec.md` 尚未事务归档。
+- 当前状态：废除库存状态已部署 `b356919` 并经用户 P6 确认启用。轮次文档已归档。体验版仍 `1.0.1`。困困子仍剩 11 件未补标。
 - 建议任务：
   - 体验版按既有决定先不上传，老婆维持 `1.0.1`。
-  - 是否补一份最小 `docs/spec.md` 再归档本轮 plan/task/test。
   - 整橱覆盖路径如需验收，对已有沙盒再拷一次并确认只剩新副本。
 - 继续文件：优先看 `PROJECT_STATE.md`、`docs/PROJECT_LOG.md`、`docs/backend-architecture-source-of-truth.md`。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。

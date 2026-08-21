@@ -25,7 +25,7 @@
 - 历史来源：`docs/archive/2026-08-18-小程序穿搭出口与调用模式收敛/test.md` TEST-006
 - Derived From：归档 TEST-006
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：b1aee8fc98d3836bd8b0268668509d8f743ae849+f9e54b1fbb2c2276a02a88054ccf90fc920bf69a
 - 覆盖条目：AC-01、AC-02、CC-01、CC-02
 - Test Seam：`MiniappOutfitController.ready` / `recommend`；`MiniappWardrobeController` 列表 JSON
 - 测试定义载体：`src/wardrobe/miniapp-outfit.controller.spec.ts`、`src/wardrobe/miniapp-wardrobe.controller.spec.ts`
@@ -56,7 +56,7 @@
 - 历史来源：当前 `outfit-generator.service.spec.ts`「allows every inventory status in mini-program AI output without status reminders」
 - Derived From：该用例
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：506896ef32aa46bc3299356025a95b534158212e+ddc9955028970210b574d9a7ff6bb58a63824815
 - 覆盖条目：CC-03
 - Test Seam：`OutfitGeneratorService.generateWithAi` 调用 `OutfitAiService.recommend` 的入参
 - 测试定义载体：`src/wardrobe/recommendation/outfit-generator.service.spec.ts`、`src/ai/outfit-ai.service.spec.ts`
@@ -87,7 +87,7 @@
 - 历史来源：`src/wardrobe/wardrobe-views.spec.ts`
 - Derived From：该文件现有「exposes metadata filters and detail fields」
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：b7f6da1750af5c8395c15d5c729abf94192f1a80+c1feb1e3ef583fe46b6b441c7bb744cfe8011447
 - 覆盖条目：AC-03、CC-04
 - Test Seam：`views/wardrobe/*.hbs`、`views/analytics/index.hbs` 源码
 - 测试定义载体：`src/wardrobe/wardrobe-views.spec.ts`、`src/wardrobe/analytics/wardrobe-analytics.service.spec.ts`
@@ -118,7 +118,7 @@
 - 历史来源：无
 - Derived From：无
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：f9e54b1fbb2c2276a02a88054ccf90fc920bf69a
 - 覆盖条目：AC-04、CC-05
 - Test Seam：`MiniappWardrobeController.exportBackup` / `importBackup`
 - 测试定义载体：`src/wardrobe/miniapp-wardrobe.controller.spec.ts`
@@ -149,7 +149,7 @@
 - 历史来源：`src/wardrobe/miniapp-admin.controller.spec.ts`「exports taxonomy tags, fit, and the backfill timestamp so backfilled garments are identifiable」
 - Derived From：该用例表头断言
 - 定义版本：1
-- 定义哈希：planned
+- 定义哈希：390879300c573505e96726a27a1d1557ebc73270
 - 覆盖条目：AC-05、CC-06
 - Test Seam：`MiniappAdminController.exportUserGarments` xlsx 表头
 - 测试定义载体：`src/wardrobe/miniapp-admin.controller.spec.ts`

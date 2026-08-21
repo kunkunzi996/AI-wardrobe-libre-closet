@@ -8,7 +8,7 @@ This document is intended for the maintaining team to use to document decisions.
 
 ## 2026-08-22
 
-废除衣物库存状态已合入 `main`（`f4becfb` / 合并 `b356919`）并服务器本地构建部署为 `ai-wardrobe:candidate-b356919`。P5 TEST 全绿、Kun Review PASS。P6 用户结论：01/02/03/04/05/07 PASS；06/08 未执行（网页不再使用）。用户确认启用。数据库 `status` 列保留。停机备份 `/root/ai-wardrobe-backup-20260821T174930Z`。体验版仍 `1.0.1`。本轮无独立 `docs/spec.md`，四文件事务归档未执行。
+废除衣物库存状态已合入 `main`（`f4becfb` / 合并 `b356919`）并服务器本地构建部署为 `ai-wardrobe:candidate-b356919`。P5 TEST 全绿、Kun Review PASS。P6 用户结论：01/02/03/04/05/07 PASS；06/08 未执行（网页不再使用）。用户确认启用。数据库 `status` 列保留。停机备份 `/root/ai-wardrobe-backup-20260821T174930Z`。体验版仍 `1.0.1`。本轮四文件已冻结到 `docs/archive/2026-08-22-废除衣物库存状态/`。
 
 ## 2026-08-20
 
