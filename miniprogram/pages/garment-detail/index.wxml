@@ -14,7 +14,7 @@
 
     <view class="info">
       <text class="name">{{garment.name || garment.categoryLabel}}</text>
-      <text class="meta">{{garment.categoryLabel}} · {{garment.colorLabel}} · {{garment.statusLabel}}</text>
+      <text class="meta">{{garment.categoryLabel}} · {{garment.colorLabel}}</text>
 
       <view wx:if="{{garment.taxonomyTagList.length || garment.styleTags.length || garment.sceneTags.length}}" class="tag-panel">
         <block wx:if="{{garment.taxonomyTagList.length}}">

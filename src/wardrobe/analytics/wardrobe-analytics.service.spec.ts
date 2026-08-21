@@ -60,10 +60,10 @@ describe('WardrobeAnalyticsService', () => {
 
     expect(result.summary).toEqual({
       total: 4,
-      wearable: 3,
-      laundry: 1,
       longUnworn: 2,
     });
+    expect(result.summary).not.toHaveProperty('wearable');
+    expect(result.summary).not.toHaveProperty('laundry');
     expect(result.mostWorn.map((item) => item.id)).toEqual([1, 3, 2]);
     expect(result.lowUsage.map((item) => item.id)).toEqual([4, 2]);
     expect(result.longUnworn.map((item) => item.id)).toEqual([2, 4]);

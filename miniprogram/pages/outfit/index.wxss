@@ -246,16 +246,6 @@
   font-size: 24rpx;
 }
 
-.status-label {
-  display: inline-block;
-  margin: 10rpx 6rpx 0;
-  padding: 6rpx 10rpx;
-  border-radius: 10rpx;
-  background: #fff1d6;
-  color: #9a5d24;
-  font-size: 22rpx;
-}
-
 .save {
   margin-top: 24rpx;
   height: 88rpx;

@@ -345,7 +345,12 @@ describe('OutfitAiService', () => {
         sourceByGroup: expect.objectContaining({ style: 'taxonomy' }),
       }),
     );
+    for (const garment of userMessage.availableGarments) {
+      expect(garment).not.toHaveProperty('status');
+    }
     expect(userMessage.rules.join(' ')).toMatch(/标签组|等权|一次/);
+    expect(userMessage.rules.join(' ')).toMatch(/均视为可穿/);
+    expect(userMessage.rules.join(' ')).not.toMatch(/非可穿状态必须/);
   });
 
   it('in mini-program mode keeps all inventory statuses, removes invalid ids, and deduplicates ids', async () => {

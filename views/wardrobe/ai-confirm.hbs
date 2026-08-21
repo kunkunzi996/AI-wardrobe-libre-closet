@@ -71,14 +71,6 @@
         <span class="label-text mb-1">{{t 'lang.THICKNESS'}}</span>
         <input type="text" name="thickness" class="input input-bordered" value="{{draft.thickness}}" placeholder="{{t 'lang.THICKNESS_PLACEHOLDER'}}" />
       </label>
-      <label class="form-control">
-        <span class="label-text mb-1">{{t 'lang.STATUS'}}</span>
-        <select name="status" class="select select-bordered">
-          {{#each statuses}}
-          <option value="{{this.value}}" {{#ifEquals this.value "wearable"}}selected{{/ifEquals}}>{{this.label}}</option>
-          {{/each}}
-        </select>
-      </label>
     </div>
 
     <div class="form-control">

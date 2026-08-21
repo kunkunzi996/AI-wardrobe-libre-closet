@@ -55,7 +55,7 @@ describe('GarmentService', () => {
         colorFeeling: ['暖色', '赛博朋克'],
         occasion: ['通勤'],
       } as any,
-      status: GarmentStatus.Wearable,
+      status: GarmentStatus.Laundry,
       price: '399.9',
       purchaseDate: '2026-05-01',
       purchaseChannel: '线下门店',
@@ -129,7 +129,7 @@ describe('GarmentService', () => {
     expect(garment.chestMarkType).toBe('text');
     expect(garment.chestMarkPosition).toBe('chest-left');
     expect(garment.chestMarkText).toBe('R');
-    expect(garment.status).toBe(GarmentStatus.Laundry);
+    expect(garment.status).toBe(GarmentStatus.Wearable);
     expect(garment.wearCount).toBe(3);
     expect(entityManager.flush).toHaveBeenCalled();
   });
