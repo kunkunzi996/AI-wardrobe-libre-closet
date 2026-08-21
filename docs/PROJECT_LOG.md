@@ -6,6 +6,10 @@ This document is intended for the maintaining team to use to document decisions.
 >
 > The team agrees to _BLANK_ project business decision(s)...
 
+## 2026-08-22
+
+废除衣物库存状态已合入 `main`（`f4becfb` / 合并 `b356919`）并服务器本地构建部署为 `ai-wardrobe:candidate-b356919`。P5 TEST 全绿、Kun Review PASS。P6 用户结论：01/02/03/04/05/07 PASS；06/08 未执行（网页不再使用）。用户确认启用。数据库 `status` 列保留。停机备份 `/root/ai-wardrobe-backup-20260821T174930Z`。体验版仍 `1.0.1`。本轮无独立 `docs/spec.md`，四文件事务归档未执行。
+
 ## 2026-08-20
 
 验收沙盒全量补标已落地并跑通。库存页仅对验收沙盒提供「全量补标（自动连跑）」，仍按现有每批 3 件接口循环，不提高服务端批次上限。用户在沙盒（用户 ID 4）跑完全量：累计分析 143、新增标签 2862、仍待处理 0、未识别或失败 0。识图模型为通义千问 `qwen3.7-plus`。纯小程序前端，无需部署服务器。老婆真人衣橱未补标。非正式启用。
