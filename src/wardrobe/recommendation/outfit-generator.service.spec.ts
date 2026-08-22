@@ -16,19 +16,21 @@ describe('OutfitGeneratorService', () => {
   };
 
   const echoAi = () => ({
-    recommend: jest.fn().mockImplementation(
-      async (input: { availableGarments: Array<{ id: number }> }) => ({
-        source: 'ai',
-        recommendations: [
-          {
-            title: 'AI方案',
-            garmentIds: input.availableGarments.map((garment) => garment.id),
-            reason: '根据候选衣橱生成。',
-            cautions: [],
-          },
-        ],
-      }),
-    ),
+    recommend: jest
+      .fn()
+      .mockImplementation(
+        async (input: { availableGarments: Array<{ id: number }> }) => ({
+          source: 'ai',
+          recommendations: [
+            {
+              title: 'AI方案',
+              garmentIds: input.availableGarments.map((garment) => garment.id),
+              reason: '根据候选衣橱生成。',
+              cautions: [],
+            },
+          ],
+        }),
+      ),
   });
 
   const makeMiniappService = (garments: Garment[]) => {
@@ -1069,12 +1071,12 @@ describe('OutfitGeneratorService', () => {
     const aiInput = miniappService.outfitAiService.recommend.mock
       .calls[0][0] as { availableGarments: Array<{ id: number }> };
     expect(aiInput).not.toHaveProperty('coreGarmentId');
-    expect(aiInput.availableGarments.map((garment) => garment.id).sort()).toEqual(
-      [31, 42],
-    );
-    expect(miniapp.plans[0].garments.map((garment) => garment.id).sort()).toEqual(
-      [31, 42],
-    );
+    expect(
+      aiInput.availableGarments.map((garment) => garment.id).sort(),
+    ).toEqual([31, 42]);
+    expect(
+      miniapp.plans[0].garments.map((garment) => garment.id).sort(),
+    ).toEqual([31, 42]);
   });
 
   it('keeps the legacy web AI output unchanged', async () => {
@@ -1159,9 +1161,9 @@ describe('OutfitGeneratorService', () => {
       availableGarments: Array<{ id: number }>;
     };
     expect(aiInput).not.toHaveProperty('coreGarmentId');
-    expect(aiInput.availableGarments.map((garment) => garment.id).sort()).toEqual(
-      [12, 19, 25],
-    );
+    expect(
+      aiInput.availableGarments.map((garment) => garment.id).sort(),
+    ).toEqual([12, 19, 25]);
     expect(result[0].garments.map((garment) => garment.id).sort()).toEqual([
       12, 19, 25,
     ]);

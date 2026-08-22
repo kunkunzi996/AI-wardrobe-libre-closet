@@ -67,7 +67,10 @@ describe('MiniappAdminService', () => {
     ];
     const persistAndFlush = jest.fn(() => Promise.resolve());
     const countOwned = jest.fn(
-      async (entity: { name?: string }, where?: { owner?: { id?: number } }) => {
+      async (
+        entity: { name?: string },
+        where?: { owner?: { id?: number } },
+      ) => {
         const ownerId = where?.owner?.id;
         const ownedBy = (items: Array<{ owner?: { id?: number } }>) =>
           items.filter((item) => item.owner?.id === ownerId).length;

@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 const COUNTS = {
   sourceGarmentCount: 1,
@@ -115,9 +112,7 @@ function makeService(
         name: dto.name,
         category: dto.category,
         taxonomyTags: dto.taxonomyTags,
-        photo: dto.photoFileName
-          ? { fileName: dto.photoFileName }
-          : undefined,
+        photo: dto.photoFileName ? { fileName: dto.photoFileName } : undefined,
       };
       createdGarments.push(created);
       garments.push(created);
@@ -404,9 +399,7 @@ describe('overwrite sandbox', () => {
         owner: { id: 3 },
       },
     ],
-    feedback: [
-      { id: 66, rating: 'soso', garmentIds: [99], owner: { id: 3 } },
-    ],
+    feedback: [{ id: 66, rating: 'soso', garmentIds: [99], owner: { id: 3 } }],
   };
 
   it('rejects replacing existing data without confirm', async () => {
@@ -463,9 +456,9 @@ describe('overwrite sandbox', () => {
       .map((item) => item.id);
     expect(targetGarmentIds).not.toContain(99);
     expect(targetGarmentIds).toHaveLength(1);
-    expect(ctx.outfits.filter((item) => item.owner?.id === 3).map((item) => item.id)).not.toContain(
-      88,
-    );
+    expect(
+      ctx.outfits.filter((item) => item.owner?.id === 3).map((item) => item.id),
+    ).not.toContain(88);
     expect(ctx.sourceGarment.id).toBe(10);
     expect(ctx.sourceOutfit.slots[0].garmentId).toBe(10);
     expect(ctx.createdOutfits[0].slots[0].garmentId).toBe(targetGarmentIds[0]);
