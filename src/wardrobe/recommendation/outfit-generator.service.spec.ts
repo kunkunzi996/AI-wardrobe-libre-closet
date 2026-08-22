@@ -19,17 +19,20 @@ describe('OutfitGeneratorService', () => {
     recommend: jest
       .fn()
       .mockImplementation(
-        async (input: { availableGarments: Array<{ id: number }> }) => ({
-          source: 'ai',
-          recommendations: [
-            {
-              title: 'AI方案',
-              garmentIds: input.availableGarments.map((garment) => garment.id),
-              reason: '根据候选衣橱生成。',
-              cautions: [],
-            },
-          ],
-        }),
+        (input: { availableGarments: Array<{ id: number }> }) =>
+          Promise.resolve({
+            source: 'ai',
+            recommendations: [
+              {
+                title: 'AI方案',
+                garmentIds: input.availableGarments.map(
+                  (garment) => garment.id,
+                ),
+                reason: '根据候选衣橱生成。',
+                cautions: [],
+              },
+            ],
+          }),
       ),
   });
 

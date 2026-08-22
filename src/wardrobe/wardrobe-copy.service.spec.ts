@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { WardrobeCopyService } from './wardrobe-copy.service';
 
 const COUNTS = {
   sourceGarmentCount: 1,
@@ -7,14 +8,6 @@ const COUNTS = {
   sourceCalendarCount: 1,
   sourceFeedbackCount: 1,
 };
-
-function loadCopyService(): (new (...args: any[]) => any) | undefined {
-  try {
-    return require('./wardrobe-copy.service').WardrobeCopyService;
-  } catch {
-    return undefined;
-  }
-}
 
 function spliceOwned(
   items: Array<{ id: number; owner?: { id?: number } }>,
@@ -94,18 +87,22 @@ function makeService(
   const createdFeedback: any[] = [];
 
   const adminService = {
-    isAdmin: jest.fn(async (userId?: number) => userId === 7),
+    isAdmin: jest.fn((userId?: number) => Promise.resolve(userId === 7)),
   };
   const fileService = {
-    copyStoredFile: jest.fn(async (fileName: string, userId: number) => ({
-      fileName: `copy-${fileName}`,
-      createdBy: userId,
-    })),
+    copyStoredFile: jest.fn((fileName: string, userId: number) =>
+      Promise.resolve({
+        fileName: `copy-${fileName}`,
+        createdBy: userId,
+      }),
+    ),
     storeImageFromFileUpload: jest.fn(),
   };
   const garmentService = {
-    findAll: jest.fn(async (userId?: number) => owned(garments, userId)),
-    create: jest.fn(async (dto: any, userId?: number) => {
+    findAll: jest.fn((userId?: number) =>
+      Promise.resolve(owned(garments, userId)),
+    ),
+    create: jest.fn((dto: any, userId?: number) => {
       const created = {
         id: nextId++,
         owner: { id: userId },
@@ -116,14 +113,15 @@ function makeService(
       };
       createdGarments.push(created);
       garments.push(created);
-      return created;
+      return Promise.resolve(created);
     }),
-    remove: jest.fn(async (id: number, userId?: number) => {
+    remove: jest.fn((id: number, userId?: number) => {
       spliceOwned(garments, id, userId);
+      return Promise.resolve();
     }),
   };
   const outfitService = {
-    create: jest.fn(async (dto: any, userId?: number) => {
+    create: jest.fn((dto: any, userId?: number) => {
       const created = {
         id: nextId++,
         owner: { id: userId },
@@ -132,14 +130,15 @@ function makeService(
       };
       createdOutfits.push(created);
       outfits.push(created);
-      return created;
+      return Promise.resolve(created);
     }),
-    remove: jest.fn(async (id: number, userId?: number) => {
+    remove: jest.fn((id: number, userId?: number) => {
       spliceOwned(outfits, id, userId);
+      return Promise.resolve();
     }),
   };
   const calendarService = {
-    create: jest.fn(async (dto: any, userId?: number) => {
+    create: jest.fn((dto: any, userId?: number) => {
       const created = {
         id: nextId++,
         owner: { id: userId },
@@ -148,14 +147,15 @@ function makeService(
       };
       createdCalendars.push(created);
       calendars.push(created);
-      return created;
+      return Promise.resolve(created);
     }),
-    remove: jest.fn(async (id: number, userId?: number) => {
+    remove: jest.fn((id: number, userId?: number) => {
       spliceOwned(calendars, id, userId);
+      return Promise.resolve();
     }),
   };
   const feedbackService = {
-    create: jest.fn(async (dto: any, userId?: number) => {
+    create: jest.fn((dto: any, userId?: number) => {
       const created = {
         id: nextId++,
         owner: { id: userId },
@@ -165,47 +165,52 @@ function makeService(
       };
       createdFeedback.push(created);
       feedback.push(created);
-      return created;
+      return Promise.resolve(created);
     }),
-    remove: jest.fn(async (id: number, userId?: number) => {
+    remove: jest.fn((id: number, userId?: number) => {
       spliceOwned(feedback, id, userId);
+      return Promise.resolve();
     }),
   };
   const userRepository = {
-    findOne: jest.fn(async (id: number) =>
-      users.find((user) => user.id === id),
+    findOne: jest.fn((id: number) =>
+      Promise.resolve(users.find((user) => user.id === id)),
     ),
   };
   const garmentRepository = {
-    find: jest.fn(async (where: { owner?: { id?: number } }) =>
-      owned(garments, where?.owner?.id),
+    find: jest.fn((where: { owner?: { id?: number } }) =>
+      Promise.resolve(owned(garments, where?.owner?.id)),
     ),
-    nativeDelete: jest.fn(async (where: { owner?: { id?: number } }) => {
+    nativeDelete: jest.fn((where: { owner?: { id?: number } }) => {
       spliceAllOwned(garments, where?.owner?.id);
+      return Promise.resolve();
     }),
   };
   const outfitRepository = {
-    find: jest.fn(async (where: { owner?: { id?: number } }) =>
-      owned(outfits, where?.owner?.id),
+    find: jest.fn((where: { owner?: { id?: number } }) =>
+      Promise.resolve(owned(outfits, where?.owner?.id)),
     ),
-    nativeDelete: jest.fn(async (where: { owner?: { id?: number } }) => {
+    nativeDelete: jest.fn((where: { owner?: { id?: number } }) => {
       spliceAllOwned(outfits, where?.owner?.id);
+      return Promise.resolve();
     }),
   };
   const calendarRepository = {
-    find: jest.fn(async (where: { owner?: { id?: number } }) =>
-      owned(calendars, where?.owner?.id),
+    find: jest.fn((where: { owner?: { id?: number } }) =>
+      Promise.resolve(owned(calendars, where?.owner?.id)),
     ),
-    nativeDelete: jest.fn(async (where: { owner?: { id?: number } }) => {
+    nativeDelete: jest.fn((where: { owner?: { id?: number } }) => {
       spliceAllOwned(calendars, where?.owner?.id);
+      return Promise.resolve();
     }),
   };
   const feedbackRepository = {
-    find: jest.fn(async (where: { owner?: { id?: number } }) =>
-      owned(feedback, where?.owner?.id),
+    find: jest.fn((where: { owner?: { id?: number } }) =>
+      Promise.resolve(owned(feedback, where?.owner?.id)),
     ),
-    nativeDelete: jest.fn(async (where: { owner?: { id?: number } }) => {
+    nativeDelete: jest.fn((where: { owner?: { id?: number } }) => {
       spliceAllOwned(feedback, where?.owner?.id);
+      return Promise.resolve();
     }),
   };
 
@@ -243,9 +248,7 @@ function makeService(
 
 describe('wardrobe copy', () => {
   it('copies a full wardrobe onto an empty sandbox and leaves the source unchanged', async () => {
-    const CopyService = loadCopyService();
-    expect(typeof CopyService).toBe('function');
-    const ctx = makeService(CopyService!);
+    const ctx = makeService(WardrobeCopyService);
 
     const preview = await ctx.service.preview(7, 1, 3);
     expect(preview).toMatchObject({
@@ -332,9 +335,7 @@ describe('wardrobe copy', () => {
   });
 
   it('rejects an unmarked target, the same source and target, and mismatched counts', async () => {
-    const CopyService = loadCopyService();
-    expect(typeof CopyService).toBe('function');
-    const { service } = makeService(CopyService!);
+    const { service } = makeService(WardrobeCopyService);
 
     await expect(
       service.copy(7, {
@@ -364,9 +365,7 @@ describe('wardrobe copy', () => {
   });
 
   it('rejects a wardrobe copy when garment ids cannot be remapped onto the sandbox', async () => {
-    const CopyService = loadCopyService();
-    expect(typeof CopyService).toBe('function');
-    const broken = makeService(CopyService!);
+    const broken = makeService(WardrobeCopyService);
     broken.sourceOutfit.slots[0].garmentId = 999;
     await expect(
       broken.service.copy(7, {
@@ -403,9 +402,7 @@ describe('overwrite sandbox', () => {
   };
 
   it('rejects replacing existing data without confirm', async () => {
-    const CopyService = loadCopyService();
-    expect(typeof CopyService).toBe('function');
-    const ctx = makeService(CopyService!, {
+    const ctx = makeService(WardrobeCopyService, {
       targetGarments: staleTarget.garments,
       targetOutfits: staleTarget.outfits,
       targetCalendars: staleTarget.calendars,
@@ -425,9 +422,7 @@ describe('overwrite sandbox', () => {
   });
 
   it('replaces existing sandbox data after confirm', async () => {
-    const CopyService = loadCopyService();
-    expect(typeof CopyService).toBe('function');
-    const ctx = makeService(CopyService!, {
+    const ctx = makeService(WardrobeCopyService, {
       targetGarments: staleTarget.garments,
       targetOutfits: staleTarget.outfits,
       targetCalendars: staleTarget.calendars,
