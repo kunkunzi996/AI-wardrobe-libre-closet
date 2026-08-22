@@ -216,16 +216,24 @@ export class OutfitGeneratorService {
     if (!miniappMode) {
       return { plans, ai };
     }
-    const miniappPlans = (ai?.recommendations ?? []).map((recommendation) => ({
-      title: recommendation.title,
-      reason: recommendation.reason,
-      cautions: recommendation.cautions,
-      garments: recommendation.garments,
-      slots: recommendation.garments.map((garment) => ({
-        category: garment.category,
-        garmentId: garment.id,
-      })),
-    }));
+    const garmentById = new Map(
+      miniappCandidates.map((garment) => [garment.id, garment]),
+    );
+    const miniappPlans = (ai?.recommendations ?? []).map((recommendation) => {
+      const selected = recommendation.garmentIds
+        .map((id) => garmentById.get(id))
+        .filter((garment): garment is Garment => Boolean(garment));
+      return {
+        title: recommendation.title,
+        reason: recommendation.reason,
+        cautions: recommendation.cautions,
+        garments: selected,
+        slots: selected.map((garment) => ({
+          category: garment.category,
+          garmentId: garment.id,
+        })),
+      };
+    });
     return { plans: this.dedupePlans(miniappPlans), ai };
   }
 
