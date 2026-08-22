@@ -25,9 +25,19 @@ describe('parseWardrobeQuery', () => {
   it('detects exclusion and weather intent words', () => {
     expect(parseWardrobeQuery('下雨天不想穿裙子')).toEqual(
       expect.objectContaining({
-        excludedCategories: ['dresses', 'bottoms'],
+        excludedCategories: ['dresses'],
         keywords: ['下雨'],
       }),
     );
+    expect(parseWardrobeQuery('不要裙子')).toEqual(
+      expect.objectContaining({
+        excludedCategories: ['dresses'],
+      }),
+    );
+    expect(parseWardrobeQuery('不要裙子').excludedCategories).not.toContain(
+      'bottoms',
+    );
+    expect(parseWardrobeQuery('薄一点').thickness).toBe('thin');
+    expect(parseWardrobeQuery('要厚款').thickness).toBe('thick');
   });
 });

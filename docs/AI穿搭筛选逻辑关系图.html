@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 穿搭筛选逻辑关系图</title>
+  <style>
+    :root {
+      --bg: #eceaf0;
+      --ink: #221c3a;
+      --muted: #6b6580;
+      --line: #c9c3d6;
+      --card: #fff;
+      --purple: #6f5ae0;
+      --teal: #2a9d99;
+      --gold: #c9a227;
+      --rose: #c0392b;
+      --ok: #1f7a4d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.45;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+    h1 { font-size: 28px; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 28px; font-size: 14px; }
+    h2 { font-size: 20px; margin: 36px 0 14px; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border-radius: 999px; padding: 6px 12px;
+      font-size: 13px; color: var(--muted);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .flow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    .arrow {
+      width: 2px; height: 18px; background: var(--line); position: relative;
+    }
+    .arrow::after {
+      content: "";
+      position: absolute; left: -4px; bottom: -2px;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 8px solid var(--line);
+    }
+    .box {
+      width: min(920px, 100%);
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px 18px;
+      box-shadow: 0 4px 16px rgba(34, 26, 58, 0.05);
+    }
+    .box h3 { margin: 0 0 6px; font-size: 16px; }
+    .box p { margin: 0; font-size: 14px; color: var(--muted); }
+    .prep { border-left: 6px solid var(--purple); }
+    .skip { border-left: 6px solid var(--rose); background: #fdf2f2; }
+    .ai { border-left: 6px solid var(--teal); }
+    .check { border-left: 6px solid var(--gold); }
+    .local { border-left: 6px solid #3d6bb3; }
+    .show { border-left: 6px solid var(--ok); }
+    .split {
+      width: min(920px, 100%);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .branch {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 16px rgba(34, 26, 58, 0.05);
+    }
+    .branch h3 { margin: 0 0 8px; font-size: 15px; }
+    .branch ol, .branch ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+    .branch li { margin: 4px 0; }
+    .fork-label {
+      font-size: 13px; color: var(--muted); margin: 8px 0;
+    }
+    .rels {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .rel {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 170px;
+      box-shadow: 0 4px 16px rgba(34, 26, 58, 0.05);
+    }
+    .rel h3 { margin: 0 0 8px; font-size: 15px; }
+    .rel p { margin: 0; font-size: 13px; color: var(--muted); }
+    .rel .tag {
+      display: inline-block;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .t-apply { background: var(--gold); }
+    .t-ai { background: var(--teal); }
+    .t-set { background: #3d6bb3; }
+    .note {
+      margin-top: 28px;
+      padding: 14px 16px;
+      background: #fff4ce;
+      color: #665418;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+    @media (max-width: 800px) {
+      .split, .rels { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>AI 穿搭筛选逻辑</h1>
+    <p class="sub">小程序现行代码路线 · 2026-08-22 · 没指定核心就不锁核心，先筛候选衣橱再组套</p>
+
+    <div class="legend">
+      <span class="chip"><span class="dot" style="background:#6f5ae0"></span>准备</span>
+      <span class="chip"><span class="dot" style="background:#c0392b"></span>设计有、代码跳过</span>
+      <span class="chip"><span class="dot" style="background:#2a9d99"></span>AI 组套</span>
+      <span class="chip"><span class="dot" style="background:#c9a227"></span>后核</span>
+      <span class="chip"><span class="dot" style="background:#3d6bb3"></span>已废除的本地兜底</span>
+      <span class="chip"><span class="dot" style="background:#1f7a4d"></span>给你看的结果</span>
+    </div>
+
+    <h2>一、整条路线</h2>
+    <div class="flow">
+      <div class="box prep">
+        <h3>1. 你点「生成搭配」</h3>
+        <p>输入一句话（例如明天上班穿什么）+ 天气（自动定位 / 手动城市 / 这次没温度）。不管雨、风、湿度。</p>
+      </div>
+      <div class="arrow"></div>
+      <div class="box prep">
+        <h3>2. 只拿你这个微信号的衣橱</h3>
+        <p>按登录用户隔离。衣橱是空的 → 直接 0 套，结束。衣橱里的衣服都能进名单，不再区分待洗、收纳。</p>
+      </div>
+      <div class="arrow"></div>
+      <div class="box prep">
+        <h3>3. 定核心衣服</h3>
+        <p>你从某件点「围绕这件」→ 核心就是那件，三套都得带着它。<br>没指定 → 这次没有核心，不拿最新一件锁死三套。</p>
+      </div>
+      <div class="arrow"></div>
+      <div class="box check">
+        <h3>4. 先筛候选衣橱</h3>
+        <p>本地规则硬筛：天气冷热、你明确说的颜色/厚薄、不要裙子（不含裤子）/不要外套。没标颜色却说只要黑色 → 丢掉。核心自己不丢，但和需求打架必须提醒。<br>筛完没衣服 → 0 套，不硬凑。剩下的才叫候选衣橱。</p>
+      </div>
+      <div class="arrow"></div>
+      <div class="box ai">
+        <h3>5. AI 组套并写理由</h3>
+        <p>模型只能用候选衣橱里的真实 ID。有核心才必须带上；没核心则不必共用一件。最多 3 套。两套是否相同只看衣服 ID 集合，不看标签。</p>
+      </div>
+      <div class="arrow"></div>
+      <div class="fork-label">AI 交回来之后分两条路</div>
+      <div class="split">
+        <div class="branch check">
+          <h3>6a. AI 至少交回 1 套 → 后核</h3>
+          <ol>
+            <li>假 ID / 别人的衣服 → 丢掉</li>
+            <li>同一套里同一件出现两次 → 留一次</li>
+            <li>指定了核心却没带上 → 强制加回去</li>
+            <li>非核心再拦冷热、硬性需求、排除品类</li>
+            <li>整套衣服 ID 完全相同 → 只留一套</li>
+            <li>最多留 3 套</li>
+            <li>补需求冲突提醒、温度提醒、同色/撞色那句话</li>
+          </ol>
+          <p style="margin-top:8px;font-size:13px;color:#c0392b;">不核：两条裙子能不能配、三套像不像、理由乱不乱。</p>
+        </div>
+        <div class="branch local">
+          <h3>6b. AI 失败或 0 套 → 不搭配</h3>
+          <ol>
+            <li>不再用本地 A/B/C 硬凑</li>
+            <li>直接 0 套给你看</li>
+          </ol>
+        </div>
+      </div>
+      <div class="arrow"></div>
+      <div class="box show">
+        <h3>7. 给你看</h3>
+        <p>6a 有结果 → 展示 AI 套。<br>AI 没有套 → 空白，不再用本地三套顶上。</p>
+      </div>
+    </div>
+
+    <h2>二、三块规则怎么咬合</h2>
+    <div class="rels">
+      <div class="rel">
+        <span class="tag t-apply">适用性规则</span>
+        <h3>哪些衣服能留下</h3>
+        <p>冷热硬门槛、硬性需求（颜色/厚薄）、排除品类、核心不能丢、必须是你的衣橱 ID。没指定核心就不造核心。</p>
+        <p style="margin-top:8px;">用在：送给 AI 之前的候选衣橱，以及 AI 出套后的后核。</p>
+      </div>
+      <div class="rel">
+        <span class="tag t-ai">AI 组套</span>
+        <h3>怎么配、怎么写理由</h3>
+        <p>审美组合和措辞交给通义千问文本模型。本地几乎不改它选的品类搭配。</p>
+        <p style="margin-top:8px;">用在：筛完候选衣橱之后、后核之前。没有结果就空白。</p>
+      </div>
+      <div class="rel">
+        <span class="tag t-set">组套规则</span>
+        <h3>怎么配成三套</h3>
+        <p>本地 A/B/C 组套已废除。网页旧模式仍可能走互补品类，小程序不再用。</p>
+        <p style="margin-top:8px;">用在：小程序不使用。</p>
+      </div>
+    </div>
+
+    <h2>三、还可能像的地方</h2>
+    <div class="box prep">
+      <h3>现在这样处理</h3>
+      <p>① 默认核心已废除，三套不必共用一件。<br>
+         ② 后核仍只按衣服 ID 去重：两条不同的黑裙子仍算两套。<br>
+         ③ AI 失败不再用本地三套顶上。</p>
+    </div>
+
+    <p class="note">细则仍以 Excel《现行穿搭规则一览》四张表为准。本图只画关系和走哪条路，不替代逐条规则。待洗、收纳、可穿等库存状态已废除，不再当标签，也不再当筛选门槛。</p>
+  </div>
+</body>
+</html>

@@ -689,13 +689,6 @@ describe('MiniappOutfitController', () => {
     );
 
     expect(result.message).not.toBe('衣橱里还没有可穿衣物，请先添加衣服。');
-    expect(result.recommendations.length).toBeGreaterThan(0);
-    expect(result.recommendations[0].cautions.join(' ')).not.toMatch(
-      /状态提醒|待洗|收纳/,
-    );
-    for (const garment of result.recommendations[0].garments) {
-      expect(garment).not.toHaveProperty('status');
-      expect(garment).not.toHaveProperty('statusLabel');
-    }
+    expect(result.recommendations).toEqual([]);
   });
 });
