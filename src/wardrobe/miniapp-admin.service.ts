@@ -150,9 +150,7 @@ export class MiniappAdminService {
           em.count(OutfitFeedback, owner),
         ]);
       if (garmentCount + outfitCount + calendarCount + feedbackCount > 0) {
-        throw new BadRequestException(
-          '已有衣橱数据的用户不能标成验收沙盒',
-        );
+        throw new BadRequestException('已有衣橱数据的用户不能标成验收沙盒');
       }
     }
 

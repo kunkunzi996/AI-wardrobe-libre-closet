@@ -3,7 +3,6 @@ import {
   COLOR_LABEL_TO_VALUE,
   COLOR_VALUE_TO_LABEL,
 } from '../garment-tag-taxonomy';
-import { GarmentColor } from '../garment-color.enum';
 import {
   buildOutfitGarmentProfile,
   type OutfitGarmentProfile,
@@ -125,10 +124,8 @@ function garmentColorValues(
     return value ? [value] : [];
   });
   if (typeof garment.color === 'string' && garment.color.trim()) {
-    const label = COLOR_VALUE_TO_LABEL[garment.color as GarmentColor];
-    const value = label
-      ? COLOR_LABEL_TO_VALUE[label]
-      : (garment.color as GarmentColor);
+    const label = COLOR_VALUE_TO_LABEL[garment.color];
+    const value = label ? COLOR_LABEL_TO_VALUE[label] : garment.color;
     if (value) fromTags.push(value);
   }
   return Array.from(new Set(fromTags));

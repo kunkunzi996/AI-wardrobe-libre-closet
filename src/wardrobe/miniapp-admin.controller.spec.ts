@@ -252,7 +252,11 @@ describe('MiniappAdminController', () => {
       await expect(mark!(3, { enabled: true }, req)).resolves.toEqual({
         item: { id: 3, acceptanceSandbox: true },
       });
-      expect(adminService.setAcceptanceSandbox).toHaveBeenCalledWith(7, 3, true);
+      expect(adminService.setAcceptanceSandbox).toHaveBeenCalledWith(
+        7,
+        3,
+        true,
+      );
     });
 
     it('returns sandbox fields from the user list', async () => {
@@ -288,7 +292,13 @@ describe('MiniappAdminController', () => {
       });
       copyService.copy.mockResolvedValue({
         complete: true,
-        copied: { garments: 1, photos: 1, outfits: 1, calendars: 1, feedback: 1 },
+        copied: {
+          garments: 1,
+          photos: 1,
+          outfits: 1,
+          calendars: 1,
+          feedback: 1,
+        },
       });
 
       const preview = (controller as any).previewWardrobeCopy;
@@ -318,7 +328,13 @@ describe('MiniappAdminController', () => {
         ),
       ).resolves.toEqual({
         complete: true,
-        copied: { garments: 1, photos: 1, outfits: 1, calendars: 1, feedback: 1 },
+        copied: {
+          garments: 1,
+          photos: 1,
+          outfits: 1,
+          calendars: 1,
+          feedback: 1,
+        },
       });
       expect(copyService.copy).toHaveBeenCalledWith(
         7,

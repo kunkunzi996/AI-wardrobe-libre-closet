@@ -50,7 +50,11 @@ export class WardrobeCopyService {
     private readonly feedbackRepository: EntityRepository<OutfitFeedback>,
   ) {}
 
-  async preview(adminUserId: number | undefined, sourceUserId: number, targetUserId: number) {
+  async preview(
+    adminUserId: number | undefined,
+    sourceUserId: number,
+    targetUserId: number,
+  ) {
     await this.assertAdmin(adminUserId);
     const source = await this.requireUser(sourceUserId);
     const target = await this.requireUser(targetUserId);

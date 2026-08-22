@@ -67,21 +67,21 @@ describe('MiniappAdminService', () => {
     ];
     const persistAndFlush = jest.fn(() => Promise.resolve());
     const countOwned = jest.fn(
-      async (entity: { name?: string }, where?: { owner?: { id?: number } }) => {
+      (entity: { name?: string }, where?: { owner?: { id?: number } }) => {
         const ownerId = where?.owner?.id;
         const ownedBy = (items: Array<{ owner?: { id?: number } }>) =>
           items.filter((item) => item.owner?.id === ownerId).length;
         switch (entity?.name) {
           case 'Garment':
-            return ownedBy(garments);
+            return Promise.resolve(ownedBy(garments));
           case 'Outfit':
-            return ownedBy(options.outfits ?? []);
+            return Promise.resolve(ownedBy(options.outfits ?? []));
           case 'OutfitCalendar':
-            return ownedBy(options.calendars ?? []);
+            return Promise.resolve(ownedBy(options.calendars ?? []));
           case 'OutfitFeedback':
-            return ownedBy(options.feedback ?? []);
+            return Promise.resolve(ownedBy(options.feedback ?? []));
           default:
-            return 0;
+            return Promise.resolve(0);
         }
       },
     );

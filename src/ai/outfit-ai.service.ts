@@ -110,8 +110,9 @@ export class OutfitAiService {
   private buildRequest(input: OutfitAiInput) {
     const miniappMode = input.mode === 'miniapp-taxonomy-v1';
     const availableGarments = input.availableGarments.map((garment) => {
-      const { status: _inventoryStatus, ...rest } = garment;
-      return rest;
+      const copy: OutfitAiGarment = { ...garment };
+      delete copy.status;
+      return copy;
     });
     const coreGarment = input.coreGarmentId
       ? availableGarments.find((garment) => garment.id === input.coreGarmentId)
