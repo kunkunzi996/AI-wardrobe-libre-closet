@@ -27,8 +27,6 @@ Crafted and engineered with care and intention by [Lazztech LLC](https://lazz.te
 - `v0.2.2 - April 17, 2026:` Garment and Outfit names now optional
 - `v0.2.1 - April 15, 2026:` fix empty outfit click area
 
-For full details refer to the [CHANGELOG](CHANGELOG.md).
-
 ---
 
 ## Quick start
