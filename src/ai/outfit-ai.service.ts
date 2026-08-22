@@ -114,9 +114,7 @@ export class OutfitAiService {
       return rest;
     });
     const coreGarment = input.coreGarmentId
-      ? availableGarments.find(
-          (garment) => garment.id === input.coreGarmentId,
-        )
+      ? availableGarments.find((garment) => garment.id === input.coreGarmentId)
       : undefined;
     return {
       model: this.textModel(),
@@ -142,9 +140,11 @@ export class OutfitAiService {
               ? [
                   '每个有效标签组等权，只能在同一组内计分一次，不能重复累加新旧字段。',
                   '色彩关系必须根据整套衣物动态判断，不能把单件色彩感觉当固定关系。',
-                  '遵守天气温度边界和用户明确的冷热反向需求；标签缺失时不推断。',
+                  'availableGarments 已是候选衣橱，只能从这些 id 组套，不能编造。',
+                  '没有 requiredCoreGarmentId 时不要自行指定核心，三套不必共用同一件。',
+                  '有 requiredCoreGarmentId 时每套必须包含它，不得替换。',
                   '所有衣物均视为可穿，不要因待洗、收纳、清洁或归档状态排除或提醒。',
-                  '每套必须包含核心单品（若提供），最多返回三套且衣物 id 集合不得重复。',
+                  '最多返回三套，两套衣物 id 集合完全相同才算重复。',
                 ]
               : [
                   'Every recommendation must include requiredCoreGarmentId when it is provided.',

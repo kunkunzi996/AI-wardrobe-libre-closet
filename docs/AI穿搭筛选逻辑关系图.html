@@ -123,14 +123,14 @@
 <body>
   <div class="wrap">
     <h1>AI 穿搭筛选逻辑</h1>
-    <p class="sub">小程序现行代码路线 · 2026-08-22 · 已按废除库存状态修订 · 红色块是设计写了、代码没做的步骤</p>
+    <p class="sub">小程序现行代码路线 · 2026-08-22 · 没指定核心就不锁核心，先筛候选衣橱再组套</p>
 
     <div class="legend">
       <span class="chip"><span class="dot" style="background:#6f5ae0"></span>准备</span>
       <span class="chip"><span class="dot" style="background:#c0392b"></span>设计有、代码跳过</span>
       <span class="chip"><span class="dot" style="background:#2a9d99"></span>AI 组套</span>
       <span class="chip"><span class="dot" style="background:#c9a227"></span>后核</span>
-      <span class="chip"><span class="dot" style="background:#3d6bb3"></span>本地组套（仅兜底）</span>
+      <span class="chip"><span class="dot" style="background:#3d6bb3"></span>已废除的本地兜底</span>
       <span class="chip"><span class="dot" style="background:#1f7a4d"></span>给你看的结果</span>
     </div>
 
@@ -148,17 +148,17 @@
       <div class="arrow"></div>
       <div class="box prep">
         <h3>3. 定核心衣服</h3>
-        <p>你从某件点「围绕这件」→ 核心就是那件。<br>没指定 → 最新一件。三套都得带着它。</p>
+        <p>你从某件点「围绕这件」→ 核心就是那件，三套都得带着它。<br>没指定 → 这次没有核心，不拿最新一件锁死三套。</p>
       </div>
       <div class="arrow"></div>
-      <div class="box skip">
-        <h3>4. 设计要先筛冷热 · 代码现在跳过</h3>
-        <p>设计：最高温 &gt; 25℃ 丢掉非核心的冬寒/厚款/加厚；最低温 ≤ 10℃ 丢掉非核心的夏热/极薄；核心不丢。<br>代码：这一步没做，全部衣服都发给 AI。</p>
+      <div class="box check">
+        <h3>4. 先筛候选衣橱</h3>
+        <p>本地规则硬筛：天气冷热、你明确说的颜色/厚薄、不要裙子（不含裤子）/不要外套。没标颜色却说只要黑色 → 丢掉。核心自己不丢，但和需求打架必须提醒。<br>筛完没衣服 → 0 套，不硬凑。剩下的才叫候选衣橱。</p>
       </div>
       <div class="arrow"></div>
       <div class="box ai">
         <h3>5. AI 组套并写理由</h3>
-        <p>模型只能用你衣橱里的真实 ID。提示要求：必须带核心、最多 3 套、整套 ID 不能完全重复。品类合不合理、好不好看，主要靠模型自己发挥。</p>
+        <p>模型只能用候选衣橱里的真实 ID。有核心才必须带上；没核心则不必共用一件。最多 3 套。两套是否相同只看衣服 ID 集合，不看标签。</p>
       </div>
       <div class="arrow"></div>
       <div class="fork-label">AI 交回来之后分两条路</div>
@@ -168,30 +168,26 @@
           <ol>
             <li>假 ID / 别人的衣服 → 丢掉</li>
             <li>同一套里同一件出现两次 → 留一次</li>
-            <li>没有核心 → 强制加回去</li>
-            <li>这时才拦非核心冷热</li>
-            <li>整套 ID 完全相同 → 只留一套</li>
+            <li>指定了核心却没带上 → 强制加回去</li>
+            <li>非核心再拦冷热、硬性需求、排除品类</li>
+            <li>整套衣服 ID 完全相同 → 只留一套</li>
             <li>最多留 3 套</li>
-            <li>补温度提醒、同色/撞色那句话（不再补待洗/收纳提醒）</li>
+            <li>补需求冲突提醒、温度提醒、同色/撞色那句话</li>
           </ol>
           <p style="margin-top:8px;font-size:13px;color:#c0392b;">不核：两条裙子能不能配、三套像不像、理由乱不乱。</p>
         </div>
         <div class="branch local">
-          <h3>6b. AI 失败或 0 套 → 本地组套</h3>
+          <h3>6b. AI 失败或 0 套 → 不搭配</h3>
           <ol>
-            <li>三套都带同一件核心</li>
-            <li>按互补品类每类最多 1 件（连衣裙只补鞋/外套/包/配饰）</li>
-            <li>候选先过冷热硬门槛</li>
-            <li>和核心同组标签命中 +1，你的话命中标签再 +1</li>
-            <li>方案 A/B/C 拿该品类第 1/2/3 名（标题不参与打分）</li>
-            <li>套模板理由，再补温度提醒和颜色关系</li>
+            <li>不再用本地 A/B/C 硬凑</li>
+            <li>直接 0 套给你看</li>
           </ol>
         </div>
       </div>
       <div class="arrow"></div>
       <div class="box show">
         <h3>7. 给你看</h3>
-        <p>6a 有结果 → 只展示 AI 套，本地组套算过也不给你看。<br>6a 空了 → 才展示 6b 的三套。</p>
+        <p>6a 有结果 → 展示 AI 套。<br>AI 没有套 → 空白，不再用本地三套顶上。</p>
       </div>
     </div>
 
@@ -200,29 +196,29 @@
       <div class="rel">
         <span class="tag t-apply">适用性规则</span>
         <h3>哪些衣服能留下</h3>
-        <p>冷热硬门槛、核心不能丢、必须是你的衣橱 ID、衣橱里的衣服都能留下、你说的冷热优先于温度。</p>
-        <p style="margin-top:8px;">用在：本地组套挑候选时、AI 出套后的后核。</p>
+        <p>冷热硬门槛、硬性需求（颜色/厚薄）、排除品类、核心不能丢、必须是你的衣橱 ID。没指定核心就不造核心。</p>
+        <p style="margin-top:8px;">用在：送给 AI 之前的候选衣橱，以及 AI 出套后的后核。</p>
       </div>
       <div class="rel">
         <span class="tag t-ai">AI 组套</span>
         <h3>怎么配、怎么写理由</h3>
         <p>审美组合和措辞交给通义千问文本模型。本地几乎不改它选的品类搭配。</p>
-        <p style="margin-top:8px;">用在：前筛被跳过之后、后核之前。有结果就盖掉组套路。</p>
+        <p style="margin-top:8px;">用在：筛完候选衣橱之后、后核之前。没有结果就空白。</p>
       </div>
       <div class="rel">
         <span class="tag t-set">组套规则</span>
         <h3>怎么配成三套</h3>
-        <p>互补品类、每类 1 件、打分、A/B/C 换件。不会配两条连衣裙。</p>
-        <p style="margin-top:8px;">用在：只当 AI 不可用时的成品。AI 成功时不算给你看。</p>
+        <p>本地 A/B/C 组套已废除。网页旧模式仍可能走互补品类，小程序不再用。</p>
+        <p style="margin-top:8px;">用在：小程序不使用。</p>
       </div>
     </div>
 
-    <h2>三、你这次为什么三套很像</h2>
-    <div class="box skip">
-      <h3>路线上的三个缺口叠在一起</h3>
-      <p>① 没先筛，AI 看见全部衣服。<br>
-         ② 默认核心锁死为最新那件黑连衣裙，三套都得带它。<br>
-         ③ 后核不看品类，第 3 套可以是两条黑裙子；差异只按「整套 ID 是不是完全一样」算。</p>
+    <h2>三、还可能像的地方</h2>
+    <div class="box prep">
+      <h3>现在这样处理</h3>
+      <p>① 默认核心已废除，三套不必共用一件。<br>
+         ② 后核仍只按衣服 ID 去重：两条不同的黑裙子仍算两套。<br>
+         ③ AI 失败不再用本地三套顶上。</p>
     </div>
 
     <p class="note">细则仍以 Excel《现行穿搭规则一览》四张表为准。本图只画关系和走哪条路，不替代逐条规则。待洗、收纳、可穿等库存状态已废除，不再当标签，也不再当筛选门槛。</p>

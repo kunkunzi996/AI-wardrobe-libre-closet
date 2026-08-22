@@ -10,6 +10,11 @@ import {
   deriveOutfitColorRelations,
   type OutfitGarmentProfile,
 } from './outfit-tag-profile';
+import {
+  demandConflictCautions,
+  filterCandidateWardrobe,
+  isMiniappIncompatible,
+} from './outfit-candidate-filter';
 import type { OutfitTemperatureContext } from '../../weather/tencent-weather.service';
 
 /**
@@ -105,98 +110,102 @@ export class OutfitGeneratorService {
       return { plans: [] };
     }
     const candidatePool = miniappMode ? orderedGarments : wearable;
-    // 小程序不做待洗/收纳工作流，衣橱里的衣服一律可搭配，默认核心就是最新一件。
     // 网页旧模式仍只在可穿范围内查找核心，且必须显式指定。
+    // 小程序：没有指定核心时不存在核心衣物，不得拿最新一件锁死三套。
     const core = miniappMode
       ? input.coreGarmentId != null
         ? orderedGarments.find((garment) => garment.id === input.coreGarmentId)
-        : orderedGarments[0]
+        : undefined
       : wearable.find((garment) => garment.id === input.coreGarmentId);
-    if (!core) throw new NotFoundException('Core garment not found');
+    if (!miniappMode && !core) {
+      throw new NotFoundException('Core garment not found');
+    }
+    if (miniappMode && input.coreGarmentId != null && !core) {
+      throw new NotFoundException('Core garment not found');
+    }
 
-    const plans = (
-      miniappMode
-        ? (value: GeneratedOutfitPlan[]) => this.dedupePlans(value)
-        : (value: GeneratedOutfitPlan[]) => value
-    )(
-      PLAN_TITLES.map((title, index) => {
-        const selected = this.pickGarments(
+    const miniappCandidates = miniappMode
+      ? filterCandidateWardrobe({
+          garments: orderedGarments,
           core,
-          candidatePool,
-          input.requestText,
-          index,
+          requestText: input.requestText,
           temperatureContext,
-          miniappMode,
-        );
-        const content = miniappMode
-          ? this.normalizeMiniappPlan(
-              this.reasonFor(title, core, input.requestText),
-              [],
-              selected,
-              input.requestText,
+        })
+      : candidatePool;
+    if (miniappMode && !core && miniappCandidates.length === 0) {
+      return { plans: [] };
+    }
+
+    const plans =
+      miniappMode || !core
+        ? []
+        : PLAN_TITLES.map((title, index) => {
+            const selected = this.pickGarments(
               core,
+              candidatePool,
+              input.requestText,
+              index,
               temperatureContext,
-            )
-          : {
+              miniappMode,
+            );
+            return {
+              title,
               reason: this.reasonFor(title, core, input.requestText),
               cautions: [],
+              garments: selected,
+              slots: selected.map((garment) => ({
+                category: garment.category,
+                garmentId: garment.id,
+              })),
             };
-        return {
-          title,
-          ...content,
-          garments: selected,
-          slots: selected.map((garment) => ({
-            category: garment.category,
-            garmentId: garment.id,
-          })),
-        };
-      }),
-    );
+          });
 
-    const rawAi = this.outfitAiService
-      ? await this.outfitAiService.recommend({
-          requestText: input.requestText || core.name || '围绕这件衣服搭配',
-          coreGarmentId: core.id,
-          ...(miniappMode
-            ? {
-                mode: 'miniapp-taxonomy-v1' as const,
-                temperatureContext,
-              }
-            : {}),
-          availableGarments: garments.map((garment) => {
-            const profile = miniappMode
-              ? buildOutfitGarmentProfile(garment)
-              : undefined;
-            return {
-              id: garment.id,
-              name: garment.name,
-              category: garment.category,
-              color: garment.color,
-              seasons: garment.seasons,
-              styleTags: garment.styleTags,
-              sceneTags: garment.sceneTags,
-              ...(miniappMode ? {} : { status: garment.status }),
-              ...(profile
-                ? {
-                    tagsByGroup: profile.tagsByGroup,
-                    sourceByGroup: profile.sourceByGroup,
-                  }
-                : {}),
-            };
-          }),
-        })
-      : undefined;
+    const aiGarments = miniappMode ? miniappCandidates : garments;
+    const rawAi =
+      this.outfitAiService && aiGarments.length > 0
+        ? await this.outfitAiService.recommend({
+            requestText:
+              input.requestText ||
+              core?.name ||
+              '帮我从衣橱里搭配一套今天可以穿的衣服',
+            ...(core ? { coreGarmentId: core.id } : {}),
+            ...(miniappMode
+              ? {
+                  mode: 'miniapp-taxonomy-v1' as const,
+                  temperatureContext,
+                }
+              : {}),
+            availableGarments: aiGarments.map((garment) => {
+              const profile = miniappMode
+                ? buildOutfitGarmentProfile(garment)
+                : undefined;
+              return {
+                id: garment.id,
+                name: garment.name,
+                category: garment.category,
+                color: garment.color,
+                seasons: garment.seasons,
+                styleTags: garment.styleTags,
+                sceneTags: garment.sceneTags,
+                ...(miniappMode ? {} : { status: garment.status }),
+                ...(profile
+                  ? {
+                      tagsByGroup: profile.tagsByGroup,
+                      sourceByGroup: profile.sourceByGroup,
+                    }
+                  : {}),
+              };
+            }),
+          })
+        : undefined;
 
     const shouldExposeAi =
       rawAi &&
-      (rawAi.source === 'ai' ||
-        (miniappMode &&
-          rawAi.source === 'fallback' &&
-          rawAi.recommendations.length > 0));
+      (rawAi.source === 'ai' || (miniappMode && rawAi.source === 'fallback'));
     const ai = shouldExposeAi
       ? this.attachAiGarments(
           rawAi,
-          garments,
+          miniappMode ? miniappCandidates : garments,
           input.requestText,
           core,
           temperatureContext,
@@ -204,7 +213,20 @@ export class OutfitGeneratorService {
         )
       : undefined;
 
-    return { plans, ai };
+    if (!miniappMode) {
+      return { plans, ai };
+    }
+    const miniappPlans = (ai?.recommendations ?? []).map((recommendation) => ({
+      title: recommendation.title,
+      reason: recommendation.reason,
+      cautions: recommendation.cautions,
+      garments: recommendation.garments,
+      slots: recommendation.garments.map((garment) => ({
+        category: garment.category,
+        garmentId: garment.id,
+      })),
+    }));
+    return { plans: this.dedupePlans(miniappPlans), ai };
   }
 
   private pickGarments(
@@ -438,32 +460,12 @@ export class OutfitGeneratorService {
   ): boolean {
     if (core && garment.id === core.id) return false;
     if (miniappMode) {
-      if (!temperatureContext || temperatureContext.status !== 'available') {
-        return false;
-      }
-      const profile = buildOutfitGarmentProfile(garment);
-      const weatherTags = profile.tagsByGroup.weather ?? [];
-      const thicknessTags = profile.tagsByGroup.thickness ?? [];
-      const explicitWarm = this.isExplicitWarmRequest(requestText);
-      const explicitCool = this.isExplicitCoolRequest(requestText);
-      const highTemperature = (temperatureContext.maxC ?? -Infinity) > 25;
-      const lowTemperature = (temperatureContext.minC ?? Infinity) <= 10;
-      if (
-        highTemperature &&
-        !explicitWarm &&
-        (weatherTags.includes('冬寒') ||
-          thicknessTags.some((tag) => ['厚款', '加厚'].includes(tag)))
-      ) {
-        return true;
-      }
-      if (
-        lowTemperature &&
-        !explicitCool &&
-        (weatherTags.includes('夏热') || thicknessTags.includes('极薄'))
-      ) {
-        return true;
-      }
-      return false;
+      return isMiniappIncompatible(
+        garment,
+        requestText,
+        core,
+        temperatureContext,
+      );
     }
     if (!this.isHotWeatherRequest(requestText)) return false;
 
@@ -580,6 +582,7 @@ export class OutfitGeneratorService {
       cautions: Array.from(
         new Set([
           ...cautions,
+          ...demandConflictCautions(core, requestText),
           ...this.temperatureCautions(
             garments,
             requestText,

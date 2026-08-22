@@ -7,30 +7,36 @@ export interface WardrobeQueryIntent {
   seasons: string[];
   excludedCategories: string[];
   keywords: string[];
+  thickness?: 'thin' | 'thick';
 }
 
 const COLOR_WORDS: Record<string, GarmentColor> = {
-  黑: GarmentColor.BLACK,
   黑色: GarmentColor.BLACK,
-  白: GarmentColor.WHITE,
+  黑: GarmentColor.BLACK,
   白色: GarmentColor.WHITE,
-  灰: GarmentColor.GREY,
+  白: GarmentColor.WHITE,
   灰色: GarmentColor.GREY,
+  灰: GarmentColor.GREY,
   米色: GarmentColor.BEIGE,
   卡其: GarmentColor.BEIGE,
   棕色: GarmentColor.BROWN,
-  蓝: GarmentColor.BLUE,
+  棕: GarmentColor.BROWN,
   蓝色: GarmentColor.BLUE,
-  红: GarmentColor.RED,
+  蓝: GarmentColor.BLUE,
   红色: GarmentColor.RED,
-  粉: GarmentColor.PINK,
+  红: GarmentColor.RED,
   粉色: GarmentColor.PINK,
-  绿: GarmentColor.GREEN,
+  粉: GarmentColor.PINK,
   绿色: GarmentColor.GREEN,
-  黄: GarmentColor.YELLOW,
+  绿: GarmentColor.GREEN,
   黄色: GarmentColor.YELLOW,
-  紫: GarmentColor.PURPLE,
+  黄: GarmentColor.YELLOW,
   紫色: GarmentColor.PURPLE,
+  紫: GarmentColor.PURPLE,
+  橙色: GarmentColor.ORANGE,
+  橙: GarmentColor.ORANGE,
+  金色: GarmentColor.GOLD,
+  银色: GarmentColor.SILVER,
 };
 
 const STYLE_WORDS = ['法式', '休闲', '简约', '韩系', '甜美', '运动', '复古'];
@@ -70,11 +76,16 @@ export function parseWardrobeQuery(input = ''): WardrobeQueryIntent {
 
   if (/不想穿.*裙|不要.*裙|不穿.*裙/.test(text)) {
     pushUnique(intent.excludedCategories, 'dresses');
-    pushUnique(intent.excludedCategories, 'bottoms');
   }
 
   if (/不想穿.*外套|不要.*外套|不穿.*外套/.test(text)) {
     pushUnique(intent.excludedCategories, 'outerwear');
+  }
+
+  if (/(极薄|薄款|薄一点|薄一些|要薄|穿薄)/.test(text)) {
+    intent.thickness = 'thin';
+  } else if (/(加厚|厚款|厚一点|厚一些|要厚|穿厚)/.test(text)) {
+    intent.thickness = 'thick';
   }
 
   if (text.includes('下雨')) pushUnique(intent.keywords, '下雨');

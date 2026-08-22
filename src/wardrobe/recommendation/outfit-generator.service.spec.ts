@@ -15,6 +15,34 @@ describe('OutfitGeneratorService', () => {
     return { service, garmentRepository };
   };
 
+  const echoAi = () => ({
+    recommend: jest.fn().mockImplementation(
+      async (input: { availableGarments: Array<{ id: number }> }) => ({
+        source: 'ai',
+        recommendations: [
+          {
+            title: 'AI方案',
+            garmentIds: input.availableGarments.map((garment) => garment.id),
+            reason: '根据候选衣橱生成。',
+            cautions: [],
+          },
+        ],
+      }),
+    ),
+  });
+
+  const makeMiniappService = (garments: Garment[]) => {
+    const garmentRepository = {
+      find: jest.fn(() => Promise.resolve(garments)),
+    };
+    const outfitAiService = echoAi();
+    const service = new OutfitGeneratorService(
+      garmentRepository as any,
+      outfitAiService as any,
+    );
+    return { service, garmentRepository, outfitAiService };
+  };
+
   const temperatureContext = (minC: number, maxC: number) =>
     ({
       status: 'available',
@@ -297,7 +325,7 @@ describe('OutfitGeneratorService', () => {
       category: 'tops',
       status: GarmentStatus.Wearable,
     });
-    const { service } = makeService([core]);
+    const { service } = makeMiniappService([core]);
 
     const result = await service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
@@ -322,7 +350,7 @@ describe('OutfitGeneratorService', () => {
       category: 'bottoms',
       status: GarmentStatus.Wearable,
     });
-    const { service } = makeService([core, pants]);
+    const { service } = makeMiniappService([core, pants]);
 
     const result = await service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
@@ -446,7 +474,7 @@ describe('OutfitGeneratorService', () => {
       status: GarmentStatus.Wearable,
     });
 
-    const at25 = await makeService([
+    const at25 = await makeMiniappService([
       core,
       winterCoat,
       normalTop,
@@ -455,7 +483,7 @@ describe('OutfitGeneratorService', () => {
       coreGarmentId: 1,
       temperatureContext: temperatureContext(18, 25),
     } as any);
-    const above25 = await makeService([
+    const above25 = await makeMiniappService([
       core,
       winterCoat,
       normalTop,
@@ -496,7 +524,7 @@ describe('OutfitGeneratorService', () => {
       status: GarmentStatus.Wearable,
     });
 
-    const result = await makeService([
+    const result = await makeMiniappService([
       core,
       summerTop,
       unknownOuterwear,
@@ -537,7 +565,11 @@ describe('OutfitGeneratorService', () => {
       status: GarmentStatus.Wearable,
       sceneTags: ['通勤'],
     });
-    const { service } = makeService([core, taxonomyMatch, legacyWeightedMatch]);
+    const { service, outfitAiService } = makeMiniappService([
+      core,
+      taxonomyMatch,
+      legacyWeightedMatch,
+    ]);
 
     const result = await service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
@@ -545,9 +577,14 @@ describe('OutfitGeneratorService', () => {
       temperatureContext: temperatureContext(16, 20),
     } as any);
 
-    expect(result.plans[0].garments.map((garment) => garment.id)).toEqual([
-      1, 2,
-    ]);
+    const sent = outfitAiService.recommend.mock.calls[0][0]
+      .availableGarments as Array<{ id: number }>;
+    expect(sent.map((garment) => garment.id)).toEqual(
+      expect.arrayContaining([1, 2, 3]),
+    );
+    expect(result.plans[0].garments.map((garment) => garment.id)).toEqual(
+      expect.arrayContaining([1, 2]),
+    );
   });
 
   it('keeps a conflicting core for an explicit reverse request and exposes the temperature caution', async () => {
@@ -722,7 +759,7 @@ describe('OutfitGeneratorService', () => {
       color: 'black' as any,
       status: GarmentStatus.Wearable,
     });
-    const result = await makeService([
+    const result = await makeMiniappService([
       core,
       whiteBottom,
     ]).service.generateWithAi({
@@ -750,7 +787,10 @@ describe('OutfitGeneratorService', () => {
       color: 'white' as any,
       status: GarmentStatus.Wearable,
     });
-    const result = await makeService([core, redBottom]).service.generateWithAi({
+    const result = await makeMiniappService([
+      core,
+      redBottom,
+    ]).service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
       coreGarmentId: 1,
       temperatureContext: temperatureContext(16, 20),
@@ -853,12 +893,8 @@ describe('OutfitGeneratorService', () => {
       temperatureContext: temperatureContext(18, 25.1),
     } as any);
 
-    expect(result.ai).toBeUndefined();
-    expect(
-      result.plans.flatMap((plan) =>
-        plan.garments.map((garment) => garment.id),
-      ),
-    ).not.toContain(2);
+    expect(result.plans).toEqual([]);
+    expect(result.ai?.recommendations ?? []).toEqual([]);
   });
 
   it('adds core temperature cautions to local plans when AI falls back, without inventory-status reminders', async () => {
@@ -893,9 +929,8 @@ describe('OutfitGeneratorService', () => {
       temperatureContext: temperatureContext(20, 25.1),
     } as any);
 
-    const cautions = ((result.plans[0] as any).cautions ?? []).join(' ');
-    expect(cautions).not.toMatch(/待洗|收纳|状态提醒/);
-    expect(cautions).toMatch(/温度|冲突|厚/);
+    expect(result.plans).toEqual([]);
+    expect(result.ai?.recommendations ?? []).toEqual([]);
   });
 
   it('adds the actual outfit color relationship to mini-program AI reasons', async () => {
@@ -956,7 +991,7 @@ describe('OutfitGeneratorService', () => {
       status: GarmentStatus.Wearable,
       taxonomyTags: { thickness: ['加厚'] },
     });
-    const warmService = makeService([plainCore, thickCoat]).service;
+    const warmService = makeMiniappService([plainCore, thickCoat]).service;
 
     const warm = await warmService.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
@@ -977,7 +1012,7 @@ describe('OutfitGeneratorService', () => {
       status: GarmentStatus.Wearable,
       taxonomyTags: { thickness: ['极薄'] },
     });
-    const coolService = makeService([plainCore, thinBottom]).service;
+    const coolService = makeMiniappService([plainCore, thinBottom]).service;
 
     const cool = await coolService.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
@@ -1024,18 +1059,22 @@ describe('OutfitGeneratorService', () => {
       } as any),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    // 小程序把衣橱里所有衣服都当作可穿，默认核心就是最新一件
-    const miniapp = await service.generateWithAi({
+    const miniappService = makeMiniappService([laundry, stored]);
+    const miniapp = await miniappService.service.generateWithAi({
       mode: 'miniapp-taxonomy-v1',
-      requestText: '默认核心',
+      requestText: '今天穿什么',
       temperatureContext: temperatureContext(16, 20),
     } as any);
 
-    expect(
-      miniapp.plans.every((plan) =>
-        plan.garments.some((garment) => garment.id === 42),
-      ),
-    ).toBe(true);
+    const aiInput = miniappService.outfitAiService.recommend.mock
+      .calls[0][0] as { availableGarments: Array<{ id: number }> };
+    expect(aiInput).not.toHaveProperty('coreGarmentId');
+    expect(aiInput.availableGarments.map((garment) => garment.id).sort()).toEqual(
+      [31, 42],
+    );
+    expect(miniapp.plans[0].garments.map((garment) => garment.id).sort()).toEqual(
+      [31, 42],
+    );
   });
 
   it('keeps the legacy web AI output unchanged', async () => {
@@ -1080,7 +1119,7 @@ describe('OutfitGeneratorService', () => {
     expect(result.ai?.recommendations).toHaveLength(4);
   });
 
-  it('selects the newest garment as the default core regardless of inventory status', async () => {
+  it('does not lock mini-program plans to the newest garment when no core is specified', async () => {
     const lowerWearable = makeGarment({
       id: 12,
       name: '较旧上衣',
@@ -1099,7 +1138,7 @@ describe('OutfitGeneratorService', () => {
       category: 'outerwear',
       status: GarmentStatus.Laundry,
     });
-    const { service, garmentRepository } = makeService([
+    const { service, garmentRepository, outfitAiService } = makeMiniappService([
       lowerWearable,
       laundry,
       newestWearable,
@@ -1107,7 +1146,7 @@ describe('OutfitGeneratorService', () => {
 
     const result = await service.generate({
       mode: 'miniapp-taxonomy-v1',
-      requestText: '默认核心',
+      requestText: '今天穿什么',
       userId: 7,
       temperatureContext: temperatureContext(16, 20),
     } as any);
@@ -1116,14 +1155,19 @@ describe('OutfitGeneratorService', () => {
       { owner: { id: 7 } },
       expect.objectContaining({ orderBy: { id: 'DESC' } }),
     );
-    expect(
-      result.every((plan) =>
-        plan.garments.some((garment) => garment.id === 25),
-      ),
-    ).toBe(true);
+    const aiInput = outfitAiService.recommend.mock.calls[0][0] as {
+      availableGarments: Array<{ id: number }>;
+    };
+    expect(aiInput).not.toHaveProperty('coreGarmentId');
+    expect(aiInput.availableGarments.map((garment) => garment.id).sort()).toEqual(
+      [12, 19, 25],
+    );
+    expect(result[0].garments.map((garment) => garment.id).sort()).toEqual([
+      12, 19, 25,
+    ]);
   });
 
-  it('selects the highest-id non-wearable garment when no wearable garment exists', async () => {
+  it('does not invent a core from the highest-id garment when none is specified', async () => {
     const laundry = makeGarment({
       id: 14,
       name: '待洗上衣',
@@ -1142,19 +1186,84 @@ describe('OutfitGeneratorService', () => {
       category: 'tops',
       status: GarmentStatus.Damaged,
     });
-    const { service } = makeService([laundry, stored, damaged]);
+    const { service, outfitAiService } = makeMiniappService([
+      laundry,
+      stored,
+      damaged,
+    ]);
 
-    const result = await service.generate({
+    await service.generate({
       mode: 'miniapp-taxonomy-v1',
-      requestText: '默认核心',
+      requestText: '今天穿什么',
+      temperatureContext: temperatureContext(16, 20),
+    } as any);
+
+    expect(outfitAiService.recommend.mock.calls[0][0]).not.toHaveProperty(
+      'coreGarmentId',
+    );
+  });
+
+  it('sends only black candidate garments to AI when the request requires black', async () => {
+    const unlabeled = makeGarment({
+      id: 1,
+      name: '未标色上衣',
+      category: 'tops',
+      status: GarmentStatus.Wearable,
+    });
+    const black = makeGarment({
+      id: 2,
+      name: '黑色上衣',
+      category: 'tops',
+      color: 'black' as any,
+      status: GarmentStatus.Wearable,
+    });
+    const white = makeGarment({
+      id: 3,
+      name: '白色上衣',
+      category: 'tops',
+      color: 'white' as any,
+      status: GarmentStatus.Wearable,
+    });
+    const { service, outfitAiService } = makeMiniappService([
+      unlabeled,
+      black,
+      white,
+    ]);
+
+    await service.generateWithAi({
+      mode: 'miniapp-taxonomy-v1',
+      requestText: '只要黑色',
       temperatureContext: temperatureContext(16, 20),
     } as any);
 
     expect(
-      result.every((plan) =>
-        plan.garments.some((garment) => garment.id === 22),
+      outfitAiService.recommend.mock.calls[0][0].availableGarments.map(
+        (garment: { id: number }) => garment.id,
       ),
-    ).toBe(true);
+    ).toEqual([2]);
+    expect(outfitAiService.recommend.mock.calls[0][0]).not.toHaveProperty(
+      'coreGarmentId',
+    );
+  });
+
+  it('returns no mini-program plans when AI is unavailable', async () => {
+    const core = makeGarment({
+      id: 1,
+      name: '黑色上衣',
+      category: 'tops',
+      color: 'black' as any,
+      status: GarmentStatus.Wearable,
+    });
+    const { service } = makeService([core]);
+
+    const result = await service.generateWithAi({
+      mode: 'miniapp-taxonomy-v1',
+      coreGarmentId: 1,
+      requestText: '今天穿什么',
+      temperatureContext: temperatureContext(16, 20),
+    } as any);
+
+    expect(result.plans).toEqual([]);
   });
 
   it('keeps an explicitly requested core ahead of a newer default candidate', async () => {
