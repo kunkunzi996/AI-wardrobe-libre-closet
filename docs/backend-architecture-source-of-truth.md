@@ -11,7 +11,8 @@
 
 ## 2. 规则来源
 
-- 架构说明：`docs/ARCHITECTURE_HANDOFF.md`
+- 架构决策：`docs/adr/`
+- 领域术语：`CONTEXT.md`
 - 项目状态：`PROJECT_STATE.md`
 - 运行脚本：`package.json`
 - 后端入口：`src/main.ts`、`src/app.module.ts`
