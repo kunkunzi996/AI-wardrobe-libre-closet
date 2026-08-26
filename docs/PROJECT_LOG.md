@@ -6,6 +6,10 @@ This document is intended for the maintaining team to use to document decisions.
 >
 > The team agrees to _BLANK_ project business decision(s)...
 
+## 2026-08-26
+
+用户决定：不再对困困子账号剩余未补标衣物跑 AI 补标，也不再对老婆真人衣橱跑补标。沙盒（用户 ID 4）全量补标结果保留。补标功能代码和管理员入口不删除。此后不得把这两项再列为待办或启用门槛。
+
 ## 2026-08-22
 
 废除衣物库存状态已合入 `main`（`f4becfb` / 合并 `b356919`）并服务器本地构建部署为 `ai-wardrobe:candidate-b356919`。P5 TEST 全绿、Kun Review PASS。P6 用户结论：01/02/03/04/05/07 PASS；06/08 未执行（网页不再使用）。用户确认启用。数据库 `status` 列保留。停机备份 `/root/ai-wardrobe-backup-20260821T174930Z`。体验版仍 `1.0.1`。本轮四文件已冻结到 `docs/archive/2026-08-22-废除衣物库存状态/`。
