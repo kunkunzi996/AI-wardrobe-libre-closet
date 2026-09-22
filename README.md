@@ -1,242 +1,88 @@
-# Libre Closet
+# AI穿搭衣橱
 
-> Your wardrobe. Your data.
+自用的 AI 搭配衣橱。仓库是 [kunkunzi996/AI-wardrobe-libre-closet](https://github.com/kunkunzi996/AI-wardrobe-libre-closet)。界面显示名来自 `APP_NAME`，当前为「AI穿搭衣橱」；微信小程序导航标题是「AI 衣橱」。
 
-A free, open-source, self-hosted wardrobe organizer. Catalog your clothes, upload photos, build outfits, and access everything from your phone as an offline-ready PWA - all on your own server.
+中文文案里的产品说明是：记录衣物、管理衣橱、生成穿搭方案，并把每天真实穿着沉淀成可改进的搭配数据。标语是「先把衣橱管清楚，再让 AI 帮你搭配。」出处：`src/i18n/zh/lang.json`。
 
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Version](https://img.shields.io/github/v/tag/lazztech/libre-closet?label=Version&color=green)](https://github.com/lazztech/libre-closet/tags)
-[![GHCR Pulls](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2FLazztech%2FLibre-Closet%2Flibre-closet.json&query=downloads&label=GHCR%20pulls&logo=github&logoColor=959da5&labelColor=333a41)](https://github.com/lazztech/libre-closet/pkgs/container/libre-closet)
-[![Docker Pulls](https://img.shields.io/docker/pulls/lazztech/libre-closet?logo=docker&logoColor=959da5&labelColor=333a41&label=Docker%20Pulls)](https://hub.docker.com/r/lazztech/libre-closet)
-[![Join the Discussion](https://img.shields.io/badge/Community-Join%20the%20Discussion-2EA44F?logo=github&logoColor=white&labelColor=1F2937)](https://github.com/Lazztech/Libre-Closet/discussions)
+当前给衣橱主人用的产品是微信小程序。网页衣橱不再作为使用入口。见 `docs/adr/0005-miniapp-is-the-only-user-product.md` 与 `CONTEXT.md`。
 
-Crafted and engineered with care and intention by [Lazztech LLC](https://lazz.tech/about) 🖤
+文档中的公网地址是 [https://aimatchwear.asia](https://aimatchwear.asia)。小程序请求也指向这个域名（`miniprogram/utils/api.js`）。
 
----
+当前事实以 `PROJECT_STATE.md` 为准。领域用语见 `CONTEXT.md`。上一轮交接记录在 `HANDOFF.md`。
 
-## News
+## 和上游的关系
 
-**`v0.2.0` Released! - April 10, 2026**
+本仓库派生自 [Lazztech / Libre Closet](https://github.com/lazztech/libre-closet)（[Lazztech LLC](https://lazz.tech/about)）。`package.json` 的包名仍是 `libre-closet`，作者字段仍是 Lazztech LLC。许可证仍是 GNU AGPL-3.0。
 
-#### Released
+本仓库的产品、部署和改动以这里的代码和文档为准。上游的发行说明、讨论区、GHCR / Docker Hub 拉取数不描述本仓库。
 
-- `v0.3.0 - May 21, 2026`: Garment image background touch up tool
-- `v0.2.5 - May 1, 2026`: Added option to disable register functionality
-- `v0.2.4 - April 28, 2026`: Fix garment photo upload cropping
-- `v0.2.3 - April 20, 2026`: Added Russian language support.
-- `v0.2.2 - April 17, 2026:` Garment and Outfit names now optional
-- `v0.2.1 - April 15, 2026:` fix empty outfit click area
+## 相对上游已写进仓库的差异
 
----
+- 用户入口是微信小程序：登录、衣橱、AI 搭配、今日穿搭、我的。见 `miniprogram/app.json` 与 `PROJECT_STATE.md`。
+- 默认应用名是「AI穿搭衣橱」（`.env`、`src/app.module.ts`、`src/i18n/zh/lang.json`）。
+- 公网域名是 `https://aimatchwear.asia`。首页页脚有备案号，见下文。
+- 微信登录按 `openid` 隔离衣橱。识图走通义千问，抠图走阿里云，天气走腾讯位置服务。生产密钥在仓库外，不在被跟踪的 `.env` 里。
+- 穿搭使用结构化标签。没有指定核心衣物时，先筛候选衣橱再组套。AI 不可用或交回 0 套时，不再用本地规则出方案。见 `docs/adr/0007-no-default-core-filter-first.md`、`docs/adr/0008-no-local-outfit-fallback.md`。
+- 小程序不再使用待洗、收纳等库存状态。数据库 `status` 列保留。见 `docs/adr/0006-no-garment-inventory-status.md`。
+- 管理员可以把衣橱复制到验收沙盒。见 `docs/adr/0004-admin-full-wardrobe-copy.md`。
+- 生产镜像在服务器上构建，标签是 `ai-wardrobe`，容器名是 `ai-wardrobe`。部署说明见 `PROJECT_STATE.md` 与 `docs/github-actions-auto-deploy.md`。
+- 中文产品用语集中在 `src/i18n/zh/lang.json` 和 `CONTEXT.md`。
 
-## Quick start
+## 近期改动
 
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -v librecloset_data:/app/data \
-  ghcr.io/lazztech/libre-closet
-```
+这些都已经在 `main` 的提交记录里：
 
-Open [http://localhost:3000](http://localhost:3000). No account required by default.
+- **2026-09-07**：公网首页页脚增加备案号「粤ICP备2026075065号」，链接 [beian.miit.gov.cn](https://beian.miit.gov.cn)。提交 `6828c10`（PR #17）。页脚模板在 `views/index.hbs`。`PROJECT_STATE.md` 里写明的最近一次生产业务基线仍是 `b356919`（2026-08-21，服务器本地构建）。该文件没有记录这次页脚是否已经换到线上容器。
+- **2026-08-26**：取消困困子剩余未补标衣物和老婆真人衣橱的补标待办。沙盒全量补标结果保留。提交 `d479aa7`。
+- **2026-08-23**：清理过期架构说明、原版设计、P6 验收文档，以及已完成的旧施工计划。PR #13、#15。
+- **2026-08-22**：废除衣物库存状态已合入 `main`（`b356919`）。`PROJECT_STATE.md` 记录该版本已在生产部署，并由用户确认启用。
 
-**Want to try it without self-hosting?** A public instance is running at [https://librecloset.lazz.tech](https://librecloset.lazz.tech) - register a free account to get started. No guest login exists, but registration is instant and requires no email verification.
+## 本地运行
 
----
-
-## Screenshots
-
-Note, these screenshots are taken of the web application viewed as an installed standalone PWA. This tool may also be used like a traditional web app in the browser.
-
-| Wardrobe (Mobile)                                      | Outfits (Mobile)                                 | Outfit Schedule (Mobile)                                 | Outfit Builder (Mobile)                          |
-| ------------------------------------------------------ | ------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------ |
-| ![Wardrobe grid](screenshots/Screenshot_mobile_1.webp) | ![Outfits](screenshots/Screenshot_mobile_2.webp) | ![Outfit Schedule](screenshots/Screenshot_mobile_3.webp) | ![Outfit ](screenshots/Screenshot_mobile_4.webp) |
-
-| Wardrobe (Desktop)                              | Outfits (Desktop)                         | Outfit Schedule (Desktop)                         | Outfit Builder (Desktop)                        |
-| ----------------------------------------------- | ----------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
-| ![Wardrobe grid](screenshots/Screenshot_1.webp) | ![Outfits](screenshots/Screenshot_2.webp) | ![Outfit Schedule](screenshots/Screenshot_3.webp) | ![Outfit detail](screenshots/Screenshot_4.webp) |
-
----
-
-## Features
-
-- **Garment catalog** - name, category, brand, size, colors, notes, photo
-- **Customizable categories** - custom category support with filtering and input suggestion as you type
-- **Outfit builder** - combine garments into saved looks with the Clueless inspired outfit builder
-- **Outfit Scheduling** - schedule out multiple outfits for given days through the week and get a view of what you've worn
-- **Image Background Removal** - Images automatically have their backgrounds removed and optimized WebP upon upload
-- **Offline-ready PWA** - install to home screen, works without internet
-- **Optional auth** - run open for personal use or enable JWT accounts for multi-user
-- **S3 or local storage** - local disk by default, swap to any S3-compatible provider
-- **SQLite or PostgreSQL** - SQLite by default, PostgreSQL for scale
-- **Multi-language** - UI available in English, Italian, French, Russian, German, and Spanish
-
----
-
-## Self-hosting
-
-### Docker (recommended)
-
-```bash
-# SQLite + local storage (simplest)
-docker run -d \
-  -p 3000:3000 \
-  -v librecloset_data:/app/data \
-  ghcr.io/lazztech/libre-closet
-```
-
-### docker-compose
-
-```yaml
-services:
-  libre-closet:
-    image: ghcr.io/lazztech/libre-closet
-    ports:
-      - '3000:3000'
-    volumes:
-      - librecloset_data:/app/data
-    environment:
-      AUTH_ENABLED: 'false'
-      PWA_ENABLED: 'true'
-      DATA_PATH: /app/data
-    restart: unless-stopped
-
-volumes:
-  librecloset_data:
-```
-
-### Build from source
-
-```bash
-git clone https://github.com/lazztech/libre-closet
-cd libre-closet
-cp .env .env.local     # override defaults locally (gitignored)
-npm install
-npm run start:prod
-```
-
----
-
-## Configuration
-
-`.env` contains committed defaults. Override any value via a `.env.local` file (gitignored) or by passing real environment variables to Docker.
-
-| Variable                           | Description                                                                                                                                                                                                                                                                                                                            | Default        | Example                                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------- |
-| `APP_NAME`                         | Display name shown in the UI and navbar                                                                                                                                                                                                                                                                                                | `Libre Closet` | `My awesome Closet manager`                                                               |
-| `DATA_PATH`                        | Directory for SQLite DB and uploaded files                                                                                                                                                                                                                                                                                             | `./data`       | `./libre-closet-data`                                                                     |
-| `AUTH_ENABLED`                     | Enable JWT user accounts and login                                                                                                                                                                                                                                                                                                     | `false`        | `true`                                                                                    |
-| `DISABLE_REGISTRATION`                     | Disallows user sign ups when false                                                                                                                                                                                                                                                                                                     | `false`        | `true`                                                                                    |
-| `PWA_ENABLED`                      | Enable service worker and PWA install prompt                                                                                                                                                                                                                                                                                           | `false`        | `true`                                                                                    |
-| `ACCESS_TOKEN_SECRET`              | JWT signing secret - **change for production**                                                                                                                                                                                                                                                                                         | `ChangeMe!`    | `u9n8c2y847rfctb23468tcb689f243`                                                          |
-| `WECHAT_MINIAPP_APP_ID`            | WeChat mini-program AppID used by `/api/miniapp/auth/login`                                                                                                                                                                                                                                                                            | -              | `wx1234567890abcdef`                                                                      |
-| `WECHAT_MINIAPP_APP_SECRET`        | WeChat mini-program AppSecret used to exchange `wx.login` code for `openid`                                                                                                                                                                                                                                                            | -              | `your-wechat-app-secret`                                                                  |
-| `MINIAPP_ADMIN_USER_IDS`           | Comma-separated mini-program user IDs allowed to access admin inventory exports                                                                                                                                                                                                                                                         | -              | `1,2`                                                                                     |
-| `MINIAPP_ADMIN_WECHAT_OPEN_IDS`    | Comma-separated WeChat `openid` values allowed to access admin inventory exports                                                                                                                                                                                                                                                        | -              | `openid1,openid2`                                                                         |
-| `TENCENT_LBS_KEY`                  | Tencent Location Service Key used only by the backend weather proxy; never include it in the mini-program package                                                                                                                                                                                                                      | -              | `your-tencent-lbs-key`                                                                    |
-| `TENCENT_LBS_BASE_URL`             | Tencent Location Service API base URL                                                                                                                                                                                                                                                                                                  | `https://apis.map.qq.com` | `https://apis.map.qq.com`                                                       |
-| `TENCENT_LBS_TIMEOUT_MS`           | Backend Tencent weather request timeout in milliseconds                                                                                                                                                                                                                                                                                | `8000`         | `8000`                                                                                    |
-| `DATABASE_TYPE`                    | `sqlite` or `postgres`                                                                                                                                                                                                                                                                                                                 | `sqlite`       | `postgres`                                                                                |
-| `DATABASE_HOST`                    | Postgres host                                                                                                                                                                                                                                                                                                                          | -              | `192.168.10.5`                                                                            |
-| `DATABASE_PORT`                    | Postgres port                                                                                                                                                                                                                                                                                                                          | `5432`         | `9867`                                                                                    |
-| `DATABASE_USER`                    | Postgres user                                                                                                                                                                                                                                                                                                                          | -              | `postgres`                                                                                |
-| `DATABASE_PASS`                    | Postgres password                                                                                                                                                                                                                                                                                                                      | -              | `7yfhcn2349cr32f`                                                                         |
-| `DATABASE_SCHEMA`                  | Postgres schema                                                                                                                                                                                                                                                                                                                        | `postgres`     | `libre-closet-schema`                                                                     |
-| `DATABASE_SSL`                     | Use SSL for Postgres                                                                                                                                                                                                                                                                                                                   | `false`        | `true`                                                                                    |
-| `FILE_STORAGE_TYPE`                | `local` or `object` (S3)                                                                                                                                                                                                                                                                                                               | `local`        | `object`                                                                                  |
-| `OBJECT_STORAGE_ACCESS_KEY_ID`     | S3 access key                                                                                                                                                                                                                                                                                                                          | -              | `AKIAIOSFODNN7EXAMPLE`                                                                    |
-| `OBJECT_STORAGE_SECRET_ACCESS_KEY` | S3 secret key                                                                                                                                                                                                                                                                                                                          | -              | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`                                                |
-| `OBJECT_STORAGE_ENDPOINT`          | S3-compatible endpoint URL                                                                                                                                                                                                                                                                                                             | -              | `https://s3.example.com:8443`                                                             |
-| `OBJECT_STORAGE_REGION`            | S3 region                                                                                                                                                                                                                                                                                                                              | `us-east-1`    | `us-west-1`                                                                               |
-| `OBJECT_STORAGE_BUCKET_NAME`       | S3 bucket name                                                                                                                                                                                                                                                                                                                         | `libre-closet` | `my-awesome-closet-manager-bucket`                                                        |
-| `EMAIL_FROM_ADDRESS`               | From address for password reset emails                                                                                                                                                                                                                                                                                                 | -              | `LibreCloset@example.com`                                                                 |
-| `EMAIL_TRANSPORT`                  | `gmail` or `mailgun`                                                                                                                                                                                                                                                                                                                   | `gmail`        | `mailgun`                                                                                 |
-| `EMAIL_API_KEY`                    | Mailgun API key                                                                                                                                                                                                                                                                                                                        | -              | `fyhn2437cryb248cbrdc32`                                                                  |
-| `PUBLIC_VAPID_KEY`                 | Web push - generate for production                                                                                                                                                                                                                                                                                                     | -              | `BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U` |
-| `PRIVATE_VAPID_KEY`                | Web push - generate for production                                                                                                                                                                                                                                                                                                     | -              | `UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKc-ls`                                             |
-
-Generate JWT secret:
-
-```bash
-openssl rand -base64 60
-```
-
-Generate VAPID keys:
-
-```bash
-npx web-push generate-vapid-keys
-```
-
----
-
-## Development
-
-### Prerequisites
-
-- Node (see `.nvmrc`) - install via [nvm](https://github.com/nvm-sh/nvm)
-- Docker (optional, for Postgres testing)
+Node 版本见 `.nvmrc`（`v22.20.0`）。`package.json` 的 `engines` 要求 `22.x`。配置会先读 `.env.local`，再读 `.env`（`src/app.module.ts`）。`.env.*` 已被 `.gitignore` 忽略。仓库里的 `.env` 只有 `APP_NAME` 和一对 VAPID 占位，不要把微信、通义千问、阿里云、腾讯地图等真实密钥写进被 Git 跟踪的文件。
 
 ```bash
 nvm install && nvm use
 npm install
-cp .env .env.local     # override defaults locally (gitignored)
+cp .env .env.local
 npm run start:dev
 ```
 
-### Scripts
+开发服务起来后打开 [http://localhost:3000](http://localhost:3000)。
+
+生产进程需要先构建：
 
 ```bash
-npm run start:dev       # watch mode
-npm run start:prod      # production
-npm run test            # unit tests
-npm run test:e2e        # Playwright end-to-end
-npm run test:cov        # coverage
-npm run precommit       # lint + test + lighthouse (run before committing)
-```
-
-### Migrations
-
-```bash
-# SQLite (build first due to config differences)
 npm run build
-npx mikro-orm migration:create --config mikro-orm.sqlite.cli-config.ts
-
-# PostgreSQL
-npx mikro-orm migration:create --config mikro-orm.postgres.cli-config.ts
+npm run start:prod
 ```
 
-### Docker build
+常用检查：
 
 ```bash
-# Build image
-docker build --no-cache -f docker/Dockerfile . -t libre-closet:latest
-
-# Cross-compile for linux/amd64 (e.g. building on Apple Silicon for a VPS)
-docker buildx build --platform linux/amd64 --no-cache -f docker/Dockerfile . -t libre-closet:latest
+npm test
+npm run test:miniapp
+npm run build
 ```
 
----
+## 部署
 
-## Deployment recommendations
+生产步骤写在：
 
-For most self-hosters: deploy to a VPS via [Coolify](https://coolify.io/) or Portainer using the docker-compose above with SQLite + local storage. SQLite handles thousands of users without issue - see [DjangoCon 2023: Use SQLite in Production](https://youtu.be/yTicYJDT1zE).
+- `PROJECT_STATE.md` 的「生产服务器」和「标准服务器同步流程」
+- `docs/github-actions-auto-deploy.md`
 
-If you need horizontal scaling later, switch to S3-compatible storage and add [Litestream](https://litestream.io/) for streaming SQLite backups before considering a PostgreSQL migration.
+文档里的部署事实：
 
----
+- 服务器项目目录：`/root/AI-wardrobe-libre-closet`
+- 容器 `ai-wardrobe`，端口 `127.0.0.1:3000:3000`，数据卷 `ai_wardrobe_data:/app/data`
+- 真实环境变量在仓库外的 `/root/ai-wardrobe.env`（文档要求权限 `600`）
+- 自 2026-08-06 起，仓库变量 `AUTO_DEPLOY_MAIN=false`。推送 `main` 会跑检查，不会自动连上服务器。文档要求在工作流补上 SQLite WAL 停机备份、候选验证和回滚门禁之前保持关闭。需要上线时按上述文档走服务器本地构建，或在 GitHub Actions 里手动运行部署工作流。
 
-## Contributing
+必需的生产变量名单在 `PROJECT_STATE.md` 的「必需环境变量」。变量校验定义在 `src/app.module.ts`。
 
-PRs and issues are welcome. This project is licensed under AGPL-3.0 - contributions must be compatible with that license.
+## 许可证
 
----
+[GNU AGPL-3.0](LICENSE)。`package.json` 的 `license` 字段是 `AGPL-3.0`。
 
-## License
-
-[GNU AGPL-3.0](LICENSE)
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/image?repos=Lazztech/Libre-Closet&type=date&legend=top-left)](https://www.star-history.com/?repos=Lazztech%2FLibre-Closet&type=date&legend=top-left)
+再分发或提供本程序的网络服务时，须遵守该许可证。上游出处：[Lazztech / Libre Closet](https://github.com/lazztech/libre-closet)。
