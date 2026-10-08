@@ -14,6 +14,7 @@ import type { Garment } from '../dal/entity/garment.entity';
 import { GarmentService } from './garment.service';
 import { OutfitGeneratorService } from './recommendation/outfit-generator.service';
 import { MiniappOutfitRecommendDto } from './dto/miniapp-outfit-recommend.dto';
+import { garmentPhotoUrl } from './view-models/garment-photo.view-model';
 import {
   TencentWeatherService,
   type WeatherRequestInput,
@@ -109,7 +110,6 @@ export class MiniappOutfitController {
   }
 
   private toGarmentCard(garment: Garment, req: MiniappRequest) {
-    const photoFileName = garment.photo?.fileName;
     return {
       id: garment.id,
       name: garment.name ?? '',
@@ -117,9 +117,7 @@ export class MiniappOutfitController {
       categoryLabel: this.categoryLabel(garment.category),
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
-      photoUrl: photoFileName
-        ? `${this.origin(req)}/file/${photoFileName}`
-        : '',
+      photoUrl: garmentPhotoUrl(garment.id, garment.photo, this.origin(req)),
     };
   }
 

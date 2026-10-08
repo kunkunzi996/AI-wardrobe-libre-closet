@@ -80,7 +80,53 @@ Page({
         requestText: '围绕这件衣服，帮我搭一套完整穿搭',
       });
       this.generateOutfit();
+      return;
     }
+    this.refreshCurrentGarmentPhotos();
+  },
+
+  refreshCurrentGarmentPhotos() {
+    if (!this.data.recommendations.length) return;
+    const page = this;
+    const current = (this._photoSequence = (this._photoSequence || 0) + 1);
+    const plans = this.data.recommendations;
+    return api
+      .listGarments()
+      .then(function (data) {
+        if (
+          current !== page._photoSequence ||
+          plans !== page.data.recommendations
+        )
+          return;
+        const byId = new Map(
+          (data.items || []).map(function (item) {
+            return [String(item.id), item.photoUrl];
+          }),
+        );
+        page.setData({
+          recommendations: plans.map(function (plan) {
+            return Object.assign({}, plan, {
+              garments: (plan.garments || []).map(function (item) {
+                return byId.has(String(item.id))
+                  ? Object.assign({}, item, {
+                      photoUrl: byId.get(String(item.id)),
+                    })
+                  : item;
+              }),
+            });
+          }),
+        });
+      })
+      .catch(function () {
+        /* 局部刷新失败保留现有搭配，不重新推荐。 */
+      });
+  },
+
+  onHide() {
+    this._photoSequence = (this._photoSequence || 0) + 1;
+  },
+  onUnload() {
+    this._photoSequence = (this._photoSequence || 0) + 1;
   },
 
   onInput(event) {

@@ -1,15 +1,44 @@
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
+import { buffer } from 'node:stream/consumers';
+import type { MultipartFile } from '@fastify/multipart';
 import sharp from 'sharp';
-import { File } from 'src/dal/entity/file.entity';
+import { File } from '../dal/entity/file.entity';
 import { FileService } from './file-service.abstract';
 
 class TestFileService extends FileService {
   aliyunResult: Buffer | null = null;
   aliyunCalls = 0;
+  rawWrites: Buffer[] = [];
+  displayInputs: Buffer[] = [];
+  privateWriteError?: Error;
 
-  storeImageFromFileUpload(): Promise<File> {
-    return Promise.reject(new Error('Not implemented'));
+  async storeImageFromFileUpload(
+    upload?: MultipartFile,
+    userId?: number,
+  ): Promise<File> {
+    const input = await buffer(upload!.file);
+    this.displayInputs.push(input);
+    await this.prepareGarmentPhotoForStorage(input);
+    return Object.assign(new File(), {
+      id: 2,
+      fileName: 'display.webp',
+      createdBy: { id: userId },
+    });
+  }
+
+  // 只模拟字节存储，不在测试替身中实现双图保存业务。
+  storePrivateImageBuffer(input: Buffer, userId: any): Promise<File> {
+    if (this.privateWriteError) return Promise.reject(this.privateWriteError);
+    this.rawWrites.push(Buffer.from(input));
+    return Promise.resolve(
+      Object.assign(new File(), {
+        id: 1,
+        fileName: 'private-upload.png',
+        mimetype: 'image/png',
+        createdBy: { id: userId },
+      }),
+    );
   }
 
   storeOriginalImageFromFileUpload(): Promise<File> {
@@ -50,6 +79,61 @@ describe('FileService garment photo preparation', () => {
       get: jest.fn((key: string) => values[key]),
       getOrThrow: jest.fn((key: string) => values[key] ?? 'lazztech_icon.webp'),
     }) as any as ConfigService;
+
+  it('TEST-015 双图保存只消费上传一次，原字节不处理，展示图只抠一次', async () => {
+    const service = new TestFileService(configService());
+    const input = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: '#336699' },
+    })
+      .png()
+      .toBuffer();
+    service.aliyunResult = Buffer.from('test-cutout');
+    let streamStarts = 0;
+    const upload = {
+      filename: 'camera.png',
+      mimetype: 'image/png',
+      file: Readable.from(
+        (async function* () {
+          streamStarts += 1;
+          yield Promise.resolve(input.subarray(0, 12));
+          yield Promise.resolve(input.subarray(12));
+        })(),
+      ),
+    } as MultipartFile;
+    const save = Reflect.get(service, 'storeGarmentPhotosFromFileUpload');
+    expect(save).toEqual(expect.any(Function));
+
+    const result = await save.call(service, upload, 42);
+
+    expect(streamStarts).toBe(1);
+    expect(service.rawWrites).toEqual([input]);
+    expect(service.displayInputs).toEqual([input]);
+    expect(service.aliyunCalls).toBe(1);
+    expect(result).toMatchObject({
+      originalPhoto: { id: 1, fileName: 'private-upload.png' },
+      photo: { id: 2, fileName: 'display.webp' },
+    });
+    expect(result.originalPhoto.createdBy.id).toBe(42);
+    expect(result.photo.createdBy.id).toBe(42);
+  });
+
+  it('TEST-015 原图写入失败不报告保存成功，也不继续抠图', async () => {
+    const service = new TestFileService(configService());
+    service.privateWriteError = new Error('测试原图存储失败');
+    const save = Reflect.get(service, 'storeGarmentPhotosFromFileUpload');
+    expect(save).toEqual(expect.any(Function));
+    const upload = {
+      mimetype: 'image/png',
+      filename: 'camera.png',
+      file: Readable.from(Buffer.from('test-original')),
+    } as MultipartFile;
+
+    await expect(save.call(service, upload, 42)).rejects.toThrow(
+      '测试原图存储失败',
+    );
+    expect(service.aliyunCalls).toBe(0);
+    expect(service.displayInputs).toEqual([]);
+  });
 
   it('keeps the garment-like subject and writes a white background', async () => {
     const service = new TestFileService(configService());

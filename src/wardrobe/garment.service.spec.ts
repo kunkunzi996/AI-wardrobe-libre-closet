@@ -2,6 +2,8 @@ import { Garment } from '../dal/entity/garment.entity';
 import { GarmentService } from './garment.service';
 import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
+import { File } from '../dal/entity/file.entity';
+import { Readable } from 'node:stream';
 
 describe('GarmentService', () => {
   const makeService = (existingGarment?: Garment) => {
@@ -27,6 +29,128 @@ describe('GarmentService', () => {
 
     return { service, garmentRepository, entityManager };
   };
+
+  it('TEST-015 服务端相机来源保存两张独立图片，资料保持原样', async () => {
+    const originalPhoto = Object.assign(new File(), {
+      id: 21,
+      fileName: 'private-camera.png',
+    });
+    const photo = Object.assign(new File(), {
+      id: 22,
+      fileName: 'cutout.webp',
+    });
+    const fileService = {
+      storeGarmentPhotosFromFileUpload: jest
+        .fn()
+        .mockResolvedValue({ originalPhoto, photo }),
+      storeImageFromFileUpload: jest.fn().mockResolvedValue(photo),
+    };
+    const em = { persistAndFlush: jest.fn().mockResolvedValue(undefined) };
+    const repo = {
+      create: jest.fn((data) => Object.assign(new Garment(), data)),
+      getEntityManager: jest.fn(() => em),
+    };
+    const service = new GarmentService(
+      repo as any,
+      {} as any,
+      {
+        findOneOrFail: jest.fn().mockResolvedValue({ id: 42 }),
+      } as any,
+      fileService as any,
+    );
+    const upload = {
+      filename: 'camera.png',
+      mimetype: 'image/png',
+      file: Readable.from('test-upload'),
+    } as any;
+
+    const garment = await service.create(
+      Object.assign(
+        {
+          category: 'tops',
+          name: '保留的衣物资料',
+          photo: upload,
+          taxonomyTags: { category: ['衬衫'] },
+        },
+        { photoSource: 'camera-upload' },
+      ),
+      42,
+    );
+
+    expect(fileService.storeGarmentPhotosFromFileUpload).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(fileService.storeGarmentPhotosFromFileUpload).toHaveBeenCalledWith(
+      upload,
+      42,
+    );
+    expect(fileService.storeImageFromFileUpload).not.toHaveBeenCalled();
+    expect(garment).toMatchObject({
+      category: 'tops',
+      name: '保留的衣物资料',
+      taxonomyTags: { category: ['衬衫'] },
+      owner: { id: 42 },
+      originalPhoto,
+      photo,
+    });
+  });
+
+  it('TEST-015 原图保存失败不能继续创建衣物', async () => {
+    const em = { persistAndFlush: jest.fn() };
+    const repo = { create: jest.fn(), getEntityManager: jest.fn(() => em) };
+    const fileService = {
+      storeGarmentPhotosFromFileUpload: jest
+        .fn()
+        .mockRejectedValue(new Error('测试原图保存失败')),
+      storeImageFromFileUpload: jest
+        .fn()
+        .mockRejectedValue(new Error('仍在调用旧单图入口')),
+    };
+    const service = new GarmentService(
+      repo as any,
+      {} as any,
+      {} as any,
+      fileService as any,
+    );
+
+    await expect(
+      service.create(
+        Object.assign(
+          {
+            category: 'tops',
+            photo: {
+              file: Readable.from('upload'),
+              mimetype: 'image/png',
+            } as any,
+          },
+          { photoSource: 'camera-upload' },
+        ),
+        42,
+      ),
+    ).rejects.toThrow('测试原图保存失败');
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(em.persistAndFlush).not.toHaveBeenCalled();
+  });
+
+  it('TEST-015 查询包含独立原图，另一主人仍不能读取衣物', async () => {
+    const existing = Object.assign(new Garment(), {
+      id: 7,
+      category: 'tops',
+      owner: { id: 42 },
+      photo: { id: 22 },
+      originalPhoto: { id: 21 },
+    });
+    const { service, garmentRepository } = makeService(existing);
+
+    await expect(service.findOne(7, 42)).resolves.toBe(existing);
+    expect(garmentRepository.findOne).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        populate: expect.arrayContaining(['photo', 'originalPhoto']),
+      }),
+    );
+    await expect(service.findOne(7, 43)).rejects.toThrow();
+  });
 
   it('creates garments with wardrobe metadata and normalized tag arrays', async () => {
     const { service, garmentRepository } = makeService();

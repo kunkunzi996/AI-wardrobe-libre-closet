@@ -8,7 +8,7 @@ jobs:
   back-end-ci:
     name: back-end-ci
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20 # 包含固定版 MinIO 首次源码编译，所有检查仍完整执行
     steps:
       - uses: actions/checkout@master
 
@@ -71,14 +71,41 @@ jobs:
           postgresql user: "test"
           postgresql password: "Password123"
 
+      - name: Use Go for MinIO test storage
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.8'
+          cache: false
+
       - name: start minio s3 object storage
+        env:
+          GOBIN: ${{ runner.temp }}/minio-bin
+          GOTOOLCHAIN: local
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
         run: |
-          docker run -d -p 9000:9000 --name minio \
-                      -e "MINIO_ACCESS_KEY=minioadmin" \
-                      -e "MINIO_SECRET_KEY=minioadmin" \
-                      -v /tmp/data:/data \
-                      -v /tmp/config:/root/.minio \
-                      minio/minio server /data
+          # 官方社区版仅分发源码；固定发布提交，不依赖已失效的镜像或浮动 latest。
+          go install github.com/minio/minio@9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
+          mkdir -p "$RUNNER_TEMP/minio-data"
+          nohup "$GOBIN/minio" server "$RUNNER_TEMP/minio-data" \
+            --address 127.0.0.1:9000 --console-address 127.0.0.1:9001 \
+            > "$RUNNER_TEMP/minio.log" 2>&1 &
+          minio_pid=$!
+
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:9000/minio/health/ready > /dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$minio_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::测试对象存储启动失败或未就绪"
+            tail -n 60 "$RUNNER_TEMP/minio.log"
+            exit 1
+          fi
 
           export AWS_ACCESS_KEY_ID=minioadmin
           export AWS_SECRET_ACCESS_KEY=minioadmin

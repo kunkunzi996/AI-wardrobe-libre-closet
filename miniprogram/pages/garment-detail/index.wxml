@@ -10,6 +10,21 @@
     <view class="photo-card">
       <image wx:if="{{garment.photoUrl}}" class="photo" src="{{garment.photoUrl}}" mode="aspectFill" />
       <view wx:else class="photo photo-placeholder">暂无图片</view>
+      <button wx:if="{{garment.originalPhotoUrl}}" class="secondary" loading="{{originalLoading}}" disabled="{{originalLoading}}" bindtap="previewOriginalPhoto">查看上传原图</button>
+    </view>
+
+    <view wx:if="{{normalization}}" class="normalization-card">
+      <text class="normalization-title">AI 衣物整理</text>
+      <text wx:if="{{normalization.message}}" class="normalization-message">{{normalization.message}}</text>
+      <text wx:if="{{normalizationError}}" class="normalization-error">{{normalizationError}}</text>
+      <button wx:if="{{normalization.canStart}}" class="secondary" loading="{{normalizationStarting}}" disabled="{{normalizationStarting}}" bindtap="startImageNormalization">AI 整理（生成一张）</button>
+      <button wx:if="{{normalization.status === 'queued' || normalization.status === 'processing' || normalization.status === 'uncertain' || normalizationError}}" class="secondary" bindtap="refreshNormalizationStatus">查看处理状态</button>
+      <view wx:if="{{normalizationPreviewVisible && normalization.candidatePhotoUrl}}" class="normalization-comparison">
+        <view class="normalization-picture"><text>当前展示</text><image src="{{garment.photoUrl}}" mode="aspectFit" /></view>
+        <view class="normalization-picture"><text>{{normalization.adopted ? '整理图 · 已采用' : '整理候选 · 尚未采用'}}</text><image src="{{normalization.candidatePhotoUrl}}" mode="aspectFit" /></view>
+      </view>
+      <button wx:if="{{normalizationPreviewVisible && normalization.canAdopt}}" class="secondary" disabled="{{normalizationAdopting}}" loading="{{normalizationAdopting}}" bindtap="adoptImageNormalization">采用这张整理图</button>
+      <button wx:if="{{normalizationPreviewVisible}}" class="secondary" disabled="{{normalizationAdopting}}" bindtap="dismissNormalizationPreview">{{normalization.adopted ? '收起预览' : '暂不采用'}}</button>
     </view>
 
     <view class="info">

@@ -20,6 +20,7 @@ import { User } from '../../auth/user.decorator';
 import { User as UserEntity } from '../../dal/entity/user.entity';
 import { FileService } from '../file-service.abstract';
 import { ConditionalAuthGuard } from '../../auth/conditional-auth.guard';
+import { assertPublicImageFileName } from '../file-service.interface';
 
 @Controller('file')
 export class FileController {
@@ -63,6 +64,7 @@ export class FileController {
   @Get(':fileName')
   @Header('Cache-Control', 'public, max-age=31536000, immutable') // public for CDN, max-age= 1 year for immutable content
   async getFile(@Param('fileName') fileName: string) {
+    assertPublicImageFileName(fileName);
     return this.fileService.get(fileName);
   }
 
@@ -77,6 +79,7 @@ export class FileController {
   @Get('nobg/:fileName')
   @Header('content-type', 'image/webp')
   async nobg(@Param('fileName') fileName: string, @Res() reply: FastifyReply) {
+    assertPublicImageFileName(fileName);
     const stream = await this.fileService.getNobgVariant(fileName);
     if (!stream) {
       return reply

@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MultipartFile } from '@fastify/multipart';
 import { join } from 'path';
@@ -10,7 +15,12 @@ import { Config as AliyunOpenApiConfig } from '@alicloud/openapi-client';
 import { RuntimeOptions } from '@alicloud/tea-util';
 import { File } from 'src/dal/entity/file.entity';
 import Stream, { Readable } from 'stream';
-import { FileServiceInterface } from './file-service.interface';
+import { buffer } from 'node:stream/consumers';
+import { randomUUID } from 'node:crypto';
+import {
+  FileServiceInterface,
+  type GarmentPhotos,
+} from './file-service.interface';
 
 @Injectable()
 export abstract class FileService implements FileServiceInterface {
@@ -48,6 +58,54 @@ export abstract class FileService implements FileServiceInterface {
     userId: any,
     fileName?: string,
   ): Promise<File>;
+  abstract storePrivateImageBuffer(
+    input: Buffer,
+    userId: number,
+  ): Promise<File>;
+
+  async storeGarmentPhotosFromFileUpload(
+    upload: MultipartFile | undefined,
+    userId: number,
+  ): Promise<GarmentPhotos> {
+    if (!upload) throw new BadRequestException('请先选择图片');
+    if (!upload.mimetype?.startsWith('image/')) {
+      upload.file.resume();
+      throw new BadRequestException('请上传图片文件');
+    }
+    const input = await buffer(upload.file);
+    // 必须先保留原字节；失败时不得继续抠图或报告衣物已保存。
+    const originalPhoto = await this.storePrivateImageBuffer(input, userId);
+    const photo = await this.storeImageFromFileUpload(
+      { ...upload, file: Readable.from(input) } as MultipartFile,
+      userId,
+    );
+    return { originalPhoto, photo };
+  }
+
+  protected async privateImageInfo(input: Buffer, userId: number) {
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      throw new UnauthorizedException('请登录后保存原图');
+    }
+    const formats: Record<string, { extension: string; mimetype: string }> = {
+      jpeg: { extension: 'jpg', mimetype: 'image/jpeg' },
+      png: { extension: 'png', mimetype: 'image/png' },
+      webp: { extension: 'webp', mimetype: 'image/webp' },
+      gif: { extension: 'gif', mimetype: 'image/gif' },
+      tiff: { extension: 'tiff', mimetype: 'image/tiff' },
+      heif: { extension: 'heif', mimetype: 'image/heif' },
+      avif: { extension: 'avif', mimetype: 'image/avif' },
+    };
+    const metadata = await sharp(input)
+      .metadata()
+      .catch(() => undefined);
+    const format = metadata?.format ? formats[metadata.format] : undefined;
+    if (!format) throw new BadRequestException('图片内容无效或格式不支持');
+    // 只校验格式，不旋转、缩放、转码或重新抠图。
+    return {
+      fileName: `private-${randomUUID()}.${format.extension}`,
+      mimetype: format.mimetype,
+    };
+  }
   abstract copyStoredFile(sourceFileName: string, userId: any): Promise<File>;
   abstract delete(fileName: string): Promise<void>;
 

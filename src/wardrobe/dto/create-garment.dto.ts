@@ -40,4 +40,8 @@ export interface CreateGarmentDto {
   notes?: string;
   photo?: MultipartFile | undefined;
   photoFileName?: string;
+  /** 仅备份/复制的服务端引用；必须是目标主人已拥有的私有原图。 */
+  originalPhotoFileName?: string;
+  /** 仅由服务端入口指定；不能信任客户端表单中的同名字段。 */
+  photoSource?: 'camera-upload' | 'stored-image';
 }

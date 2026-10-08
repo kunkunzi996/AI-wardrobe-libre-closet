@@ -23,6 +23,7 @@ import { FileService } from '../file/file-service.abstract';
 import { CalendarService } from './calendar.service';
 import { GarmentService } from './garment.service';
 import { OutfitService } from './outfit.service';
+import { garmentPhotoUrl } from './view-models/garment-photo.view-model';
 
 type MiniappRequest = FastifyRequest & {
   protocol?: string;
@@ -390,7 +391,6 @@ export class MiniappDailyOutfitController {
   }
 
   private toGarmentCard(garment: Garment, req: MiniappRequest) {
-    const photoFileName = garment.photo?.fileName;
     return {
       id: garment.id,
       name: garment.name ?? '',
@@ -398,9 +398,7 @@ export class MiniappDailyOutfitController {
       categoryLabel: this.categoryLabel(garment.category),
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
-      photoUrl: photoFileName
-        ? `${this.origin(req)}/file/${photoFileName}`
-        : '',
+      photoUrl: garmentPhotoUrl(garment.id, garment.photo, this.origin(req)),
     };
   }
 

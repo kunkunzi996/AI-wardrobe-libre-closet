@@ -18,10 +18,22 @@ import { buffer } from 'node:stream/consumers';
 import { Readable } from 'node:stream';
 import { extname, basename } from 'node:path';
 import { GarmentVisionService } from '../ai/garment-vision.service';
+import type { File } from '../dal/entity/file.entity';
+import type { CreateGarmentDto } from './dto/create-garment.dto';
+import {
+  GarmentImageTransferService,
+  assertCompleteImageReferences,
+  type ExportImageRegistry,
+  type GarmentTransferImages,
+} from './garment-image-transfer.service';
 import { ConditionalAuthGuard } from '../auth/conditional-auth.guard';
 import type { Payload } from '../auth/dto/payload.dto';
 import type { Garment } from '../dal/entity/garment.entity';
 import { FileService } from '../file/file-service.abstract';
+import {
+  garmentPhotoUrl,
+  garmentViewModel,
+} from './view-models/garment-photo.view-model';
 import type {
   GarmentChestMarkPosition,
   GarmentChestMarkType,
@@ -73,7 +85,7 @@ type ZipEntry = {
   data: Buffer;
 };
 
-type BackupManifestGarment = {
+type BackupManifestGarment = GarmentTransferImages & {
   name?: string;
   category?: string;
   color?: GarmentColor | string;
@@ -117,6 +129,7 @@ export class MiniappWardrobeController {
     private readonly garmentService: GarmentService,
     private readonly garmentVisionService: GarmentVisionService,
     private readonly fileService: FileService,
+    private readonly imageTransfer?: GarmentImageTransferService,
   ) {}
 
   @Get()
@@ -169,8 +182,23 @@ export class MiniappWardrobeController {
     const entries: ZipEntry[] = [];
     const exportedAt = new Date().toISOString();
     const photoEntries = new Map<number, string>();
+    const imageRegistry: ExportImageRegistry = new Map();
+    const imagesByGarment = new Map<number, GarmentTransferImages>();
 
     for (const garment of garments) {
+      if (this.imageTransfer) {
+        const images = await this.imageTransfer.exportImages(
+          garment.id,
+          this.userId(req)!,
+          imageRegistry,
+        );
+        imagesByGarment.set(garment.id, images);
+        if (images.photo) photoEntries.set(garment.id, images.photo);
+        continue;
+      }
+      // 旧的无转移端口调用只支持旧图；不能悄悄丢掉新原图。
+      if (garment.originalPhoto)
+        throw new BadRequestException('完整图片转移服务不可用');
       const fileName = garment.photo?.fileName;
       if (!fileName) continue;
       const photo = await this.fileService.get(fileName).catch(() => undefined);
@@ -180,12 +208,14 @@ export class MiniappWardrobeController {
       photoEntries.set(garment.id, photoPath);
     }
 
+    for (const image of imageRegistry.values()) entries.push(image);
+
     entries.unshift({
       name: 'manifest.json',
       data: Buffer.from(
         JSON.stringify(
           {
-            backupVersion: 2,
+            backupVersion: this.imageTransfer ? 3 : 2,
             exportedAt,
             garmentCount: garments.length,
             photoCount: photoEntries.size,
@@ -211,6 +241,9 @@ export class MiniappWardrobeController {
               size: garment.size ?? '',
               notes: garment.notes ?? '',
               photo: photoEntries.get(garment.id) ?? '',
+              originalPhoto: imagesByGarment.get(garment.id)?.originalPhoto,
+              normalizationSnapshot: imagesByGarment.get(garment.id)
+                ?.normalizationSnapshot,
             })),
           },
           null,
@@ -251,7 +284,28 @@ export class MiniappWardrobeController {
       throw new BadRequestException('备份包没有衣物数据');
     }
 
+    if (
+      manifest.backupVersion != null &&
+      ![1, 2, 3].includes(manifest.backupVersion)
+    )
+      throw new BadRequestException('不支持的备份版本');
+
     const photoEntries = new Map(entries.map((entry) => [entry.name, entry]));
+    const imageBytes = new Map(
+      entries.map((entry) => [entry.name, entry.data]),
+    );
+    const importedPhotos = new Map<string, File>();
+    // 对所有声明引用先预检，再写入任何目标文件或衣物。
+    for (const item of manifest.garments) {
+      if (!item || typeof item !== 'object')
+        throw new BadRequestException('备份衣物格式不正确');
+      assertCompleteImageReferences(item, imageBytes);
+      if (
+        !this.imageTransfer &&
+        (item.originalPhoto || item.normalizationSnapshot)
+      )
+        throw new BadRequestException('完整图片转移服务不可用');
+    }
     let imported = 0;
     let skipped = 0;
 
@@ -264,39 +318,45 @@ export class MiniappWardrobeController {
       const photoEntry = item.photo ? photoEntries.get(item.photo) : undefined;
       const photo = photoEntry ? this.zipEntryToUpload(photoEntry) : undefined;
 
-      await this.garmentService.create(
-        {
-          name: item.name,
-          category: item.category,
-          color: item.color as GarmentColor | undefined,
-          seasons: item.seasons,
-          subcategory: item.subcategory,
-          styleTags: item.styleTags,
-          sceneTags: item.sceneTags,
-          material: item.material,
-          thickness: item.thickness,
-          taxonomyTags: item.taxonomyTags,
-          pocketPresence: item.pocketPresence as
-            | GarmentFeaturePresence
-            | undefined,
-          pocketPosition: item.pocketPosition as
-            | GarmentPocketPosition
-            | undefined,
-          chestMarkPresence: item.chestMarkPresence as
-            | GarmentFeaturePresence
-            | undefined,
-          chestMarkType: item.chestMarkType as GarmentChestMarkType | undefined,
-          chestMarkPosition: item.chestMarkPosition as
-            | GarmentChestMarkPosition
-            | undefined,
-          chestMarkText: item.chestMarkText ?? undefined,
-          brand: item.brand,
-          size: item.size,
-          notes: item.notes,
-          photo,
-        },
-        this.userId(req),
-      );
+      const dto: CreateGarmentDto = {
+        name: item.name,
+        category: item.category,
+        color: item.color as GarmentColor | undefined,
+        seasons: item.seasons,
+        subcategory: item.subcategory,
+        styleTags: item.styleTags,
+        sceneTags: item.sceneTags,
+        material: item.material,
+        thickness: item.thickness,
+        taxonomyTags: item.taxonomyTags,
+        pocketPresence: item.pocketPresence as
+          | GarmentFeaturePresence
+          | undefined,
+        pocketPosition: item.pocketPosition as
+          | GarmentPocketPosition
+          | undefined,
+        chestMarkPresence: item.chestMarkPresence as
+          | GarmentFeaturePresence
+          | undefined,
+        chestMarkType: item.chestMarkType as GarmentChestMarkType | undefined,
+        chestMarkPosition: item.chestMarkPosition as
+          | GarmentChestMarkPosition
+          | undefined,
+        chestMarkText: item.chestMarkText ?? undefined,
+        brand: item.brand,
+        size: item.size,
+        notes: item.notes,
+        photo: this.imageTransfer ? undefined : photo,
+      };
+      if (this.imageTransfer)
+        await this.imageTransfer.importImages(
+          dto,
+          item,
+          imageBytes,
+          this.userId(req)!,
+          importedPhotos,
+        );
+      else await this.garmentService.create(dto, this.userId(req));
       imported += 1;
     }
 
@@ -337,6 +397,7 @@ export class MiniappWardrobeController {
         size: form.size,
         notes: form.notes,
         photo,
+        photoSource: 'camera-upload',
       },
       this.userId(req),
     );
@@ -503,39 +564,7 @@ export class MiniappWardrobeController {
   }
 
   private toViewModel(garment: Garment, req: MiniappRequest) {
-    const photoFileName = garment.photo?.fileName;
-    return {
-      id: garment.id,
-      name: garment.name ?? '',
-      category: garment.category,
-      categoryLabel: this.categoryLabel(garment.category),
-      color: garment.color ?? '',
-      colorLabel: this.colorLabel(garment.color),
-      season: garment.seasons?.[0] ?? '',
-      seasons: garment.seasons ?? [],
-      subcategory: garment.subcategory ?? '',
-      styleTags: garment.styleTags ?? [],
-      sceneTags: garment.sceneTags ?? [],
-      material: garment.material ?? '',
-      thickness: garment.thickness ?? '',
-      taxonomyTags: garment.taxonomyTags ?? {},
-      taxonomyTagList: Array.from(
-        new Set(Object.values(garment.taxonomyTags ?? {}).flat()),
-      ),
-      pocketPresence: garment.pocketPresence ?? 'unknown',
-      pocketPosition: garment.pocketPosition ?? 'unknown',
-      chestMarkPresence: garment.chestMarkPresence ?? 'unknown',
-      chestMarkType: garment.chestMarkType ?? 'unknown',
-      chestMarkPosition: garment.chestMarkPosition ?? 'unknown',
-      chestMarkText: garment.chestMarkText ?? null,
-      brand: garment.brand ?? '',
-      size: garment.size ?? '',
-      notes: garment.notes ?? '',
-      photoUrl: photoFileName
-        ? `${this.origin(req)}/file/${photoFileName}`
-        : '',
-      detailUrl: `/api/miniapp/garments/${garment.id}`,
-    };
+    return garmentViewModel(garment, this.origin(req));
   }
 
   private toDuplicateCandidateViewModel(
@@ -543,7 +572,6 @@ export class MiniappWardrobeController {
     req: MiniappRequest,
   ) {
     const garment = candidate.garment;
-    const photoFileName = garment.photo?.fileName;
     return {
       id: garment.id,
       name:
@@ -555,12 +583,14 @@ export class MiniappWardrobeController {
       color: garment.color ?? '',
       colorLabel: this.colorLabel(garment.color),
       subcategory: garment.subcategory ?? '',
-      photoUrl: photoFileName
-        ? `${this.origin(req)}/file/${photoFileName}`
-        : '',
+      photoUrl: this.photoUrl(garment, req),
       matchScore: candidate.score,
       matchReason: candidate.reasons.join('、'),
     };
+  }
+
+  private photoUrl(garment: Garment, req: MiniappRequest): string {
+    return garmentPhotoUrl(garment.id, garment.photo, this.origin(req));
   }
 
   private origin(req: MiniappRequest): string {

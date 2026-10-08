@@ -1,10 +1,33 @@
 const API_BASE_URL = 'https://aimatchwear.asia';
 const TOKEN_KEY = 'miniapp_access_token';
 let loginPromise = null;
+const privateImages = require('./image-source').createPrivateImageResolver({
+  baseUrl: API_BASE_URL,
+  getIdentity: function () {
+    return wx.getStorageSync(TOKEN_KEY);
+  },
+  download: function (options) {
+    return wx.downloadFile(options);
+  },
+});
+
+function resolvePrivateImageUrls(value) {
+  return loginMiniapp().then(function () {
+    return privateImages.resolvePrivateImageUrls(value);
+  });
+}
 
 function tokenHeader() {
   const token = wx.getStorageSync(TOKEN_KEY);
   return token ? { Authorization: 'Bearer ' + token } : {};
+}
+
+// 全部图片业务出口统一解析；单图失败仍返回衣物资料，身份变化则拒绝旧响应。
+function imageResponse(value) {
+  return privateImages.resolvePrivateImageUrls(value, true);
+}
+function imageRequest(path, options) {
+  return request(path, options).then(imageResponse);
 }
 
 function loginMiniapp(force) {
@@ -71,6 +94,7 @@ function loginMiniapp(force) {
 function request(path, options) {
   options = options || {};
   return loginMiniapp().then(function () {
+    const requestIdentity = wx.getStorageSync(TOKEN_KEY);
     return new Promise(function (resolve, reject) {
       wx.request({
         url: API_BASE_URL + path,
@@ -79,6 +103,10 @@ function request(path, options) {
         header: Object.assign({}, tokenHeader(), options.header || {}),
         timeout: options.timeout,
         success(res) {
+          if (wx.getStorageSync(TOKEN_KEY) !== requestIdentity) {
+            reject(new Error('登录身份已变化，请重新查看'));
+            return;
+          }
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(res.data);
             return;
@@ -119,7 +147,7 @@ function uploadGarment(filePath, formData) {
         success(res) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
-              resolve(JSON.parse(res.data));
+              imageResponse(JSON.parse(res.data)).then(resolve, reject);
             } catch (error) {
               reject(new Error('服务器返回格式不正确'));
             }
@@ -150,7 +178,7 @@ function uploadDailyOutfit(filePath, formData) {
         success(res) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
-              resolve(JSON.parse(res.data));
+              imageResponse(JSON.parse(res.data)).then(resolve, reject);
             } catch (error) {
               reject(new Error('服务器返回格式不正确'));
             }
@@ -184,7 +212,7 @@ function analyzeGarmentPhoto(filePath) {
         success(res) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
-              resolve(JSON.parse(res.data));
+              imageResponse(JSON.parse(res.data)).then(resolve, reject);
             } catch (error) {
               reject(new Error('服务器返回格式不正确'));
             }
@@ -268,7 +296,11 @@ function updateUserProfile(form) {
               }
               return;
             }
-            console.warn('updateUserProfile bad status', res.statusCode, res.data);
+            console.warn(
+              'updateUserProfile bad status',
+              res.statusCode,
+              res.data,
+            );
             reject(new Error('保存失败，请重试'));
           },
           fail(error) {
@@ -289,21 +321,41 @@ function updateUserProfile(form) {
 }
 
 module.exports = {
+  startGarmentNormalization: function (id, attemptKey) {
+    return request('/api/miniapp/garments/' + id + '/normalization', {
+      method: 'POST',
+      data: { attemptKey: attemptKey },
+      timeout: 30000,
+    });
+  },
+  getGarmentNormalization: function (id) {
+    return request('/api/miniapp/garments/' + id + '/normalization');
+  },
+  adoptGarmentNormalization: function (id, attemptKey) {
+    return imageRequest(
+      '/api/miniapp/garments/' + id + '/normalization/adopt',
+      {
+        method: 'POST',
+        data: { attemptKey: attemptKey },
+      },
+    );
+  },
   API_BASE_URL: API_BASE_URL,
   loginMiniapp: loginMiniapp,
+  resolvePrivateImageUrls: resolvePrivateImageUrls,
   getUserProfile: getUserProfile,
   updateUserProfile: updateUserProfile,
   listGarments: function () {
-    return request('/api/miniapp/garments');
+    return imageRequest('/api/miniapp/garments');
   },
   getGarmentTaxonomy: function () {
     return request('/api/miniapp/garments/taxonomy');
   },
   getGarment: function (id) {
-    return request('/api/miniapp/garments/' + id);
+    return imageRequest('/api/miniapp/garments/' + id);
   },
   updateGarment: function (id, formData) {
-    return request('/api/miniapp/garments/' + id, {
+    return imageRequest('/api/miniapp/garments/' + id, {
       method: 'POST',
       data: formData,
     });
@@ -320,7 +372,7 @@ module.exports = {
     if (coreGarmentId) {
       data.coreGarmentId = coreGarmentId;
     }
-    return request('/api/miniapp/outfits/recommend', {
+    return imageRequest('/api/miniapp/outfits/recommend', {
       method: 'POST',
       data: data,
     });
@@ -358,7 +410,7 @@ module.exports = {
     });
   },
   getTodayOutfits: function (date) {
-    return request(
+    return imageRequest(
       '/api/miniapp/daily-outfits/today' + (date ? '?date=' + date : ''),
     );
   },
@@ -369,7 +421,7 @@ module.exports = {
     });
   },
   getDailyOutfitDetail: function (id) {
-    return request('/api/miniapp/daily-outfits/' + id + '/detail');
+    return imageRequest('/api/miniapp/daily-outfits/' + id + '/detail');
   },
   updateDailyOutfit: function (id, form) {
     if (form.photoPath) {
@@ -393,7 +445,7 @@ module.exports = {
             success(res) {
               if (res.statusCode >= 200 && res.statusCode < 300) {
                 try {
-                  resolve(JSON.parse(res.data));
+                  imageResponse(JSON.parse(res.data)).then(resolve, reject);
                 } catch (error) {
                   reject(new Error('服务器返回格式不正确'));
                 }
@@ -414,7 +466,7 @@ module.exports = {
         });
       });
     }
-    return request('/api/miniapp/daily-outfits/' + id, {
+    return imageRequest('/api/miniapp/daily-outfits/' + id, {
       method: 'POST',
       data: {
         title: form.title || '',
