@@ -17,6 +17,9 @@ import { GarmentService } from './garment.service';
 import { MiniappAdminService } from './miniapp-admin.service';
 import { OutfitFeedbackService } from './outfit-feedback.service';
 import { OutfitService } from './outfit.service';
+import type { File } from '../dal/entity/file.entity';
+import type { CreateGarmentDto } from './dto/create-garment.dto';
+import { GarmentImageTransferService } from './garment-image-transfer.service';
 
 export type WardrobeCopyCounts = {
   sourceUserId: number;
@@ -48,6 +51,7 @@ export class WardrobeCopyService {
     private readonly calendarRepository: EntityRepository<OutfitCalendar>,
     @InjectRepository(OutfitFeedback)
     private readonly feedbackRepository: EntityRepository<OutfitFeedback>,
+    private readonly imageTransfer?: GarmentImageTransferService,
   ) {}
 
   async preview(
@@ -115,43 +119,53 @@ export class WardrobeCopyService {
     }
 
     const garmentIdMap = new Map<number, number>();
+    const imageRegistry = new Map<number, File>();
     for (const garment of sourceItems.garments) {
       const photoName = garment.photo?.fileName?.trim();
-      const copiedPhoto = photoName
-        ? await this.fileService.copyStoredFile(photoName, input.targetUserId)
-        : undefined;
-      const created = await this.garmentService.create(
-        {
-          name: garment.name,
-          category: garment.category,
-          subcategory: garment.subcategory,
-          brand: garment.brand,
-          color: garment.color,
-          size: garment.size,
-          seasons: garment.seasons,
-          styleTags: garment.styleTags,
-          sceneTags: garment.sceneTags,
-          material: garment.material,
-          thickness: garment.thickness,
-          pocketPresence: garment.pocketPresence,
-          pocketPosition: garment.pocketPosition,
-          chestMarkPresence: garment.chestMarkPresence,
-          chestMarkType: garment.chestMarkType,
-          chestMarkPosition: garment.chestMarkPosition,
-          chestMarkText: garment.chestMarkText,
-          fit: garment.fit,
-          taxonomyTags: garment.taxonomyTags,
-          status: garment.status,
-          price: garment.price,
-          purchaseDate: garment.purchaseDate,
-          purchaseChannel: garment.purchaseChannel,
-          wearCount: garment.wearCount,
-          lastWornDate: garment.lastWornDate,
-          notes: garment.notes,
-          photoFileName: copiedPhoto?.fileName,
-        },
-        input.targetUserId,
-      );
+      const copiedPhoto =
+        photoName && !this.imageTransfer
+          ? await this.fileService.copyStoredFile(photoName, input.targetUserId)
+          : undefined;
+      const dto: CreateGarmentDto = {
+        name: garment.name,
+        category: garment.category,
+        subcategory: garment.subcategory,
+        brand: garment.brand,
+        color: garment.color,
+        size: garment.size,
+        seasons: garment.seasons,
+        styleTags: garment.styleTags,
+        sceneTags: garment.sceneTags,
+        material: garment.material,
+        thickness: garment.thickness,
+        pocketPresence: garment.pocketPresence,
+        pocketPosition: garment.pocketPosition,
+        chestMarkPresence: garment.chestMarkPresence,
+        chestMarkType: garment.chestMarkType,
+        chestMarkPosition: garment.chestMarkPosition,
+        chestMarkText: garment.chestMarkText,
+        fit: garment.fit,
+        taxonomyTags: garment.taxonomyTags,
+        status: garment.status,
+        price: garment.price,
+        purchaseDate: garment.purchaseDate,
+        purchaseChannel: garment.purchaseChannel,
+        wearCount: garment.wearCount,
+        lastWornDate: garment.lastWornDate,
+        notes: garment.notes,
+        photoFileName: copiedPhoto?.fileName,
+      };
+      if (!this.imageTransfer && garment.originalPhoto)
+        throw new BadRequestException('完整图片转移服务不可用');
+      const created = this.imageTransfer
+        ? await this.imageTransfer.copyImages(
+            garment.id,
+            input.sourceUserId,
+            input.targetUserId,
+            dto,
+            imageRegistry,
+          )
+        : await this.garmentService.create(dto, input.targetUserId);
       garmentIdMap.set(garment.id, created.id);
     }
 
@@ -324,7 +338,9 @@ export class WardrobeCopyService {
   private async loadOwned(userId: number) {
     const where = { owner: { id: userId } };
     const [garments, outfits, calendars, feedback] = await Promise.all([
-      this.garmentRepository.find(where, { populate: ['photo'] }),
+      this.garmentRepository.find(where, {
+        populate: ['photo', 'originalPhoto'],
+      }),
       this.outfitRepository.find(where, { populate: ['photo'] }),
       this.calendarRepository.find(where, { populate: ['outfit'] }),
       this.feedbackRepository.find(where),

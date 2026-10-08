@@ -141,6 +141,16 @@ import { AiModule } from './ai/ai.module';
           .default('local'),
         OPENAI_API_KEY: Joi.string().optional(),
         QWEN_API_KEY: Joi.string().optional(),
+        QWEN_IMAGE_ENABLED: Joi.boolean().default(false),
+        QWEN_IMAGE_MODEL: Joi.string()
+          .valid('qwen-image-3.0-pro')
+          .default('qwen-image-3.0-pro'),
+        QWEN_IMAGE_API_URL: Joi.string()
+          .uri({ scheme: ['https'] })
+          .default(
+            'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+          ),
+        QWEN_IMAGE_TIMEOUT_MS: Joi.number().integer().min(1).default(240000),
         TENCENT_LBS_KEY: Joi.string().optional(),
         TENCENT_LBS_BASE_URL: Joi.string()
           .uri({

@@ -30,6 +30,11 @@ import { OutfitFeedbackService } from './outfit-feedback.service';
 import { MiniappAdminController } from './miniapp-admin.controller';
 import { MiniappAdminService } from './miniapp-admin.service';
 import { WardrobeCopyService } from './wardrobe-copy.service';
+import { GarmentImageNormalization } from '../dal/entity/garment-image-normalization.entity';
+import { MiniappGarmentImageController } from './miniapp-garment-image.controller';
+import { GarmentImageNormalizationService } from './garment-image-normalization.service';
+import { GarmentImageNormalizationWorker } from './garment-image-normalization.worker';
+import { GarmentImageTransferService } from './garment-image-transfer.service';
 
 @Module({
   imports: [
@@ -44,6 +49,7 @@ import { WardrobeCopyService } from './wardrobe-copy.service';
       OutfitFeedback,
       User,
       File,
+      GarmentImageNormalization,
     ]),
   ],
   controllers: [
@@ -57,8 +63,12 @@ import { WardrobeCopyService } from './wardrobe-copy.service';
     MiniappProfileController,
     MiniappOutfitFeedbackController,
     MiniappAdminController,
+    MiniappGarmentImageController,
   ],
   providers: [
+    GarmentImageTransferService,
+    GarmentImageNormalizationService,
+    GarmentImageNormalizationWorker,
     GarmentService,
     OutfitService,
     CalendarService,

@@ -3,6 +3,358 @@ import { GarmentColor } from './garment-color.enum';
 import { GarmentStatus } from './garment-status.enum';
 import { MiniappWardrobeController } from './miniapp-wardrobe.controller';
 import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
+import { MikroORM } from '@mikro-orm/core';
+import { BetterSqliteDriver } from '@mikro-orm/better-sqlite';
+import fs from 'node:fs';
+import path from 'node:path';
+import { File } from '../dal/entity/file.entity';
+import { User } from '../dal/entity/user.entity';
+import { GarmentImageNormalization } from '../dal/entity/garment-image-normalization.entity';
+import { GarmentService } from './garment.service';
+import { GarmentImageNormalizationService } from './garment-image-normalization.service';
+
+// 只借用真实 ZIP 编解码；图片转移与引用恢复走公开 Owner，外部存储为内存。
+describe('TEST-022 新旧备份真实 Owner 图片往返', () => {
+  let orm: MikroORM,
+    controller: MiniappWardrobeController,
+    garments: GarmentService;
+  let tasks: GarmentImageNormalizationService, owner: User, target: User;
+  let files: any, source: Garment, original: File, input: File, candidate: File;
+  const bytes = new Map<string, Buffer>();
+  const images = {
+    isConfigured: () => true,
+    promptVersion: '20261006-v1',
+    model: 'qwen-image-3.0-pro',
+    generate: jest.fn(),
+  };
+  const transferPath = path.join(__dirname, 'garment-image-transfer.service');
+  const Transfer = fs.existsSync(transferPath + '.ts')
+    ? require(transferPath).GarmentImageTransferService
+    : undefined;
+  beforeAll(async () => {
+    orm = await MikroORM.init({
+      driver: BetterSqliteDriver,
+      dbName: ':memory:',
+      allowGlobalContext: true,
+      entities: [path.join(__dirname, '../dal/entity/*.entity.ts')],
+    });
+    await orm.schema.createSchema();
+  });
+  afterAll(async () => {
+    if (orm) await orm.close();
+  });
+  beforeEach(async () => {
+    await orm.schema.clearDatabase();
+    orm.em.clear();
+    bytes.clear();
+    images.generate.mockClear();
+    owner = orm.em.create(User, {
+      password: 'test-password-11111111',
+      nickname: '源主人',
+    });
+    target = orm.em.create(User, {
+      password: 'test-password-22222222',
+      nickname: '目标主人',
+    });
+    await orm.em.persistAndFlush([owner, target]);
+    let next = 0;
+    files = {
+      get: jest.fn(async (name: string) => {
+        if (!bytes.has(name)) throw new Error('缺少字节');
+        return Readable.from(bytes.get(name)!);
+      }),
+      storePrivateImageBuffer: jest.fn(async (data: Buffer, userId: number) => {
+        const file = orm.em.create(File, {
+          fileName: `private-import-${++next}.png`,
+          mimetype: 'image/png',
+          createdBy: userId,
+          createdOn: new Date().toISOString(),
+        });
+        await orm.em.persistAndFlush(file);
+        bytes.set(file.fileName, Buffer.from(data));
+        return file;
+      }),
+      storeImageFromFileUpload: jest.fn(async (upload: any, userId: number) =>
+        files.storePrivateImageBuffer(await buffer(upload.file), userId),
+      ),
+    };
+    garments = new GarmentService(
+      orm.em.getRepository(Garment) as any,
+      orm.em.getRepository(File) as any,
+      orm.em.getRepository(User) as any,
+      files,
+    );
+    tasks = new GarmentImageNormalizationService(
+      orm.em,
+      garments,
+      images as any,
+      files,
+    );
+    const transfer = Transfer
+      ? new Transfer(garments, tasks, files)
+      : undefined;
+    controller = new (MiniappWardrobeController as any)(
+      garments,
+      {},
+      files,
+      transfer,
+    );
+    original = await files.storePrivateImageBuffer(
+      Buffer.from('原始拍照字节'),
+      owner.id,
+    );
+    input = await files.storePrivateImageBuffer(
+      Buffer.from('原次抠图字节'),
+      owner.id,
+    );
+    candidate = await files.storePrivateImageBuffer(
+      Buffer.from('整理候选字节'),
+      owner.id,
+    );
+    source = orm.em.create(Garment, {
+      category: 'tops',
+      name: '保持资料',
+      brand: '保持品牌',
+      photo: input,
+      originalPhoto: original,
+      owner: owner.id,
+      taxonomyTags: { category: ['衬衫'] },
+      notes: '保留备注',
+    });
+    await orm.em.persistAndFlush(source);
+  });
+  const request = (userId: number, zip?: Buffer) =>
+    ({
+      user: { userId },
+      protocol: 'https',
+      host: 'test.invalid',
+      file: async () => ({
+        filename: 'backup.zip',
+        mimetype: 'application/zip',
+        file: Readable.from(zip!),
+      }),
+    }) as any;
+  const exportZip = async () => {
+    let zip!: Buffer;
+    const reply = {
+      header: jest.fn(),
+      send: (data: Buffer) => {
+        zip = data;
+      },
+    };
+    await controller.exportBackup(request(owner.id), reply as any);
+    const entries = Reflect.get(controller, 'readZip').call(
+      controller,
+      zip,
+    ) as Array<{ name: string; data: Buffer }>;
+    return {
+      zip,
+      entries,
+      manifest: JSON.parse(
+        entries.find((e) => e.name === 'manifest.json')!.data.toString('utf8'),
+      ),
+    };
+  };
+  const setReady = async (adopt = false) => {
+    await tasks.start(source.id, owner.id, 'lzztesttime_backup');
+    const work = (await tasks.claimQueued())!;
+    await tasks.saveProviderResult(work, {
+      requestId: 'never-export-me',
+      imageUrl: 'https://private-provider.invalid/result.png',
+      usage: {},
+    });
+    await tasks.completeCandidate(work, candidate.id);
+    if (adopt) await tasks.adopt(source.id, owner.id, work.attemptKey);
+    orm.em.clear();
+  };
+
+  it.each([false, true])(
+    'TEST-022 ready adopted=%s 四角色原字节往返，候选/当前相同 File 去重且输入仍独立',
+    async (adopted) => {
+      await setReady(adopted);
+      const exported = await exportZip();
+      expect(exported.manifest.backupVersion).toBe(3);
+      const item = exported.manifest.garments[0];
+      expect(item.originalPhoto).toEqual(expect.any(String));
+      expect(item.normalizationSnapshot).toMatchObject({
+        status: 'ready',
+        promptFamily: '上衣',
+        promptVersion: '20261006-v1',
+        model: 'qwen-image-3.0-pro',
+      });
+      expect(item.normalizationSnapshot.sourcePhotoRef).toEqual(
+        expect.any(String),
+      );
+      expect(item.normalizationSnapshot.candidatePhotoRef).toEqual(
+        expect.any(String),
+      );
+      expect(
+        exported.entries.filter((e) => e.name !== 'manifest.json'),
+      ).toHaveLength(3);
+      expect(item.photo).toBe(
+        adopted
+          ? item.normalizationSnapshot.candidatePhotoRef
+          : item.normalizationSnapshot.sourcePhotoRef,
+      );
+      expect(JSON.stringify(exported.manifest)).not.toMatch(
+        /never-export-me|private-provider|requestId|resultUrl|attemptKey|dispatchedAt|createdBy/,
+      );
+      files.storeImageFromFileUpload.mockClear();
+      expect(
+        await controller.importBackup(request(target.id, exported.zip)),
+      ).toEqual({ imported: 1, skipped: 0 });
+      const restored = (await garments.findAll(target.id, {}))[0];
+      expect(restored.name).toBe('保持资料');
+      expect(restored.brand).toBe('保持品牌');
+      expect(restored.originalPhoto!.id).not.toBe(original.id);
+      expect(restored.originalPhoto!.createdBy!.id).toBe(target.id);
+      expect(
+        await buffer(
+          (
+            await garments.readOwnedPhoto(
+              restored.id,
+              target.id,
+              'original',
+              String(restored.originalPhoto!.id),
+            )
+          ).stream,
+        ),
+      ).toEqual(Buffer.from('原始拍照字节'));
+      const current = await tasks.get(restored.id, target.id);
+      expect(current).toMatchObject({
+        status: 'ready',
+        adopted,
+        canStart: false,
+      });
+      const record = await orm.em
+        .fork()
+        .findOneOrFail(
+          GarmentImageNormalization,
+          { garment: restored.id },
+          { populate: ['sourcePhoto', 'candidatePhoto'] },
+        );
+      expect(record.sourcePhoto.getEntity().createdBy!.id).toBe(target.id);
+      expect(
+        await buffer(await files.get(record.sourcePhoto.getEntity().fileName)),
+      ).toEqual(Buffer.from('原次抠图字节'));
+      expect(
+        await buffer(
+          (
+            await tasks.getCandidate(
+              restored.id,
+              target.id,
+              String(record.candidatePhoto!.id),
+            )
+          ).stream,
+        ),
+      ).toEqual(Buffer.from('整理候选字节'));
+      await expect(
+        garments.readOwnedPhoto(
+          restored.id,
+          owner.id,
+          'original',
+          String(restored.originalPhoto!.id),
+        ),
+      ).rejects.toThrow();
+      expect(files.storeImageFromFileUpload).not.toHaveBeenCalled();
+      expect(images.generate).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['queued', 'processing', 'uncertain'])(
+    'TEST-022 %s 快照只静态恢复为未知，不能被 Worker 再领取',
+    async (status) => {
+      await tasks.start(source.id, owner.id, 'lzztesttime_backup');
+      if (status !== 'queued') {
+        const work = (await tasks.claimQueued())!;
+        if (status === 'uncertain')
+          await tasks.markUncertain(work, 'NETWORK_UNKNOWN');
+      }
+      const exported = await exportZip();
+      expect(exported.manifest.backupVersion).toBe(3);
+      await controller.importBackup(request(target.id, exported.zip));
+      const restored = (await garments.findAll(target.id, {}))[0];
+      expect(await tasks.get(restored.id, target.id)).toMatchObject({
+        status: 'uncertain',
+        canStart: false,
+      });
+      const record = await orm.em
+        .fork()
+        .findOneOrFail(GarmentImageNormalization, { garment: restored.id });
+      expect(record.resultUrl).toBeFalsy();
+      expect(record.providerRequestId).toBeFalsy();
+      expect(images.generate).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['photo', 'originalPhoto', 'sourcePhotoRef', 'candidatePhotoRef'])(
+    'TEST-022 已声明 %s 缺失，完整包预检先拒绝且零目标写入',
+    async (role) => {
+      await setReady(true);
+      const exported = await exportZip();
+      const item = exported.manifest.garments[0];
+      expect(exported.manifest.backupVersion).toBe(3);
+      const ref = role.endsWith('Ref')
+        ? item.normalizationSnapshot[role]
+        : item[role];
+      const zip = Reflect.get(controller, 'buildZip').call(
+        controller,
+        exported.entries.filter((e) => e.name !== ref),
+      );
+      const count = files.storePrivateImageBuffer.mock.calls.length;
+      await expect(
+        controller.importBackup(request(target.id, zip)),
+      ).rejects.toThrow(/缺少|不完整/);
+      expect(await garments.findAll(target.id, {})).toEqual([]);
+      expect(files.storePrivateImageBuffer.mock.calls.length).toBe(count);
+    },
+  );
+
+  it.each([1, 2])(
+    'TEST-022 合法版本 %s 旧包不伪造原图、不再抠图，资料与退役 status 保护保留',
+    async (version) => {
+      const manifest = {
+        backupVersion: version,
+        garments: [
+          {
+            name: '旧照片衣物',
+            category: 'tops',
+            status: 'archived',
+            photo: 'photos/old.png',
+            brand: '旧品牌',
+          },
+        ],
+      };
+      const zip = Reflect.get(controller, 'buildZip').call(controller, [
+        {
+          name: 'manifest.json',
+          data: Buffer.from(JSON.stringify(manifest), 'utf8'),
+        },
+        { name: 'photos/old.png', data: Buffer.from('旧展示字节') },
+      ]);
+      await controller.importBackup(request(target.id, zip));
+      const restored = (await garments.findAll(target.id, {}))[0];
+      expect(restored.originalPhoto ?? null).toBeNull();
+      expect(restored.brand).toBe('旧品牌');
+      expect(
+        await buffer(
+          (
+            await garments.readOwnedPhoto(
+              restored.id,
+              target.id,
+              'display',
+              String(restored.photo!.id),
+            )
+          ).stream,
+        ),
+      ).toEqual(Buffer.from('旧展示字节'));
+      expect(restored.status).toBe(GarmentStatus.Wearable);
+      expect(files.storeImageFromFileUpload).not.toHaveBeenCalled();
+      expect(images.generate).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe('MiniappWardrobeController', () => {
   const defaultStructuredFields = {
@@ -71,6 +423,88 @@ describe('MiniappWardrobeController', () => {
       ...defaultStructuredFields,
       ...overrides,
     });
+
+  it('TEST-020 列表、详情、重复候选及新增编辑响应统一当前私有图版本，旧公开图不改', async () => {
+    const { controller, garmentService, garmentVisionService, req } =
+      makeController();
+    const current = makeGarment({
+      photo: { id: 99, fileName: 'private-normalized.png' } as any,
+    });
+    garmentService.findAll.mockResolvedValue([current, makeGarment({ id: 8 })]);
+    garmentService.findOne.mockResolvedValue(current);
+    garmentService.findSimilarToDraft.mockResolvedValue([
+      { garment: current, score: 90, reasons: ['同类'] },
+    ]);
+    garmentService.create.mockResolvedValue(current);
+    garmentService.update.mockResolvedValue(current);
+    garmentVisionService.analyzeUpload.mockResolvedValue({
+      category: 'outerwear',
+    });
+    req.file = jest.fn().mockResolvedValue({
+      mimetype: 'image/png',
+      file: Readable.from('测试字节'),
+      fields: {},
+    });
+    const list = await controller.index(req);
+    const detail = await controller.show(7, req);
+    const duplicate = await controller.analyze(req);
+    const created = await controller.create(
+      { category: 'outerwear' } as any,
+      req,
+    );
+    const updated = await controller.update(
+      7,
+      { category: 'outerwear' } as any,
+      req,
+    );
+    const expected =
+      'https://aimatchwear.asia/api/miniapp/garments/7/photos/display?v=99';
+    for (const item of [
+      list.items[0],
+      detail.item,
+      duplicate.duplicateCandidates[0],
+      created.item,
+      updated.item,
+    ])
+      expect(item.photoUrl).toBe(expected);
+    expect(list.items[1].photoUrl).toBe(
+      'https://aimatchwear.asia/file/coat.webp',
+    );
+  });
+
+  it('TEST-015 正常新增由服务端指定相机来源，忽略客户端伪造的图片来源', async () => {
+    const { controller, garmentService, garmentVisionService, req } =
+      makeController();
+    req.user = { userId: 42 };
+    const upload = {
+      mimetype: 'image/jpeg',
+      file: Readable.from('test-upload'),
+      fields: {},
+    };
+    req.file = jest.fn().mockResolvedValue(upload);
+    garmentService.create.mockResolvedValue(makeGarment());
+
+    await controller.create(
+      {
+        name: '测试上衣',
+        category: 'tops',
+        photoSource: 'stored-image',
+        originalPhotoFileName: 'another-owner.png',
+      } as any,
+      req,
+    );
+
+    const [dto, userId] = garmentService.create.mock.calls[0];
+    expect(userId).toBe(42);
+    expect(dto.photo).toBe(upload);
+    expect(dto.photoSource).toBe('camera-upload');
+    expect(dto).not.toHaveProperty(
+      'originalPhotoFileName',
+      'another-owner.png',
+    );
+    expect(garmentVisionService.analyzeImage).not.toHaveBeenCalled();
+    expect(garmentVisionService.analyzeUpload).not.toHaveBeenCalled();
+  });
 
   it('returns the fixed garment tag taxonomy for miniapp forms', () => {
     const { controller } = makeController();

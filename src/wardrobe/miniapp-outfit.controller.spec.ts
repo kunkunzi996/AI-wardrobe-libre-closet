@@ -59,6 +59,42 @@ describe('MiniappOutfitController', () => {
     });
   });
 
+  it.each(['ai', 'fallback'])(
+    'TEST-020 %s 推荐的当前私有照片走主人角色及 File.id 版本',
+    async (source) => {
+      const { controller, outfitGeneratorService, weatherService, req } =
+        makeController(42);
+      const garment = makeGarment({
+        id: 7,
+        photo: { id: 99, fileName: 'private-normalized.png' } as any,
+      });
+      const plan = {
+        title: '保留标题',
+        reason: '保留理由',
+        cautions: [],
+        garments: [garment],
+      };
+      weatherService.getContext.mockResolvedValue({
+        status: 'unavailable',
+        hourly: [],
+      });
+      outfitGeneratorService.generateWithAi.mockResolvedValue(
+        source === 'ai'
+          ? { plans: [], ai: { source: 'ai', recommendations: [plan] } }
+          : { plans: [plan] },
+      );
+      const result = await controller.recommend({ requestText: '原推荐' }, req);
+      expect(result.recommendations[0]).toMatchObject({
+        title: plan.title,
+        reason: plan.reason,
+      });
+      expect(result.recommendations[0].garments[0].photoUrl).toBe(
+        'https://aimatchwear.asia/api/miniapp/garments/7/photos/display?v=99',
+      );
+      expect(outfitGeneratorService.generateWithAi).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('recommends outfits using existing generated AI plans', async () => {
     const {
       controller,

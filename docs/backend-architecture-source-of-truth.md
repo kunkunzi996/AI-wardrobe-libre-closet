@@ -1,6 +1,6 @@
 # 后端架构实施真源文档
 
-更新时间：2026-06-28
+更新时间：2026-10-08（本轮仅同步衣物整理验收与归档引用）
 
 ## 1. 当前后端语言和框架
 
@@ -192,6 +192,26 @@ docker exec ai-wardrobe sh -c 'echo "QWEN_VISION_MODEL=$QWEN_VISION_MODEL"'
 - 不要提交 `.env`、微信 AppSecret、Qwen Key。
 
 ## 20. 后续变更规则
+
+### 功能分支：衣物手动整理（TASK-05b，尚未正式上线）
+
+- 新上传原图归 GarmentService.originalPhoto；FileService 先保存上传原字节，再沿用一次抠图。历史原图关系为空，不回填。
+- MiniappGarmentImageController 提供 POST/GET /api/miniapp/garments/:id/normalization，JSON 均为 {item: NormalizationView}；入口复用 JWT Guard 并显式拒绝无主人。GET 图片 original/display/candidate 带 v=File.id，私有图按主人及当前版本读取，private,no-store；公开文件三入口拒绝私有名和路径绕路。
+- GarmentImageNormalizationService 拥有每件衣物一份当前记录及确定性五类路由；不直接修改衣物资料/展示。Worker 经公开 claimQueued/saveProviderResult/completeCandidate/markFailed/markUncertain 操作，在独立 RequestContext 中先持久化领取与 dispatchedAt，再发送一次模型请求。小程序请求不等待生成，不拥有后台任务生命周期。
+- GarmentImageService 拥有固定文本、输入归一和供应商边界，公开 generate 返回 {requestId,imageUrl,usage}；GARMENT_IMAGE_FETCH 可注入。没有自由 prompt 或额外 Vision 识别。downloadImage 只下载已返回图片；供应商 URL 不进入公开快照。
+- QWEN_IMAGE_ENABLED 默认 false；新增 QWEN_IMAGE_MODEL/QWEN_IMAGE_API_URL/QWEN_IMAGE_TIMEOUT_MS，沿用 QWEN_API_KEY。只允许 qwen-image-3.0-pro，固定 n=1/1024*1024/seed=701/禁止扩写与水印。前端不持有 Key。
+- 详情通过窄辅助文件组织开始、状态和候选预览；未明确采用时 photo 不变。后台停轮询、返回先查、超时只查原次与晚到失效已支持。
+- POST normalization/adopt 仅接收 attemptKey，整理 Owner 校验 ready/当前候选并调用 GarmentService.adoptNormalizedPhoto；衣物 Owner 校验主人及 File 所属，条件切换 photo，重复同候选幂等、冲突 409，不上传/删除/改资料。adopted 始终从真实照片关系派生。
+- view-models/garment-photo.view-model.ts 是唯一当前图 URL 映射；私有图 display?v=File.id，旧公开 URL 兼容。衣橱及采用响应共用无 ORM/物理文件名的 garmentViewModel，重复候选、规则/AI 推荐和今日穿搭卡片共用 garmentPhotoUrl。api.js 图片业务出口统一认证下载并局部保留图片失败的资料，三种图片字段及嵌套数组由 image-source 解析；身份/完整版本 URL 隔离，推荐 onShow 仅更新已有卡片 photoUrl。
+- Worker 启动通过 Owner.recoverDispatched 将已派发记录保守置为 uncertain，queued 才可首次 POST。claimResultDownloads 仅条件领取已有 URL 的下载，下载失败不转 failed，也不重生；数据库恢复后耗时生成在后台执行，不阻塞服务器监听。写回必须同时匹配记录/attempt，ready 后不覆盖候选。
+- 一条当前记录不增加历史字段；新手动 retry 仅 failed 可用，通过递增 base36 时间前缀的 attemptKey 拒绝所有旧次重放，并条件更新失败记录。unknown/ready 和同次 key 始终只返回当前快照，前端不自动重试 POST。
+- GarmentImageTransferService 是备份/复制的窄协调层，只使用 GarmentService.exportPhotoSnapshot/create、整理 Owner 的 exportSnapshot/restoreSnapshot 及 FileService 字节端口，不访问内部 Repository。版本 3 按 File ID 去重导出四类图片；导入先全包预检声明引用，版本 1/2 无原图保持空，再按包内引用去重建立目标主人文件。沙盒复制沿用原有权限/计数限制，源仅只读。
+- 整理快照仅包含状态、类别、提示词版本、模型及输入/候选引用；不携带 attemptKey、供应商请求信息或结果 URL。目标生成独立本地 key，ready 候选静态可读，queued/processing/uncertain 恢复为 uncertain，不进入 Worker 派发。
+- Local/S3.copyStoredFile 识别私有标记，原字节、MIME 和目标主人保留，不抠图或发布公有 ACL。普通换图也保留带原图衣物及私有图片的旧字节，防止损坏整理输入/候选；无原图的普通历史公开图仍沿用既有清理行为。
+
+以上是本地施工事实，不是正式上线或真实桶权限证明；P5 已通过，P6 已获用户按约定范围确认关闭。真实 S3 桶权限等未验项仍保留，正式部署、提交和后续收费联调仍须独立授权。
+
+后续已按单独授权搭建独立手机验收后台、上传 1.0.9 体验版；这不是生产业务替换或正式发布。用户手机补测和受控派发次数见 [手机验收记录](archive/2026-10-08-衣物手动-AI-整理与预览采用/test.md#P6-CURRENT-PHONE-20261008)，用户于 2026-10-08 确认的整轮范围、保留的 SPEC GAP 和未验项见 [整轮收口](archive/2026-10-08-衣物手动-AI-整理与预览采用/test.md#P6-CURRENT-CLOSED-20261008)。手机夹具仍不证明真实 S3 桶权限。
 
 任何新增后端功能都必须先回答：
 

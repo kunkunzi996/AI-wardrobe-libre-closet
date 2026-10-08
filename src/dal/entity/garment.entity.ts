@@ -114,8 +114,18 @@ export class Garment extends ShareableId {
   @OneToOne({
     entity: () => File,
     nullable: true,
+    eager: true,
   })
   public photo?: File;
+
+  /** 本次上传收到的原字节；历史衣物保持为空，不使用展示图回填。 */
+  @OneToOne({
+    entity: () => File,
+    nullable: true,
+    eager: true,
+    deleteRule: 'set null',
+  })
+  public originalPhoto?: File;
 
   @ManyToOne({
     entity: () => User,

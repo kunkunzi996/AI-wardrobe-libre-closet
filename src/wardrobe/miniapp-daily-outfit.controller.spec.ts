@@ -112,6 +112,29 @@ describe('MiniappDailyOutfitController', () => {
     };
   };
 
+  it('TEST-020 今日列表和详情内的当前衣物图版本一致，穿搭照片仍兼容旧公开图', async () => {
+    const { controller, calendarService, req } = makeController();
+    const current = makeGarment({
+      id: 7,
+      photo: { id: 99, fileName: 'private-normalized.png' } as any,
+    });
+    const entry = makeEntry(makeOutfit([current]));
+    calendarService.findWeek.mockResolvedValue({
+      days: [{ date: entry.date, entries: [entry] }],
+    });
+    calendarService.findOwnedEntry.mockResolvedValue(entry);
+    const today = await controller.today('2026-06-13', req);
+    const detail = await controller.detail(entry.id, req);
+    for (const item of [today.items[0], detail.item]) {
+      expect(item.outfit.garments[0].photoUrl).toBe(
+        'https://aimatchwear.asia/api/miniapp/garments/7/photos/display?v=99',
+      );
+      expect(item.outfit.photoUrl).toBe(
+        'https://aimatchwear.asia/file/look.webp',
+      );
+    }
+  });
+
   it('saves uploaded photo and selected garments as today outfit', async () => {
     const {
       controller,

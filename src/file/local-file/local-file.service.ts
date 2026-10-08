@@ -16,6 +16,11 @@ import { pipeline } from 'node:stream/promises';
 import * as path from 'path';
 import { File } from '../../dal/entity/file.entity';
 import { FileService } from '../file-service.abstract';
+import {
+  assertPublicImageFileName,
+  isStoredImageFileName,
+  isPrivateImageFileName,
+} from '../file-service.interface';
 
 @Injectable()
 export class LocalFileService extends FileService {
@@ -59,11 +64,28 @@ export class LocalFileService extends FileService {
     );
   }
 
+  async storePrivateImageBuffer(input: Buffer, userId: number): Promise<File> {
+    const info = await this.privateImageInfo(input, userId);
+    await fs.promises.writeFile(
+      path.join(this.directory, info.fileName),
+      input,
+    );
+    const file = this.fileRepository.create({
+      ...info,
+      createdOn: new Date().toISOString(),
+      createdBy: userId,
+    });
+    await this.em.persistAndFlush(file);
+    return file;
+  }
+
   async copyStoredFile(sourceFileName: string, userId: any): Promise<File> {
     const source = await this.get(sourceFileName);
     if (!source) {
       throw new NotFoundException(sourceFileName);
     }
+    if (isPrivateImageFileName(sourceFileName))
+      return this.storePrivateImageBuffer(await buffer(source), userId);
     const extension = path.extname(sourceFileName) || '.webp';
     const storedFileName = randomUUID() + extension;
     await this.store(storedFileName, source);
@@ -112,6 +134,8 @@ export class LocalFileService extends FileService {
   }
 
   async get(fileName: string): Promise<Readable | undefined> {
+    if (!isStoredImageFileName(fileName))
+      throw new NotFoundException('图片不存在');
     if (fs.existsSync(path.join(this.directory, fileName))) {
       return new Promise((resolve) =>
         resolve(fs.createReadStream(path.join(this.directory, fileName))),
@@ -123,6 +147,7 @@ export class LocalFileService extends FileService {
 
   async getByShareableId(shareableId: string): Promise<Readable> {
     const file = await this.fileRepository.findOneOrFail({ shareableId });
+    assertPublicImageFileName(file.fileName);
     if (fs.existsSync(path.join(this.directory, file.fileName))) {
       return fs.createReadStream(path.join(this.directory, file.fileName));
     } else {

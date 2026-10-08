@@ -3,15 +3,23 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { randomUUID } from 'node:crypto';
 import {
   ForbiddenException,
+  ConflictException,
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { I18nContext } from 'nestjs-i18n';
 import { Garment } from '../dal/entity/garment.entity';
 import { File } from '../dal/entity/file.entity';
 import { User } from '../dal/entity/user.entity';
 import { FileService } from '../file/file-service.abstract';
+import { isPrivateImageFileName } from '../file/file-service.interface';
+import type {
+  GarmentPhotoRole,
+  OwnedGarmentPhoto,
+} from './dto/garment-image-normalization.dto';
 import { CreateGarmentDto } from './dto/create-garment.dto';
 import { UpdateGarmentDto } from './dto/update-garment.dto';
 import { SearchGarmentDto } from './dto/search-garment.dto';
@@ -439,6 +447,13 @@ export function buildGarmentTagBackfillPatch(
   };
 }
 
+/** 仅后端图片转移使用，不进入公开衣物 JSON。 */
+export interface StoredGarmentPhotoRef {
+  id: number;
+  fileName: string;
+  mimetype?: string;
+}
+
 @Injectable()
 export class GarmentService {
   private readonly logger = new Logger(GarmentService.name);
@@ -490,7 +505,7 @@ export class GarmentService {
       ...(normalizedSize ? { size: normalizedSize } : {}),
     };
     const options = {
-      populate: ['photo'] as const,
+      populate: ['photo', 'originalPhoto'] as const,
       orderBy: { id: 'DESC' as const },
     };
     const filterInMemory = (garments: Garment[]) =>
@@ -525,7 +540,7 @@ export class GarmentService {
 
   async findOne(id: number, userId?: number): Promise<Garment> {
     const garment = await this.garmentRepository.findOne(id, {
-      populate: ['photo', 'outfits'],
+      populate: ['photo', 'originalPhoto', 'outfits'],
     });
     if (!garment) throw new NotFoundException('Garment not found');
     if (userId != null) {
@@ -536,6 +551,98 @@ export class GarmentService {
       if (garment.owner != null) throw new ForbiddenException();
     }
     return garment;
+  }
+
+  /** 采用仅条件切换引用，不走上传/抠图，也不删除原图或旧图。 */
+  async adoptNormalizedPhoto(
+    id: number,
+    userId: number,
+    candidateFileId: number,
+    expectedPhotoId: number,
+  ): Promise<Garment> {
+    if (!Number.isSafeInteger(userId) || userId <= 0)
+      throw new UnauthorizedException();
+    const em = this.garmentRepository.getEntityManager().fork();
+    const garment = await em.findOne(Garment, id, {
+      populate: ['photo', 'originalPhoto', 'outfits'],
+    });
+    if (!garment) throw new NotFoundException('衣物不存在');
+    if (garment.owner?.id !== userId) throw new ForbiddenException();
+    const file = await em.findOne(File, {
+      id: candidateFileId,
+      createdBy: userId,
+    });
+    if (!file) throw new ForbiddenException('候选照片不属于当前主人');
+    if (garment.photo?.id === candidateFileId) return garment;
+    const count = await em.nativeUpdate(
+      Garment,
+      { id, owner: userId, photo: expectedPhotoId },
+      { photo: candidateFileId },
+    );
+    em.clear();
+    const current = await em.findOneOrFail(Garment, id, {
+      populate: ['photo', 'originalPhoto', 'outfits'],
+    });
+    if (count !== 1 && current.photo?.id !== candidateFileId)
+      throw new ConflictException('展示图片已改变，请重新核对');
+    return current;
+  }
+
+  /** 转移模块只读快照，不直接访问 Garment 的内部仓库。 */
+  async exportPhotoSnapshot(id: number, userId: number) {
+    if (!Number.isSafeInteger(userId) || userId <= 0)
+      throw new UnauthorizedException();
+    const garment = await this.findOne(id, userId);
+    const reference = (
+      file: File | null | undefined,
+    ): StoredGarmentPhotoRef | undefined => {
+      if (!file) return undefined;
+      if (
+        isPrivateImageFileName(file.fileName) &&
+        file.createdBy?.id !== userId
+      )
+        throw new ForbiddenException();
+      return { id: file.id, fileName: file.fileName, mimetype: file.mimetype };
+    };
+    return {
+      photo: reference(garment.photo),
+      originalPhoto: reference(garment.originalPhoto),
+    };
+  }
+
+  async readOwnedPhoto(
+    id: number,
+    userId: number | undefined,
+    role: GarmentPhotoRole,
+    version: string | undefined,
+  ): Promise<OwnedGarmentPhoto> {
+    if (!Number.isSafeInteger(userId) || !userId || userId <= 0) {
+      throw new UnauthorizedException('请登录后查看图片');
+    }
+    const garment = await this.findOne(id, userId);
+    const file =
+      role === 'original'
+        ? garment.originalPhoto
+        : role === 'display'
+          ? garment.photo
+          : undefined;
+    // 先核对主人，再核对该角色的当前版本；File ID 不是访问凭证。
+    if (!file || typeof version !== 'string' || version !== String(file.id)) {
+      throw new NotFoundException('图片不存在或版本已失效');
+    }
+    if (
+      isPrivateImageFileName(file.fileName) &&
+      file.createdBy?.id !== userId
+    ) {
+      throw new ForbiddenException();
+    }
+    const stream = await this.fileService.get(file.fileName).catch((error) => {
+      if (error instanceof NotFoundException)
+        throw new NotFoundException('图片不存在');
+      throw error;
+    });
+    if (!stream) throw new NotFoundException('图片不存在');
+    return { stream, mimetype: file.mimetype ?? 'image/webp' };
   }
 
   async findOneByShareableId(shareableId: string): Promise<Garment> {
@@ -600,17 +707,41 @@ export class GarmentService {
 
   async create(dto: CreateGarmentDto, userId?: number): Promise<Garment> {
     let photo: File | undefined = undefined;
+    let originalPhoto: File | undefined;
     if (dto.photo) {
-      photo = await this.fileService.storeImageFromFileUpload(
-        dto.photo,
-        userId,
-      );
+      if (dto.photoSource === 'camera-upload') {
+        if (!Number.isSafeInteger(userId) || !userId || userId <= 0) {
+          throw new UnauthorizedException('请登录后保存原图');
+        }
+        ({ originalPhoto, photo } =
+          await this.fileService.storeGarmentPhotosFromFileUpload(
+            dto.photo,
+            userId,
+          ));
+      } else {
+        photo = await this.fileService.storeImageFromFileUpload(
+          dto.photo,
+          userId,
+        );
+      }
     } else if (dto.photoFileName) {
       photo =
         (await this.fileRepository.findOne({
           fileName: dto.photoFileName,
           ...(userId != null ? { createdBy: userId } : { createdBy: null }),
         })) ?? undefined;
+    }
+
+    if (dto.originalPhotoFileName && dto.photoSource === 'stored-image') {
+      if (!Number.isSafeInteger(userId) || !userId || userId <= 0)
+        throw new UnauthorizedException();
+      originalPhoto =
+        (await this.fileRepository.findOne({
+          fileName: dto.originalPhotoFileName,
+          createdBy: userId,
+        })) ?? undefined;
+      if (!originalPhoto || !isPrivateImageFileName(originalPhoto.fileName))
+        throw new BadRequestException('原图引用不存在或不属于目标主人');
     }
 
     const garment = this.garmentRepository.create({
@@ -653,6 +784,7 @@ export class GarmentService {
       lastWornDate: this.normalizeDate(dto.lastWornDate),
       notes: dto.notes,
       photo: photo ?? undefined,
+      originalPhoto,
     });
 
     if (userId != null) {
@@ -817,6 +949,13 @@ export class GarmentService {
 
   private async deleteOldPhoto(garment: Garment) {
     const oldFileName = garment.photo?.fileName;
+    // 新衣物/私有图可能仍是整理输入或候选；换图只换引用，保留这些字节。
+    // 无原图的普通旧图片继续沿用既有清理行为。
+    if (
+      garment.originalPhoto ||
+      (oldFileName && isPrivateImageFileName(oldFileName))
+    )
+      return;
     if (oldFileName) {
       await this.fileService
         .delete(oldFileName)

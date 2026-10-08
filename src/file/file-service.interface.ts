@@ -1,8 +1,34 @@
 import { MultipartFile } from '@fastify/multipart';
-import { File } from 'src/dal/entity/file.entity';
+import { NotFoundException } from '@nestjs/common';
+import type { File } from '../dal/entity/file.entity';
 import { Readable } from 'stream';
 
+export interface GarmentPhotos {
+  originalPhoto: File;
+  photo: File;
+}
+
+/** 私有前缀只是存储标记；业务读取还必须验证图片所属主人。 */
+export function isPrivateImageFileName(fileName: string): boolean {
+  return fileName.toLowerCase().startsWith('private-');
+}
+
+export function isStoredImageFileName(fileName: string): boolean {
+  return Boolean(fileName) && !/^[.]|[/\\%:\x00-\x1f\x7f]/.test(fileName);
+}
+
+export function assertPublicImageFileName(fileName: string): void {
+  if (!isStoredImageFileName(fileName) || isPrivateImageFileName(fileName)) {
+    throw new NotFoundException('图片不存在');
+  }
+}
+
 export interface FileServiceInterface {
+  storeGarmentPhotosFromFileUpload(
+    upload: MultipartFile | undefined,
+    userId: number,
+  ): Promise<GarmentPhotos>;
+  storePrivateImageBuffer(input: Buffer, userId: number): Promise<File>;
   /**
    * @param file FileUpload with readableStream & supporting information on the upload
    * @param userId user responsible for the file

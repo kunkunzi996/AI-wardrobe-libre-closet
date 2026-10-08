@@ -1,6 +1,11 @@
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MultipartFile } from '@fastify/multipart';
 import { randomUUID } from 'crypto';
@@ -10,6 +15,11 @@ import { Readable } from 'stream';
 import { buffer } from 'node:stream/consumers';
 import { File } from '../../dal/entity/file.entity';
 import { FileService } from '../file-service.abstract';
+import {
+  assertPublicImageFileName,
+  isStoredImageFileName,
+  isPrivateImageFileName,
+} from '../file-service.interface';
 
 @Injectable()
 export class S3FileService extends FileService {
@@ -52,6 +62,28 @@ export class S3FileService extends FileService {
     );
   }
 
+  async storePrivateImageBuffer(input: Buffer, userId: number): Promise<File> {
+    const info = await this.privateImageInfo(input, userId);
+    const upload = new Upload({
+      client: this.s3,
+      params: {
+        Bucket: this.bucketName,
+        Key: info.fileName,
+        Body: input,
+        ContentType: info.mimetype,
+        // 不设置 public-read；同时仍需部署环境保证桶策略没有开放裸读。
+      },
+    });
+    await upload.done();
+    const file = this.fileRepository.create({
+      ...info,
+      createdOn: new Date().toISOString(),
+      createdBy: userId,
+    });
+    await this.em.persistAndFlush(file);
+    return file;
+  }
+
   public async copyStoredFile(
     sourceFileName: string,
     userId: any,
@@ -60,6 +92,8 @@ export class S3FileService extends FileService {
     if (!source) {
       throw new HttpException(sourceFileName, HttpStatus.NOT_FOUND);
     }
+    if (isPrivateImageFileName(sourceFileName))
+      return this.storePrivateImageBuffer(await buffer(source), userId);
     const storedFileName = randomUUID() + '.webp';
     await this.store(storedFileName, source);
     const file = this.fileRepository.create({
@@ -136,6 +170,8 @@ export class S3FileService extends FileService {
   }
 
   async get(fileName: string): Promise<Readable | undefined> {
+    if (!isStoredImageFileName(fileName))
+      throw new NotFoundException('图片不存在');
     const result = await this.s3.getObject({
       Bucket: this.bucketName,
       Key: fileName,
@@ -145,6 +181,7 @@ export class S3FileService extends FileService {
 
   async getByShareableId(shareableId: string): Promise<Readable | undefined> {
     const file = await this.fileRepository.findOneOrFail({ shareableId });
+    assertPublicImageFileName(file.fileName);
     const result = await this.s3.getObject({
       Bucket: this.bucketName,
       Key: file.fileName,
