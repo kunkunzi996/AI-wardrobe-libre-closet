@@ -1,7 +1,7 @@
 # HANDOFF.md
 
 > 当前交接更新时间：2026-10-08
-> 本次范围：整轮P6已确认并归档；规范和 CI 存储返修全绿，PR #19 已合入，main@809853f 正式后台已受控部署。小程序1.0.10已确认上传成功，不重复上传；未操作微信平台体验版、审核或正式发布。
+> 本次范围：整轮P6已确认并归档；规范和 CI 存储返修全绿，PR #19 已合入，main@809853f 正式后台已受控部署。小程序1.0.10已确认上传成功并核对为当前体验版，二维码已取得；不重复上传/切换，不提交审核或公开发布。
 
 ## 当前入口：衣物手动 AI 整理与预览采用
 
@@ -12,8 +12,9 @@
 - 工作区：E:/orca/Libre-Closet/youhua；分支 feature/garment-image-normalization；施工固定点 d479aa7fa7b75f64afc6f092c029f4bc199311ed。完整功能提交 052dee1e4f9ddd0b577a96862f82d9c6a30aa06e 已推送；用户明确授权生产部署并认可预检后的备份、迁移、整理开关和正式小程序上传步骤。已保留主线后续改动，正常合入为main@809853f874aaed47da805a43b099922eeb65aa40并部署正式后台，小程序1.0.10上传成功；不重开既有评审/验收、不改冻结记录、不调用付费模型、不清理临时环境。
 - 正式部署：候选/当前镜像sha256:41baeb3e8e95ad3246ba6b93694dae069a61ec7e611b012be054272976ab5123，容器ai-wardrobe=87617e3efe32eb2bf24fcc504421da92196d7396fd0ed2b65bda2b9415b302cb。完整源码在/root/ai-wardrobe-release-20261008-809853f/source，旧脏仓库未动；原生模块和副本迁移演练通过，正式全卷/私有环境配置备份在同目录backup，单项Migration20261006000100已执行。311件衣物/386条文件及原行/图片字节不变，手动整理已开启；旧容器ai-wardrobe-rollback-20261008-809853f与旧镜像2cd4f3d保留。只读部署冒烟和复核通过，9个GET覆盖本人图字节/私有401、403/旧版本404；付费0，切换检查全流程上界29.576秒，不当作P6真实验收。
 - 构建凭证：首轮1200秒期限未形成候选，安装/编译子阶段退出0；旧本机SSH PID68116按身份核实后停止，传输退出1，远端总退出码未取回，不编造124。相同源码/配置保留缓存受控重试615.55秒退出0。实际AppModule启动会自动迁移，已纠正早期“启动不迁移”的漏查；正式启动前备份并显式单项迁移，当前无待迁移项。
-- 上传确认结果：taskId=confirmation_upload_f3c28fa7-cb52-47a2-ad13-37b34c6dd285，工具upload，client=Codex，project=E:/orca/Libre-Closet/youhua，upload-version=1.0.10，API_BASE_URL=https://aimatchwear.asia，AppID=wxfd7f6fa52c4ed844。原status=pending；用户“已确认”后只查询一次，退出0，status=success、detail=execution_success、result.success=true，总包169507字节。门禁skill0.3.9/equal、已登录/tokenRequired=false。未重新upload，不使用旧server9/snapshot项目；未核对或修改平台体验版/审核/发布状态，不把上传成功当作手机已更新或正式发布。完整查询命令见PROJECT_STATE.md当前上传门禁，实际输出见外部miniapp-upload-confirmed.json。
+- 上传确认结果：taskId=confirmation_upload_f3c28fa7-cb52-47a2-ad13-37b34c6dd285，工具upload，client=Codex，project=E:/orca/Libre-Closet/youhua，upload-version=1.0.10，API_BASE_URL=https://aimatchwear.asia，AppID=wxfd7f6fa52c4ed844。原status=pending；用户“已确认”后只查询一次，退出0，status=success、detail=execution_success、result.success=true，总包169507字节。门禁skill0.3.9/equal、已登录/tokenRequired=false。未重新upload，不使用旧server9/snapshot项目；上传确认当时尚未核对或修改平台体验版/审核/发布状态，不把上传成功当作手机已更新或正式发布。完整查询命令见PROJECT_STATE.md当前上传门禁，实际输出见外部miniapp-upload-confirmed.json。
 - 上一份发布状态提交1572d26089047699a14e8b12926eaee5a8d10c4f的CI已核对：后端37781865715、Playwright37781865678均completed / SUCCESS，部署工作流37781865632的Verify通过、Deploy main为SKIPPED；仅文档，线上产品仍为809853f，不重部署。
+- 当前体验版核对：用户“继续吧”授权继续设为体验版；Orca刷新后AppID wxfd7f6fa52c4ed844、1.0.10、提交时间2026-10-08 21:18:29和正式后台main809853f备注匹配，“体验版”标记已经存在，无需重复设置。扫码弹窗的pages/wardrobe/index及10月15日前有效已核对，原始二维码在外部evidence/wechat-1.0.10-experience-code.png；平台仍无线上版本，未提交审核/公开发布、改体验成员或调用收费AI。3151587纯文档版后端37784784544、Playwright37784784542也均SUCCESS，Deploy main实际SKIPPED。只读平台状态不是生产真机用户验收，不新增P5/P6结论。
 - 规范返修边界及本机验证：保留主线新版 README 和备案页脚；首次 CI lint 剩 32 错误，原始文本 47。用户后续“允许”只修 9 个载体，以 9235a0f5e0000df42aa530fc306bd6220f7fb2cd 为返修前固定点，业务、安全及断言保持不变。当前 9 文件及全量 TS lint 都为 0 错误，格式、44 套/350 项、17 页面场景、结构/无产物类型检查通过；同名状态一致、原断言及冻结四文件哈希未变，文件名过滤 262158 样本全部等价。独立进程排除了混用旧主线类型图的诊断误报，没有修改误报涉及文件。
 - P5 回归：返修后的 manifest 十项、44 套/349 项、17 个页面事件及三账已通过，见归档 test.md#P5-CURRENT-P4-RETURN-20261007。既有 CLOSURE-1 两独立轴原报告已取回并登记：Standards / Spec 均 PASS、两项均 CLOSED、剩余配额1/2，见归档 test.md#P5-CLOSURE-1-RECOVERED-20261008。此前“缺关闭凭据”是主 Agent 漏查现有完成实例，已纠正，不再复评。
 - 手机补测：用户鸿蒙微信亲测反馈“全部都pass，没问题”；P6-06、P6-07A、P6-07B 用户结论均 PASS。21/22 各一次成功模拟派发、一次候选下载，真实付费模型调用 0。没有逐项录屏/截图，手机可见行为依据用户确认。
@@ -23,9 +24,9 @@
 
 - 本机驾驶舱里程碑已保存：E:/Ai-coding/hook相关/cockpit-data/cards/2026/10/08/git-e588e1ff1994b630/20261008T171854+0800_codex_milestone_ddba97b9-e95.md；verification_state=passed，仅本轮获准验收范围。场面提醒已问未写，不默认获得修改共用规则的授权。
 
-### 验收环境（勿与旧项目混用）
+### 已结束的隔离验收环境（勿与当前1.0.10正式后台体验版混用）
 
-- 微信体验版 1.0.9；“G的智能试衣间”，AppID wxfd7f6fa52c4ed844；平台已核对体验版标记，未提交审核或正式发布。
+- 验收当时的微信体验版1.0.9；“G的智能试衣间”，AppID wxfd7f6fa52c4ed844；当时平台已核对体验版标记，未提交审核或正式发布。当前平台体验版已是上述正式后台1.0.10，此处仅保留历史环境，不作为当前手机入口。
 - 隔离后台：https://aimatchwear.asia/_p6/image-20261008；服务端 /root/libre-closet-p6-phone9-20261008，独立数据，仅 21/22 两件夹具；原生产业务容器不替换。
 - 手机项目：E:/Caches/Temp/libre-closet-p6-20261007-170937-63282e54/server9-20261008/miniapp。旧 snapshot 指向本地后台，不用于公司手机验收。
 - 免费两次额度已用完，不自动重置、延长或再生成。入口 2026-10-09 10:49:07（北京时间）到期；到期不等于自动停容器或删除临时数据。
@@ -36,12 +37,12 @@
 1. PROJECT_STATE.md 当前入口。
 2. 本轮四文件在 docs/archive/2026-10-08-衣物手动-AI-整理与预览采用/；只在复核本轮结果时定向读取，不作为下一轮活跃文档。
 3. 归档 test.md#P5-CLOSURE-1-RECOVERED-20261008：已完成双轴原报告的取证登记，不再次调用 kun-review/code-review。
-4. 归档 test.md#P6-CURRENT-CLOSED-20261008：整轮P6已明确确认，不重跑/改写历史。受控生产部署和小程序1.0.10上传已完成，原确认任务终态success，不再等待确认、查询或重传。下一步先核对微信平台开发版本1.0.10，再由用户决定体验版切换或审核发布；当前未操作平台、不宣称正式发布，临时环境清理仍未授权。
+4. 归档 test.md#P6-CURRENT-CLOSED-20261008：整轮P6已明确确认，不重跑/改写历史。受控后台部署、1.0.10上传和当前体验版核对已完成，原确认任务终态success，不再等待确认、查询、重传或重复切换。用户可退出旧小程序后扫本次体验码进入正式后台；尚无生产手机新验收结论，不提交审核或宣称公开发布，临时环境清理仍未授权。
 
 - 本轮证据根目录：E:/Caches/Temp/libre-closet-p6-20261007-170937-63282e54；此前最新报告 evidence/p6-supplement7-report-standalone.html、结果 evidence/p6-supplement7-results.json。旧报告手机待验子项已由归档 test.md#P6-CURRENT-PHONE-20261008 三条登记补齐，原文件不回写。
-- 本次发布证据根目录：E:/Caches/Temp/libre-closet-release-20261008-13039f31088945e99616e63b9fb51cfb；实际发布证据为 evidence/ci-green-and-release-preparation.json、build-retry.log、build-retry-receipt.json、rehearsal.json、backup-verification.json、production-migration.json、deployment.json，以及本次miniapp-upload-confirmed.json。原pending上传和早期release-blocked.json分别保留历史状态，不覆盖。产品自动化 integrated.jest.json350项及17页面结果仍保留，原命令/退出码/失败输出不提交。
+- 本次发布证据根目录：E:/Caches/Temp/libre-closet-release-20261008-13039f31088945e99616e63b9fb51cfb；实际发布证据为 evidence/ci-green-and-release-preparation.json、build-retry.log、build-retry-receipt.json、rehearsal.json、backup-verification.json、production-migration.json、deployment.json、miniapp-upload-confirmed.json，以及本次wechat-experience-confirmed.json和wechat-1.0.10-experience-code.png。平台会话参数已脱敏，工具中断和无效截图限制保留；原pending上传和早期release-blocked.json分别保留历史状态，不覆盖。产品自动化 integrated.jest.json350项及17页面结果仍保留，原命令/退出码/失败输出及二维码不提交。
 - 最新保图报告 evidence/p6-transfer10-report-final-standalone.html、结果p6-transfer10-results-final.json，171条ui命令/退出码/原输出以及工具失败均保留；不以不完整URL或旧公开图MIME断言的验收脚本错误判产品FAIL。原图预览遮挡截图已保留并一次刷新后重取16页，报告只用无遮挡详情。原报告/结果保留确认前状态；最新用户结论在归档 test.md 的两项认可与整轮确认节，不回写原执行证据。外部 p6-close-archive-journal.json 保留归档前四文件哈希及精确路径，不提交测试产物。
-- 规范/CI最小返修、中文提交推送、主线合入和受控后台发布已依既有授权执行；不扩展功能、改提示词/测试断言/冻结文件、自动修SPEC GAP、收费或重置夹具。正式小程序1.0.10上传终态success，待用户决定平台下一步，不把上传成功或体验版冒充平台正式发布。
+- 规范/CI最小返修、中文提交推送、主线合入和受控后台发布已依既有授权执行；不扩展功能、改提示词/测试断言/冻结文件、自动修SPEC GAP、收费或重置夹具。正式小程序1.0.10上传终态success、当前体验版标记已核对；审核/公开发布需用户另行授权，不把体验版或二维码核对冒充生产手机验收或平台正式发布。
 - 禁止批量删除、清空真人衣橱、清理 Docker 缓存或写全局记忆。需要停临时服务、撤销测试路由或删除文件时，先确认精确目标和权限。
 
 ## 上一轮交接快照（2026-08-22，原文保留，不是本轮状态）

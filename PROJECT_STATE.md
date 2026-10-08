@@ -2,11 +2,11 @@
 
 > 本文件只写**当前事实**。已完结的历史记录和功能验收明细归档在 `docs/PROJECT_LOG.md`。
 
-## 2026-10-08 衣物手动 AI 整理与预览采用（P5/P6 已归档，正式后台已部署，小程序 1.0.10 已上传，平台发布待核对）
+## 2026-10-08 衣物手动 AI 整理与预览采用（P5/P6 已归档，正式后台已部署，1.0.10 体验版已就绪，未公开发布）
 
-当前分支 feature/garment-image-normalization，施工固定点为 d479aa7fa7b75f64afc6f092c029f4bc199311ed；完整功能提交 052dee1e4f9ddd0b577a96862f82d9c6a30aa06e 已随PR #19合入，本轮生产代码固定为main合并提交809853f874aaed47da805a43b099922eeb65aa40，正式后台已上线；小程序1.0.10上传成功，本次未操作或核对平台体验版/正式发布设置。用户于 2026-10-08 原话“确认”，认可按现有验收范围结束整轮 P6 并归档；当前无活跃 SPEC/PLAN/TASK/TEST。四份既有文件已按顺序逐个移入 docs/archive/2026-10-08-衣物手动-AI-整理与预览采用/，移动后四个哈希均与移动前一致、四个原路径均不存在。以下旧轮次状态为历史快照，不覆盖本轮事实。
+当前分支 feature/garment-image-normalization，施工固定点为 d479aa7fa7b75f64afc6f092c029f4bc199311ed；完整功能提交 052dee1e4f9ddd0b577a96862f82d9c6a30aa06e 已随PR #19合入，本轮生产代码固定为main合并提交809853f874aaed47da805a43b099922eeb65aa40，正式后台已上线；小程序1.0.10上传成功且已核对为当前体验版，尚未提交审核或公开发布。用户于 2026-10-08 原话“确认”，认可按现有验收范围结束整轮 P6 并归档；当前无活跃 SPEC/PLAN/TASK/TEST。四份既有文件已按顺序逐个移入 docs/archive/2026-10-08-衣物手动-AI-整理与预览采用/，移动后四个哈希均与移动前一致、四个原路径均不存在。以下旧轮次状态为历史快照，不覆盖本轮事实。
 
-用户后续明确授权“提交推送，部署到生产环境里吧”，并在只读预检后以“ok按你的建议来”确认：保留主线后续 README 与备案页脚改动，建立本轮数据库及图片新备份，再执行新增迁移、开启手动整理，使用正式后台配置上传小程序。当前正式后台已完成受控部署，小程序1.0.10已上传成功，不把候选构建、接口 200 或上传成功当作P6或小程序平台正式发布；本次未操作体验版、审核或发布设置。不触发付费生成，不重开 P5 评审，不改冻结验收记录，不清理临时验收环境。生产预检确认旧镜像 sha256:2cd4f3d5467bfe304ab978e6a66edda19b666cd3d874f8fe47972e22e1f238d8 可作为回滚目标、SQLite 与本地图片存储、311 件衣物及数据库完整性正常；自动部署仍为 false，本轮备份与迁移已执行，见下方当前执行位置。
+用户后续明确授权“提交推送，部署到生产环境里吧”，并在只读预检后以“ok按你的建议来”确认：保留主线后续 README 与备案页脚改动，建立本轮数据库及图片新备份，再执行新增迁移、开启手动整理，使用正式后台配置上传小程序。当前正式后台已完成受控部署，小程序1.0.10已上传成功，不把候选构建、接口 200 或上传成功当作P6或小程序平台正式发布。用户本次“继续吧”授权继续设为体验版，刷新平台时体验版标记已存在，无需重复设置；仅核对并打开二维码，未提交审核或公开发布。不触发付费生成，不重开 P5 评审，不改冻结验收记录，不清理临时验收环境。生产预检确认旧镜像 sha256:2cd4f3d5467bfe304ab978e6a66edda19b666cd3d874f8fe47972e22e1f238d8 可作为回滚目标、SQLite 与本地图片存储、311 件衣物及数据库完整性正常；自动部署仍为 false，本轮备份与迁移已执行，见下方当前执行位置。
 
 发布合入记录：完整功能 052dee1 和保留主线说明/备案页脚的同步提交 ce42e08a1ba44c32bcea731d5101b7c974e684bb 均已推送；[PR #19](https://github.com/kunkunzi996/AI-wardrobe-libre-closet/pull/19) 已正常合入为809853f874aaed47da805a43b099922eeb65aa40，保留原主线74edcd81232514e545672f0ddccece9fa3a3f197后续改动。合并树与已测70e2012一致。合入前的本机检查为 44 套/350 项全通过，原 349 项同名仍通过、新增备案页脚 1 项通过，17 页面场景、小程序结构与无产物类型检查均通过。按既有忽略配置直接核对 Git 已提交文本的格式检查通过；本机全量格式命中的 115 个未改动文件只是 Windows CRLF，不做批量格式化。 下方旧失败均为已解决历史，不据此重开评审或宣称当前仍阻塞。
 
@@ -28,7 +28,7 @@
 
 只读部署冒烟与随后复核均退出0：公网首页/分类/本人衣橱正常，旧衣物整理状态idle且缺原图不可整理，本人展示图字节与存储一致、no-store；无令牌401、另一主人403、旧版本和缺原图404。整理任务0，触发付费调用0，不把这些作为新 P6 用户真实验收。隔离手机容器/路由/本机夹具未改，不删除文件或清理镜像/验收环境。
 
-小程序上传门禁：正式项目 E:/orca/Libre-Closet/youhua，AppID wxfd7f6fa52c4ed844，API_BASE_URL=https://aimatchwear.asia，版本1.0.10；客户端Codex、skill0.3.9、equal、已登录、tokenRequired=false。原 upload 返回 pending，taskId=confirmation_upload_f3c28fa7-cb52-47a2-ad13-37b34c6dd285。2026-10-08 用户原话“已确认”后，只查询此任务一次，实际退出码0，ok=true、status=success、detail=execution_success、result.success=true，上传总包169507字节。上传已成功，不再等待确认或重复上传；本次未核对或变更平台体验版/审核/正式发布状态，不声称手机已切到1.0.10。查询的cwd为E:/orca/Libre-Closet/youhua，完整PowerShell命令：
+小程序上传门禁：正式项目 E:/orca/Libre-Closet/youhua，AppID wxfd7f6fa52c4ed844，API_BASE_URL=https://aimatchwear.asia，版本1.0.10；客户端Codex、skill0.3.9、equal、已登录、tokenRequired=false。原 upload 返回 pending，taskId=confirmation_upload_f3c28fa7-cb52-47a2-ad13-37b34c6dd285。2026-10-08 用户原话“已确认”后，只查询此任务一次，实际退出码0，ok=true、status=success、detail=execution_success、result.success=true，上传总包169507字节。上传已成功，不再等待确认或重复上传；上传确认当时尚未核对或变更平台体验版/审核/正式发布状态，不声称手机已切到1.0.10。查询的cwd为E:/orca/Libre-Closet/youhua，完整PowerShell命令：
 
 ```powershell
 & 'E:\Program Files (x86)\Tencent\微信web开发者工具\wechatide.cmd' -c Codex polling_task_result --task-id confirmation_upload_f3c28fa7-cb52-47a2-ad13-37b34c6dd285
@@ -37,7 +37,9 @@ exit $LASTEXITCODE
 
 上传确认后的只读CI复核：纯文档提交1572d26089047699a14e8b12926eaee5a8d10c4f的后端37781865715、Playwright37781865678均completed / SUCCESS；部署工作流37781865632的Verify before deploy通过、Deploy main实际SKIPPED。该提交只有三份状态文档，不改变已部署809853f的产品代码；这些CI结果不作为新的P6验收。
 
-本轮外部发布证据 E:/Caches/Temp/libre-closet-release-20261008-13039f31088945e99616e63b9fb51cfb/evidence：ci-green-and-release-preparation.json、build-retry.log/receipt、rehearsal.json、backup-verification.json、production-migration.json、deployment.json，以及本次miniapp-upload-confirmed.json。完整命令/退出码/失败及成功输出分开保存，不提交产物；冻结四文件哈希再次一致，既有 P5/P6 与规格缺口不回写。原待确认凭证保留，不回写旧输出。只同步当前三份发布状态文档，不写全局记忆、场面提醒或新验收里程碑。
+当前平台核对：2026-10-08 用户“继续吧”后，使用Orca内置浏览器刷新微信公众平台。账号“G的智能试衣间”的公开AppID只读核对为wxfd7f6fa52c4ed844；开发版本1.0.10、提交时间2026-10-08 21:18:29、备注“衣物手动AI整理与预览采用；正式后台main809853f”匹配，并已带“体验版”标记。首次看到的1.0.9是刷新前缓存；刷新后目标已就绪，不猜测是谁设置、也不重复设置。二维码弹窗已核对名称、pages/wardrobe/index入口及“10月15日前有效”，原始165×165像素二维码已保存。平台线上版本明确“尚未提交线上版本”，本次不提交审核或公开发布；未修改体验成员、未重新部署、未调用收费AI，也不代替用户在生产1.0.10上亲测。3151587纯文档提交的后端37784784544、Playwright37784784542均completed / SUCCESS，部署工作流37784784281的Verify通过、Deploy main实际SKIPPED。
+
+本轮外部发布证据 E:/Caches/Temp/libre-closet-release-20261008-13039f31088945e99616e63b9fb51cfb/evidence：ci-green-and-release-preparation.json、build-retry.log/receipt、rehearsal.json、backup-verification.json、production-migration.json、deployment.json、miniapp-upload-confirmed.json，以及本次wechat-experience-confirmed.json和wechat-1.0.10-experience-code.png。完整有效命令/退出码/失败及成功输出分开保存，早期工具中断和无效截图的限制明确保留，不提交二维码或测试产物；冻结四文件哈希再次一致，既有 P5/P6 与规格缺口不回写。原待确认凭证保留，不回写旧输出。只同步当前三份发布状态文档，不写全局记忆、场面提醒或新生产验收里程碑。
 
 TASK-01b～05b 已按顺序逐卡绿，各 a 卡保留准备阶段红证据：私有原图、一次抠图、固定五类候选预览、超时/退出/重启恢复不重生、明确采用只切 photo、所有当前出口同图及既有推荐只刷新照片。备份版本 3 和沙盒复制保留原图/当前图/候选/固定输入图，目标文件独立、源只读；版本 1/2 兼容，处理中快照不重放。手动换图保留可能仍被整理引用的旧字节。
 
@@ -414,10 +416,10 @@ npm run build
 
 ## 下一轮建议从这里开始
 
-- 当前状态：衣物手动 AI 整理的 P5/P6 已按约定范围确认并冻结归档，无活跃 SPEC/PLAN/TASK/TEST。完整功能及最小规范/存储返修已提交推送、PR #19 已合入，main@809853f 的正式后台已备份、迁移、开启手动整理并上线，只读部署冒烟通过；不当作新的 P6 真实验收。正式配置1.0.10已上传成功，平台体验版/审核/正式发布尚未核对或变更；此前核对的1.0.9是隔离体验版。真人衣橱剩余补标已取消。
+- 当前状态：衣物手动 AI 整理的 P5/P6 已按约定范围确认并冻结归档，无活跃 SPEC/PLAN/TASK/TEST。完整功能及最小规范/存储返修已提交推送、PR #19 已合入，main@809853f 的正式后台已备份、迁移、开启手动整理并上线，只读部署冒烟通过；不当作新的 P6 真实验收。正式配置1.0.10已上传成功且已核对为当前体验版，二维码已取得；未提交审核或公开发布，未替用户验收生产手机效果。此前1.0.9为隔离验收版，其环境仍保留但不作为当前体验版入口。真人衣橱剩余补标已取消。
 - 建议任务：
   - P5 双轴关闭报告已取回并登记，不再列为缺件，也不重新评审。
-  - 本轮验收和归档已完成，不重跑/改写冻结历史；原 SPEC GAP 和未验项保留。后端部署及小程序1.0.10上传已完成，原确认任务终态success，无需再查询或重传。下一步先核对微信平台开发版本1.0.10，再由用户决定体验版切换或审核发布；未经确认不操作平台、不宣称正式发布，不清理临时环境。
+  - 本轮验收和归档已完成，不重跑/改写冻结历史；原 SPEC GAP 和未验项保留。后端部署、1.0.10上传及当前体验版核对已完成，原确认任务终态success，无需再查询、重传或重复设置体验版。用户可退出旧小程序后扫本次体验码进入正式后台的真实衣橱；如反馈问题，先核对手机实际版本和证据，不现场扩展修复或宣称新P6通过。审核/公开发布及临时环境清理仍需另行授权。
 - 继续文件：优先看 `PROJECT_STATE.md`、`HANDOFF.md`，本轮规格/计划/任务/验收在 `docs/archive/2026-10-08-衣物手动-AI-整理与预览采用/`。其它历史需要时定向读取 `docs/PROJECT_LOG.md`，不默认全文加载旧归档。
 - 后端开发前必须看：`docs/backend-architecture-source-of-truth.md`。
 - 小程序表单改动前必须知道：衣物表单的字段选择框由 `miniprogram/pages/garment-form/index.js` 里的 `fieldSelectorConfigs` 驱动（决定每个字段单选/多选、选项来自本地常量还是标签库）；`buildFieldGroups` 每次都从当前 `form` 值重建视图模型，所以 AI 回显、编辑回显、批量导入三条路径都能自动同步。改这里时**不要动提交格式**：单值字段是字符串，季节/风格/场景是「、」拼接串，后端靠 `GarmentService.normalizeTags` 拆数组。
