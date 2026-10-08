@@ -70,14 +70,13 @@ describe('TEST-023 S3 复制私有图片', () => {
     })
       .png()
       .toBuffer();
-    let copied: File;
     const repository = {
       create: jest.fn((value) => Object.assign(new File(), { id: 99 }, value)),
-      findOneOrFail: jest.fn(async () => copied),
+      findOneOrFail: jest.fn(() => Promise.resolve(copied)),
     };
     const em = { persistAndFlush: jest.fn() };
     const s3 = {
-      getObject: jest.fn(async () => ({ Body: Readable.from(data) })),
+      getObject: jest.fn(() => Promise.resolve({ Body: Readable.from(data) })),
     };
     const service = new S3FileService(
       s3 as any,
@@ -85,7 +84,7 @@ describe('TEST-023 S3 复制私有图片', () => {
       repository as any,
       em as any,
     );
-    copied = await service.copyStoredFile('private-source.png', 3);
+    const copied = await service.copyStoredFile('private-source.png', 3);
     expect(copied.fileName).toMatch(/^private-.*\.png$/);
     expect(copied.mimetype).toBe('image/png');
     expect(copied.createdBy).toBe(3);
@@ -118,9 +117,11 @@ describe('TEST-015 S3FileService 私有字节合同', () => {
     };
     const em = { persistAndFlush: jest.fn().mockResolvedValue(undefined) };
     const s3 = {
-      getObject: jest.fn().mockImplementation(async () => ({
-        Body: Readable.from(Buffer.from('private-byte-fixture')),
-      })),
+      getObject: jest.fn().mockImplementation(() =>
+        Promise.resolve({
+          Body: Readable.from(Buffer.from('private-byte-fixture')),
+        }),
+      ),
     };
     const config = { get: jest.fn(() => 'test-private-bucket') };
     const service = new S3FileService(
@@ -169,7 +170,7 @@ describe('TEST-015 S3FileService 私有字节合同', () => {
   it('TEST-015 私有分享编号不读 S3，内部文件读取仍可用', async () => {
     const { service, file, s3 } = makePrivateStorage();
 
-    await expect(service.getByShareableId(file.shareableId!)).rejects.toThrow();
+    await expect(service.getByShareableId(file.shareableId)).rejects.toThrow();
     expect(s3.getObject).not.toHaveBeenCalled();
     const stream = await service.get(file.fileName);
     expect(await buffer(stream!)).toEqual(Buffer.from('private-byte-fixture'));

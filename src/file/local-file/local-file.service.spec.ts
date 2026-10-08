@@ -73,7 +73,7 @@ describe('TEST-023 本地复制私有图片', () => {
     let written: Buffer | undefined, copied: File;
     const repository = {
       create: jest.fn((value) => Object.assign(new File(), { id: 99 }, value)),
-      findOneOrFail: jest.fn(async () => copied),
+      findOneOrFail: jest.fn(() => Promise.resolve(copied)),
     };
     const em = { persistAndFlush: jest.fn() };
     const service = new LocalFileService(
@@ -88,8 +88,9 @@ describe('TEST-023 本地复制私有图片', () => {
       });
     const write = jest
       .spyOn(fs.promises, 'writeFile')
-      .mockImplementation(async (_file, data) => {
+      .mockImplementation((_file, data) => {
         written = Buffer.from(data as Uint8Array);
+        return Promise.resolve();
       });
     const matting = jest
       .spyOn(service as any, 'prepareGarmentPhotoForStorage')
@@ -180,7 +181,7 @@ describe('TEST-015 LocalFileService 私有字节合同', () => {
   it('TEST-015 私有分享编号不能读取字节，内部按文件名读取仍可用', async () => {
     const { service, file } = makePrivateStorage();
 
-    await expect(service.getByShareableId(file.shareableId!)).rejects.toThrow();
+    await expect(service.getByShareableId(file.shareableId)).rejects.toThrow();
     expect(fs.createReadStream).not.toHaveBeenCalled();
     const stream = await service.get(file.fileName);
     expect(await buffer(stream!)).toEqual(Buffer.from('private-byte-fixture'));

@@ -275,10 +275,12 @@ describe('TEST-023 真实沙盒图片与状态复制', () => {
     generate: jest.fn(),
   };
   const transferPath = path.join(__dirname, 'garment-image-transfer.service');
-  const Transfer = fs.existsSync(transferPath + '.ts')
-    ? require(transferPath).GarmentImageTransferService
-    : undefined;
+  let Transfer: any;
   beforeAll(async () => {
+    Transfer = fs.existsSync(transferPath + '.ts')
+      ? (await import('./garment-image-transfer.service'))
+          .GarmentImageTransferService
+      : undefined;
     orm = await MikroORM.init({
       driver: BetterSqliteDriver,
       dbName: ':memory:',
@@ -307,9 +309,9 @@ describe('TEST-023 真实沙盒图片与状态复制', () => {
     await orm.em.persistAndFlush([owner, target]);
     let next = 0;
     files = {
-      get: jest.fn(async (name: string) => {
-        if (!bytes.has(name)) throw new Error('缺图片');
-        return Readable.from(bytes.get(name)!);
+      get: jest.fn((name: string) => {
+        if (!bytes.has(name)) return Promise.reject(new Error('缺图片'));
+        return Promise.resolve(Readable.from(bytes.get(name)!));
       }),
       storePrivateImageBuffer: jest.fn(async (data: Buffer, userId: number) => {
         const file = orm.em.create(File, {
@@ -331,9 +333,9 @@ describe('TEST-023 真实沙盒图片与状态复制', () => {
       storeImageFromFileUpload: jest.fn(),
     };
     garments = new GarmentService(
-      orm.em.getRepository(Garment) as any,
-      orm.em.getRepository(File) as any,
-      orm.em.getRepository(User) as any,
+      orm.em.getRepository(Garment),
+      orm.em.getRepository(File),
+      orm.em.getRepository(User),
       files,
     );
     tasks = new GarmentImageNormalizationService(
@@ -346,7 +348,7 @@ describe('TEST-023 真实沙盒图片与状态复制', () => {
       ? new Transfer(garments, tasks, files)
       : undefined;
     service = new (WardrobeCopyService as any)(
-      { isAdmin: async (id: number) => id === 7 },
+      { isAdmin: (id: number) => Promise.resolve(id === 7) },
       garments,
       {},
       {},

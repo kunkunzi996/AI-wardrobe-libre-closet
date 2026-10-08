@@ -14,7 +14,12 @@ export function isPrivateImageFileName(fileName: string): boolean {
 }
 
 export function isStoredImageFileName(fileName: string): boolean {
-  return Boolean(fileName) && !/^[.]|[/\\%:\x00-\x1f\x7f]/.test(fileName);
+  if (!fileName || /^[.]|[/\\%:]/.test(fileName)) return false;
+  for (let index = 0; index < fileName.length; index += 1) {
+    const code = fileName.charCodeAt(index);
+    if (code <= 0x1f || code === 0x7f) return false;
+  }
+  return true;
 }
 
 export function assertPublicImageFileName(fileName: string): void {

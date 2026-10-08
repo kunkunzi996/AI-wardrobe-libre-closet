@@ -28,15 +28,17 @@ class TestFileService extends FileService {
   }
 
   // 只模拟字节存储，不在测试替身中实现双图保存业务。
-  async storePrivateImageBuffer(input: Buffer, userId: any): Promise<File> {
-    if (this.privateWriteError) throw this.privateWriteError;
+  storePrivateImageBuffer(input: Buffer, userId: any): Promise<File> {
+    if (this.privateWriteError) return Promise.reject(this.privateWriteError);
     this.rawWrites.push(Buffer.from(input));
-    return Object.assign(new File(), {
-      id: 1,
-      fileName: 'private-upload.png',
-      mimetype: 'image/png',
-      createdBy: { id: userId },
-    });
+    return Promise.resolve(
+      Object.assign(new File(), {
+        id: 1,
+        fileName: 'private-upload.png',
+        mimetype: 'image/png',
+        createdBy: { id: userId },
+      }),
+    );
   }
 
   storeOriginalImageFromFileUpload(): Promise<File> {
@@ -93,8 +95,8 @@ describe('FileService garment photo preparation', () => {
       file: Readable.from(
         (async function* () {
           streamStarts += 1;
-          yield input.subarray(0, 12);
-          yield input.subarray(12);
+          yield Promise.resolve(input.subarray(0, 12));
+          yield Promise.resolve(input.subarray(12));
         })(),
       ),
     } as MultipartFile;

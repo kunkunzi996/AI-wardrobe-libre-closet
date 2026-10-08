@@ -29,10 +29,12 @@ describe('TEST-022 新旧备份真实 Owner 图片往返', () => {
     generate: jest.fn(),
   };
   const transferPath = path.join(__dirname, 'garment-image-transfer.service');
-  const Transfer = fs.existsSync(transferPath + '.ts')
-    ? require(transferPath).GarmentImageTransferService
-    : undefined;
+  let Transfer: any;
   beforeAll(async () => {
+    Transfer = fs.existsSync(transferPath + '.ts')
+      ? (await import('./garment-image-transfer.service'))
+          .GarmentImageTransferService
+      : undefined;
     orm = await MikroORM.init({
       driver: BetterSqliteDriver,
       dbName: ':memory:',
@@ -60,9 +62,9 @@ describe('TEST-022 新旧备份真实 Owner 图片往返', () => {
     await orm.em.persistAndFlush([owner, target]);
     let next = 0;
     files = {
-      get: jest.fn(async (name: string) => {
-        if (!bytes.has(name)) throw new Error('缺少字节');
-        return Readable.from(bytes.get(name)!);
+      get: jest.fn((name: string) => {
+        if (!bytes.has(name)) return Promise.reject(new Error('缺少字节'));
+        return Promise.resolve(Readable.from(bytes.get(name)!));
       }),
       storePrivateImageBuffer: jest.fn(async (data: Buffer, userId: number) => {
         const file = orm.em.create(File, {
@@ -80,9 +82,9 @@ describe('TEST-022 新旧备份真实 Owner 图片往返', () => {
       ),
     };
     garments = new GarmentService(
-      orm.em.getRepository(Garment) as any,
-      orm.em.getRepository(File) as any,
-      orm.em.getRepository(User) as any,
+      orm.em.getRepository(Garment),
+      orm.em.getRepository(File),
+      orm.em.getRepository(User),
       files,
     );
     tasks = new GarmentImageNormalizationService(
@@ -129,11 +131,12 @@ describe('TEST-022 新旧备份真实 Owner 图片往返', () => {
       user: { userId },
       protocol: 'https',
       host: 'test.invalid',
-      file: async () => ({
-        filename: 'backup.zip',
-        mimetype: 'application/zip',
-        file: Readable.from(zip!),
-      }),
+      file: () =>
+        Promise.resolve({
+          filename: 'backup.zip',
+          mimetype: 'application/zip',
+          file: Readable.from(zip!),
+        }),
     }) as any;
   const exportZip = async () => {
     let zip!: Buffer;

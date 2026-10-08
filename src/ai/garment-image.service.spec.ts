@@ -4,10 +4,10 @@ import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 
 // 首轮不存在实现时，由公开契约断言报红，不用 import/编译失败冒充红灯。
-const loadService = () => {
+const loadService = async () => {
   const source = path.join(__dirname, 'garment-image.service.ts');
-  const Service = fs.existsSync(source)
-    ? require('./garment-image.service').GarmentImageService
+  const Service: any = fs.existsSync(source)
+    ? (await import('./garment-image.service')).GarmentImageService
     : undefined;
   expect(Service).toEqual(expect.any(Function));
   return Service;
@@ -32,7 +32,7 @@ describe('TEST-016 千问图像公开请求合同', () => {
   const response = (body: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   });
   const validResult = {
     request_id: 'request-test-016',
@@ -47,9 +47,9 @@ describe('TEST-016 千问图像公开请求合同', () => {
     },
     usage: { input_image_count: 1, output_image_count: 1 },
   };
-  const makeService = (fetchImpl: jest.Mock, overrides = {}) => {
+  const makeService = async (fetchImpl: jest.Mock, overrides = {}) => {
     const config: Record<string, unknown> = { ...baseConfig, ...overrides };
-    return new (loadService())(
+    return new (await loadService())(
       { get: (key: string, fallback?: unknown) => config[key] ?? fallback },
       fetchImpl,
     );
@@ -65,8 +65,8 @@ describe('TEST-016 千问图像公开请求合同', () => {
   it.each(Object.keys(hashes))(
     'TEST-016 %s 原样固定文本、一张候选及实验参数',
     async (family) => {
-      const fetchImpl = jest.fn(async () => response(validResult));
-      const service = makeService(fetchImpl);
+      const fetchImpl = jest.fn(() => Promise.resolve(response(validResult)));
+      const service = await makeService(fetchImpl);
       const result = await service.generate(input, family);
       expect(fetchImpl).toHaveBeenCalledTimes(1);
       const [url, options] = fetchImpl.mock.calls[0] as unknown as [
@@ -80,7 +80,7 @@ describe('TEST-016 千问图像公开请求合同', () => {
           Authorization: 'Bearer test-image-key-not-real',
         }),
       );
-      const request = JSON.parse(String(options.body));
+      const request = JSON.parse(options.body as string);
       expect(request.model).toBe('qwen-image-3.0-pro');
       expect(request.parameters).toEqual({
         n: 1,
@@ -117,7 +117,7 @@ describe('TEST-016 千问图像公开请求合同', () => {
     { QWEN_IMAGE_MODEL: 'other-model' },
   ])('TEST-016 配置不满足时发送前明确失败，零请求 %j', async (override) => {
     const fetchImpl = jest.fn();
-    const service = makeService(fetchImpl, override);
+    const service = await makeService(fetchImpl, override);
     await expect(service.generate(input, '上衣')).rejects.toMatchObject({
       kind: 'failed',
     });
@@ -125,18 +125,20 @@ describe('TEST-016 千问图像公开请求合同', () => {
   });
 
   it('TEST-016 供应商确认拒绝与发出后断网区别，均不重试', async () => {
-    const refusedFetch = jest.fn(async () =>
-      response({ code: 'InvalidParameter', request_id: 'rejected' }, 400),
+    const refusedFetch = jest.fn(() =>
+      Promise.resolve(
+        response({ code: 'InvalidParameter', request_id: 'rejected' }, 400),
+      ),
     );
     await expect(
-      makeService(refusedFetch).generate(input, '上衣'),
+      (await makeService(refusedFetch)).generate(input, '上衣'),
     ).rejects.toMatchObject({ kind: 'failed' });
     expect(refusedFetch).toHaveBeenCalledTimes(1);
-    const disconnected = jest.fn(async () => {
-      throw new Error('test network lost');
-    });
+    const disconnected = jest.fn(() =>
+      Promise.reject(new Error('test network lost')),
+    );
     await expect(
-      makeService(disconnected).generate(input, '上衣'),
+      (await makeService(disconnected)).generate(input, '上衣'),
     ).rejects.toMatchObject({ kind: 'uncertain' });
     expect(disconnected).toHaveBeenCalledTimes(1);
   });
@@ -154,16 +156,16 @@ describe('TEST-016 千问图像公开请求合同', () => {
       },
     },
   ])('TEST-016 成功但响应不完整不能虚称已完成或未扣费 %j', async (body) => {
-    const fetchImpl = jest.fn(async () => response(body));
+    const fetchImpl = jest.fn(() => Promise.resolve(response(body)));
     await expect(
-      makeService(fetchImpl).generate(input, '上衣'),
+      (await makeService(fetchImpl)).generate(input, '上衣'),
     ).rejects.toMatchObject({ kind: 'uncertain' });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('TEST-016 未支持 family 和无效输入发送前失败', async () => {
     const fetchImpl = jest.fn();
-    const service = makeService(fetchImpl);
+    const service = await makeService(fetchImpl);
     await expect(service.generate(input, '鞋子')).rejects.toMatchObject({
       kind: 'failed',
     });

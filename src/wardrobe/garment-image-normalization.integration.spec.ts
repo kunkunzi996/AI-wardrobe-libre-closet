@@ -49,9 +49,9 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
   // 此目录不会被创建，所有写入均保存在下面的内存 Map 中。
   const storageRoot = path.resolve(process.cwd(), '.test-only-image-storage');
   const storedBytes = new Map<string, Buffer>();
-  const blockedFetch = jest.fn(async () => {
-    throw new Error('此测试禁止外网及收费模型调用');
-  });
+  const blockedFetch = jest.fn(() =>
+    Promise.reject(new Error('此测试禁止外网及收费模型调用')),
+  );
   const config: Record<string, unknown> = {
     ACCESS_TOKEN_SECRET: 'TEST-015-only-not-a-real-secret',
     FILE_STORAGE_TYPE: 'local',
@@ -65,16 +65,20 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
   };
   // 同一个真实模块夹具增量验证生成；外部端口永远是假实现。
   let modelResponse: unknown;
-  const defaultImageFetch = async (_url: unknown, options?: any) => {
+  const defaultImageFetch = (_url: unknown, options?: any) => {
     if (options?.method === 'POST') {
-      return { ok: true, status: 200, json: async () => modelResponse };
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(modelResponse),
+      });
     }
-    return {
+    return Promise.resolve({
       ok: true,
       status: 200,
-      arrayBuffer: async () => cameraBytes,
+      arrayBuffer: () => Promise.resolve(cameraBytes),
       headers: new Headers({ 'content-type': 'image/png' }),
-    };
+    });
   };
   const imageFetch = jest.fn(defaultImageFetch);
   const testConfig = {
@@ -127,15 +131,16 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
       });
     jest
       .spyOn(fs.promises, 'writeFile')
-      .mockImplementation(async (filePath, data) => {
+      .mockImplementation((filePath, data) => {
         // 不回落到磁盘写入，出现越界路径是夹具错误而不是业务红灯。
         if (!isTestStorage(filePath as fs.PathLike)) {
-          throw new Error('测试存储写入越界');
+          return Promise.reject(new Error('测试存储写入越界'));
         }
         storedBytes.set(
           path.resolve(String(filePath)),
           Buffer.from(data as Uint8Array),
         );
+        return Promise.resolve();
       });
     jest
       .spyOn(LocalFileService.prototype as any, 'store')
@@ -305,9 +310,7 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     expect(response.statusCode).toBe(201);
     const id = response.json().item.id;
     const saved = await orm.em.findOneOrFail(Garment, id);
-    const originalPhoto = Reflect.get(saved, 'originalPhoto') as
-      | File
-      | undefined;
+    const originalPhoto = Reflect.get(saved, 'originalPhoto');
     expect(originalPhoto).toBeDefined();
     expect(originalPhoto!.id).not.toBe(saved.photo!.id);
     const original = await app.inject({
@@ -477,11 +480,11 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
       'garment-image-normalization.worker.ts',
     );
     const Worker = fs.existsSync(filename)
-      ? require('./garment-image-normalization.worker')
+      ? (await import('./garment-image-normalization.worker'))
           .GarmentImageNormalizationWorker
       : undefined;
     expect(Worker).toEqual(expect.any(Function));
-    await app.get(Worker).runPending();
+    await app.get(Worker!).runPending();
     orm.em.clear();
   };
 
@@ -625,16 +628,17 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     expect(idle.json().item).toMatchObject({ status: 'idle', canStart: false });
     expect(idle.json().item.message).toMatch(/原图/);
     await withOriginal();
-    for (const [token, key] of [
+    const invalidRequests: Array<[string | undefined, unknown]> = [
       [undefined, 'test-016-anon'],
       [otherToken, 'test-016-other'],
       [ownerToken, ''],
       [ownerToken, { forged: true }],
-    ]) {
+    ];
+    for (const [token, key] of invalidRequests) {
       const res = await app.inject({
         method: 'POST',
         url: normalizationUrl(),
-        headers: token ? headers(String(token)) : {},
+        headers: token ? headers(token) : {},
         payload: { attemptKey: key },
       });
       expect([400, 401, 403, 404]).toContain(res.statusCode);
@@ -854,9 +858,9 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     expect(generationCount()).toBe(2);
     const third = await startAttempt(attempt(3));
     expect(third.json().item.status).toBe('queued');
-    imageFetch.mockImplementationOnce(async () => {
-      throw new Error('测试网络失联');
-    });
+    imageFetch.mockImplementationOnce(() =>
+      Promise.reject(new Error('测试网络失联')),
+    );
     await runWorker();
     expect(await currentAttempt()).toMatchObject({
       status: 'uncertain',
@@ -955,7 +959,7 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     const originalFields = fields(before);
     expect(before.photo!.id).toBe(photo.id);
     const count = generationCount();
-    const result = await adopt(view.attemptKey!);
+    const result = await adopt(view.attemptKey);
     expect(result.statusCode).toBe(201);
     expect(Object.keys(result.json())).toEqual(['item']);
     em.clear();
@@ -983,9 +987,9 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
 
   it('TEST-020 重复采用幂等，旧版本拒绝，新列表/详情指向相同当前图', async () => {
     const view = await readyCandidate();
-    const first = await adopt(view.attemptKey!);
+    const first = await adopt(view.attemptKey);
     expect(first.statusCode).toBe(201);
-    const second = await adopt(view.attemptKey!);
+    const second = await adopt(view.attemptKey);
     expect(second.statusCode).toBe(201);
     expect(second.json().item.photoUrl).toBe(first.json().item.photoUrl);
     const list = await app.inject({
@@ -1083,7 +1087,7 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     });
     garment.photo = replacement;
     await orm.em.persistAndFlush(garment);
-    const result = await adopt(view.attemptKey!);
+    const result = await adopt(view.attemptKey);
     expect(result.statusCode).toBe(409);
     expect(
       (await orm.em.fork().findOneOrFail(Garment, garment.id)).photo!.id,
@@ -1105,7 +1109,7 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
       .spyOn(service as any, 'adoptNormalizedPhoto')
       .mockRejectedValueOnce(new Error('测试写库失败'));
     try {
-      expect((await adopt(view.attemptKey!)).statusCode).toBe(500);
+      expect((await adopt(view.attemptKey)).statusCode).toBe(500);
       expect((await currentAttempt()).canAdopt).toBe(true);
       expect(
         (
@@ -1124,7 +1128,7 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
 
   it('TEST-020 采用后真实推荐和今日穿搭出口同图，读图不产生模型 POST', async () => {
     const view = await readyCandidate();
-    const result = await adopt(view.attemptKey!);
+    const result = await adopt(view.attemptKey);
     expect(result.statusCode).toBe(201);
     const expected = result.json().item.photoUrl;
     const current = await orm.em.fork().findOneOrFail(Garment, garment.id);

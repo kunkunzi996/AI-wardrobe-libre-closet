@@ -79,13 +79,13 @@ describe('TEST-015 FileController 公开绕路保护', () => {
     const storage = {
       get: jest
         .fn()
-        .mockImplementation(async () =>
-          Readable.from(Buffer.from('secret-image')),
+        .mockImplementation(() =>
+          Promise.resolve(Readable.from(Buffer.from('secret-image'))),
         ),
       getNobgVariant: jest
         .fn()
-        .mockImplementation(async () =>
-          Readable.from(Buffer.from('secret-image')),
+        .mockImplementation(() =>
+          Promise.resolve(Readable.from(Buffer.from('secret-image'))),
         ),
     };
     const controller = new FileController(storage as any, {} as any);
