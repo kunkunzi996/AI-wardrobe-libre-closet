@@ -76,6 +76,16 @@ describe('wardrobe views', () => {
     expect(home).toContain('href="/wardrobe/ai-intake"');
   });
 
+  it('shows the China ICP filing number on the public homepage footer', () => {
+    const home = readProjectView('index.hbs');
+
+    expect(home).toContain('href="https://beian.miit.gov.cn"');
+    expect(home).toContain('粤ICP备2026075065号');
+    expect(home).toMatch(
+      /<a[^>]*href="https:\/\/beian\.miit\.gov\.cn"[^>]*>粤ICP备2026075065号<\/a/,
+    );
+  });
+
   it('sends the desktop and drawer photo intake navigation to the AI photo flow', () => {
     const navbar = readProjectView('partials', 'navbar.hbs');
 
