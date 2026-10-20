@@ -366,6 +366,67 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     expect(blockedFetch).not.toHaveBeenCalled();
   });
 
+  it('TEST-015 查看上传原图返回的字节等于上传字节，不是阿里云缩小副本', async () => {
+    const camera = await sharp({
+      create: { width: 2200, height: 1600, channels: 3, background: '#112233' },
+    })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const boundary = 'TEST015OriginalBytes';
+    const payload = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="category"\r\n\r\ntops\r\n`,
+      ),
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="camera.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`,
+      ),
+      camera,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/miniapp/garments',
+      payload,
+      headers: {
+        ...headers(ownerToken),
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    const item = response.json().item;
+    const originalUrl = new URL(item.originalPhotoUrl);
+    expect(originalUrl.pathname).toBe(
+      `/api/miniapp/garments/${item.id}/photos/original`,
+    );
+    const original = await app.inject({
+      method: 'GET',
+      url: `${originalUrl.pathname}${originalUrl.search}`,
+      headers: headers(ownerToken),
+    });
+    expect(original.statusCode).toBe(200);
+    expect(original.rawPayload).toEqual(camera);
+    await expect(sharp(original.rawPayload).metadata()).resolves.toMatchObject({
+      format: 'jpeg',
+      width: 2200,
+      height: 1600,
+    });
+    const saved = await orm.em.findOneOrFail(Garment, item.id);
+    const originalPhoto = Reflect.get(saved, 'originalPhoto');
+    expect(
+      storedBytes.get(path.join(storageRoot, originalPhoto.fileName)),
+    ).toEqual(camera);
+    expect(originalPhoto.fileName).not.toBe(saved.photo!.fileName);
+    const segmentationInput = matting.mock.calls.at(-1)?.[0] as Buffer;
+    expect(segmentationInput.equals(camera)).toBe(false);
+    const fitted = await sharp(segmentationInput).metadata();
+    expect(Math.max(fitted.width ?? 0, fitted.height ?? 0)).toBeLessThanOrEqual(
+      ALIYUN_SEGMENT_MAX_SIDE,
+    );
+    expect(
+      storedBytes.get(path.join(storageRoot, saved.photo!.fileName)),
+    ).not.toEqual(camera);
+  });
+
   it('TEST-015 主人读取图片带版本并禁止公共缓存，JSON 不暴露私有物理名', async () => {
     const response = await expectOwnedDisplay();
     expect(response.headers['cache-control']).toBe('private, no-store');
