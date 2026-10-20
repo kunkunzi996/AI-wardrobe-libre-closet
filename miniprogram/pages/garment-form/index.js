@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const uploadPhoto = require('../../utils/garment-upload-photo');
 
 const categoryOptions = [
   { label: '上衣', value: 'tops' },
@@ -237,7 +238,6 @@ function taxonomyJson(selection) {
   }
 }
 
-const maxAnalyzePhotoEdge = 900;
 const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 
 function optionIndex(options, value) {
@@ -264,24 +264,6 @@ function defaultVisionFields() {
     chestMarkType: 'unknown',
     chestMarkPosition: 'unknown',
     chestMarkText: '',
-  };
-}
-
-function limitedPhotoSize(width, height) {
-  if (!width || !height) {
-    return {
-      width: maxAnalyzePhotoEdge,
-      height: maxAnalyzePhotoEdge,
-    };
-  }
-  const maxEdge = Math.max(width, height);
-  if (maxEdge <= maxAnalyzePhotoEdge) {
-    return { width: width, height: height };
-  }
-  const ratio = maxAnalyzePhotoEdge / maxEdge;
-  return {
-    width: Math.round(width * ratio),
-    height: Math.round(height * ratio),
   };
 }
 
@@ -354,7 +336,7 @@ Page({
       });
     }
     if (photoPath && !id) {
-      this.compressPhoto(photoPath);
+      this.useSelectedPhoto(photoPath);
       return;
     }
     if (!id) return;
@@ -395,79 +377,62 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       sourceType: ['album', 'camera'],
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
         if (!file || !file.tempFilePath) {
           this.setData({ photoPath: '' });
+          this._photoReady = undefined;
           return;
         }
-        this.compressPhoto(file.tempFilePath);
+        this.useSelectedPhoto(file.tempFilePath, file.size);
       },
     });
   },
 
-  compressPhoto(filePath) {
-    if (!wx.compressImage) {
-      this.setData({ photoPath: filePath });
-      this.analyzePhoto(filePath);
-      return;
-    }
-
+  // 保存用原图（太大时才高清晰度兜底）；识别继续用压缩小图。
+  useSelectedPhoto(filePath, knownSize) {
+    const requestId = (this._photoRequestId || 0) + 1;
+    this._photoRequestId = requestId;
     const page = this;
-    const compressWithSize = function (size) {
-      wx.compressImage({
-        src: filePath,
-        quality: 60,
-        compressedWidth: size.width,
-        compressedHeight: size.height,
-        success: (res) => {
-          const nextPath = res.tempFilePath || filePath;
-          page.setData({ photoPath: nextPath });
-          page.analyzePhoto(nextPath);
-        },
-        fail: () => {
-          page.setData({ photoPath: filePath });
-          page.analyzePhoto(filePath);
-        },
+    this.setData({ photoPath: filePath });
+    const pending = uploadPhoto
+      .prepareGarmentUploadPhoto(wx, filePath, knownSize)
+      .then(function (prepared) {
+        if (page._photoRequestId !== requestId) return;
+        page._analyzePhotoPath = prepared.analyzePath;
+        page.setData({ photoPath: prepared.savePath });
+        console.info('衣物保存用图', prepared.savePlan);
+        page.analyzePhoto(prepared.analyzePath, requestId);
+      })
+      .catch(function () {
+        if (page._photoRequestId !== requestId) return;
+        page.analyzePhoto(filePath, requestId);
       });
-    };
-
-    if (!wx.getImageInfo) {
-      compressWithSize(limitedPhotoSize(0, 0));
-      return;
-    }
-
-    wx.getImageInfo({
-      src: filePath,
-      success: function (info) {
-        compressWithSize(limitedPhotoSize(info.width, info.height));
-      },
-      fail: function () {
-        compressWithSize(limitedPhotoSize(0, 0));
-      },
-    });
+    this._photoReady = pending;
   },
 
-  analyzePhoto(filePath) {
+  analyzePhoto(filePath, requestId) {
     if (this.data.isEdit) return;
     if (this.data.isBulkImport && this.applyBulkAiDraftIfReady()) return;
     const page = this;
+    const token = requestId || this._photoRequestId;
     this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
-    if (this.data.isBulkImport && this.waitForBulkAiDraft(filePath, 0)) return;
+    if (this.data.isBulkImport && this.waitForBulkAiDraft(filePath, 0, token))
+      return;
     api
       .analyzeGarmentPhoto(filePath)
       .then(function (data) {
-        if (page.data.photoPath !== filePath) return;
+        if (page._photoRequestId !== token) return;
         page.applyAiDraft(data.draft || {}, data.duplicateCandidates || []);
       })
       .catch(function (error) {
-        if (page.data.photoPath !== filePath) return;
+        if (page._photoRequestId !== token) return;
         page.setData({ aiError: error.message || 'AI识别失败，请手动填写' });
       })
       .finally(function () {
-        if (page.data.photoPath === filePath) {
+        if (page._photoRequestId === token) {
           page.setData({ recognizing: false });
         }
       });
@@ -776,6 +741,19 @@ Page({
   },
 
   submitGarment() {
+    if (this.data.submitting || this._submitQueued) return;
+    const ready = this._photoReady;
+    if (ready && ready !== this._consumedPhotoReady) {
+      const page = this;
+      this._submitQueued = true;
+      const continueSubmit = function () {
+        page._submitQueued = false;
+        page._consumedPhotoReady = ready;
+        page.submitGarment();
+      };
+      ready.then(continueSubmit, continueSubmit);
+      return;
+    }
     if (!this.data.isEdit && !this.data.photoPath) {
       this.setData({ error: '请先选择衣物图片' });
       return;
@@ -834,13 +812,14 @@ Page({
     return false;
   },
 
-  waitForBulkAiDraft(filePath, attempt) {
+  waitForBulkAiDraft(filePath, attempt, requestId) {
     const queue = wx.getStorageSync(bulkImportStorageKey) || {};
     const status =
       queue.analyzeStatus && queue.analyzeStatus[this.data.bulkIndex];
     if (status !== 'running' && status !== 'queued') return false;
 
     const page = this;
+    const token = requestId || this._photoRequestId;
     this.setData({
       recognizing: true,
       aiDraft: null,
@@ -848,32 +827,33 @@ Page({
       error: '',
     });
     setTimeout(function () {
-      if (page.data.photoPath !== filePath) return;
+      if (page._photoRequestId !== token) return;
       if (page.applyBulkAiDraftIfReady()) return;
       if (attempt >= 90) {
-        page.analyzePhotoWithoutBulkCache(filePath);
+        page.analyzePhotoWithoutBulkCache(filePath, token);
         return;
       }
-      page.waitForBulkAiDraft(filePath, attempt + 1);
+      page.waitForBulkAiDraft(filePath, attempt + 1, token);
     }, 500);
     return true;
   },
 
-  analyzePhotoWithoutBulkCache(filePath) {
+  analyzePhotoWithoutBulkCache(filePath, requestId) {
     const page = this;
+    const token = requestId || this._photoRequestId;
     this.setData({ recognizing: true, aiDraft: null, aiError: '', error: '' });
     api
       .analyzeGarmentPhoto(filePath)
       .then(function (data) {
-        if (page.data.photoPath !== filePath) return;
+        if (page._photoRequestId !== token) return;
         page.applyAiDraft(data.draft || {}, data.duplicateCandidates || []);
       })
       .catch(function (error) {
-        if (page.data.photoPath !== filePath) return;
+        if (page._photoRequestId !== token) return;
         page.setData({ aiError: error.message || 'AI识别失败，请手动填写' });
       })
       .finally(function () {
-        if (page.data.photoPath === filePath) {
+        if (page._photoRequestId === token) {
           page.setData({ recognizing: false });
         }
       });
