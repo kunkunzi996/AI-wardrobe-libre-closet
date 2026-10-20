@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const uploadPhoto = require('../../utils/garment-upload-photo');
 
 const categoryOptions = [
   { label: '全部分类', value: '' },
@@ -74,25 +75,6 @@ function decorateGarment(garment) {
 
 const bulkImportStorageKey = 'wardrobeBulkImportQueue';
 const bulkImportConcurrency = 2;
-const maxAnalyzePhotoEdge = 900;
-
-function limitedPhotoSize(width, height) {
-  if (!width || !height) {
-    return {
-      width: maxAnalyzePhotoEdge,
-      height: maxAnalyzePhotoEdge,
-    };
-  }
-  const maxEdge = Math.max(width, height);
-  if (maxEdge <= maxAnalyzePhotoEdge) {
-    return { width: width, height: height };
-  }
-  const ratio = maxAnalyzePhotoEdge / maxEdge;
-  return {
-    width: Math.round(width * ratio),
-    height: Math.round(height * ratio),
-  };
-}
 
 Page({
   data: {
@@ -176,7 +158,7 @@ Page({
     wx.chooseMedia({
       count: 20,
       mediaType: ['image'],
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       sourceType: ['album'],
       success: function (res) {
         const files = (res.tempFiles || [])
@@ -296,42 +278,7 @@ Page({
   },
 
   compressBulkAnalyzePhoto(filePath) {
-    return new Promise(function (resolve) {
-      if (!wx.compressImage) {
-        resolve(filePath);
-        return;
-      }
-
-      const compressWithSize = function (size) {
-        wx.compressImage({
-          src: filePath,
-          quality: 60,
-          compressedWidth: size.width,
-          compressedHeight: size.height,
-          success: function (res) {
-            resolve(res.tempFilePath || filePath);
-          },
-          fail: function () {
-            resolve(filePath);
-          },
-        });
-      };
-
-      if (!wx.getImageInfo) {
-        compressWithSize(limitedPhotoSize(0, 0));
-        return;
-      }
-
-      wx.getImageInfo({
-        src: filePath,
-        success: function (info) {
-          compressWithSize(limitedPhotoSize(info.width, info.height));
-        },
-        fail: function () {
-          compressWithSize(limitedPhotoSize(0, 0));
-        },
-      });
-    });
+    return uploadPhoto.compressForAnalyze(wx, filePath);
   },
 
   updateBulkQueue(updater) {
