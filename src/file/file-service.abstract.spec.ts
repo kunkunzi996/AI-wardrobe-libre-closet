@@ -20,6 +20,7 @@ class TestFileService extends FileService {
   useRealAliyun = false;
   rawWrites: Buffer[] = [];
   displayInputs: Buffer[] = [];
+  displayOutputs: Buffer[] = [];
   deletedIds: Array<{ id: unknown; userId: unknown }> = [];
   deletedNames: string[] = [];
   deleteByIdError?: Error;
@@ -30,8 +31,9 @@ class TestFileService extends FileService {
     userId?: number,
   ): Promise<File> {
     const input = await buffer(upload!.file);
-    await this.prepareGarmentPhotoForStorage(input);
+    const output = await this.prepareGarmentPhotoForStorage(input);
     this.displayInputs.push(input);
+    this.displayOutputs.push(Buffer.from(output));
     return Object.assign(new File(), {
       id: 2,
       fileName: 'display.webp',
@@ -226,7 +228,7 @@ describe('FileService garment photo preparation', () => {
     const untouched = Buffer.from(input);
     let sent: Buffer | undefined;
     const cutout = await sharp({
-      create: { width: 12, height: 12, channels: 3, background: '#ffffff' },
+      create: { width: 1600, height: 1200, channels: 3, background: '#ffffff' },
     })
       .png()
       .toBuffer();
@@ -276,10 +278,80 @@ describe('FileService garment photo preparation', () => {
       expect(result.originalPhoto.fileName).toBe('private-upload.png');
       expect(service.deletedIds).toEqual([]);
       expect(service.displayInputs).toEqual([input]);
+      expect(service.displayOutputs).toHaveLength(1);
+      expect(service.displayOutputs[0].equals(cutout)).toBe(true);
+      await expect(
+        sharp(service.displayOutputs[0]).metadata(),
+      ).resolves.toMatchObject({
+        format: 'png',
+        width: 1600,
+        height: 1200,
+      });
     } finally {
       fetchSpy.mockRestore();
     }
   }, 20000);
+
+  it('符合限制的正向 JPEG 原样送出，阿里云结果保持原分辨率', async () => {
+    const service = new TestFileService(
+      configService({
+        BG_REMOVAL_PROVIDER: 'aliyun',
+        ALIBABA_CLOUD_ACCESS_KEY_ID: 'test-key-id',
+        ALIBABA_CLOUD_ACCESS_KEY_SECRET: 'test-key-secret',
+      }),
+    );
+    service.useRealAliyun = true;
+    const input = await sharp({
+      create: { width: 400, height: 300, channels: 3, background: '#225588' },
+    })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const cutout = await sharp({
+      create: {
+        width: 1500,
+        height: 1200,
+        channels: 3,
+        background: '#f4f4f4',
+      },
+    })
+      .jpeg({ quality: 95 })
+      .toBuffer();
+    let sent: Buffer | undefined;
+    jest.spyOn(service as any, 'createAliyunImagesegClient').mockReturnValue({
+      segmentCommonImageAdvance: async (request: {
+        imageURLObject: Readable;
+      }) => {
+        sent = await buffer(request.imageURLObject);
+        return {
+          body: { data: { imageURL: 'https://imageseg.example/cutout.jpg' } },
+        };
+      },
+    });
+    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      arrayBuffer: () =>
+        Promise.resolve(
+          cutout.buffer.slice(
+            cutout.byteOffset,
+            cutout.byteOffset + cutout.byteLength,
+          ),
+        ),
+    } as Response);
+
+    try {
+      const output = await service.prepareForTest(input);
+      if (!sent) throw new Error('阿里云没有收到图片');
+      expect(sent.equals(input)).toBe(true);
+      expect(output.equals(cutout)).toBe(true);
+      await expect(sharp(output).metadata()).resolves.toMatchObject({
+        format: 'jpeg',
+        width: 1500,
+        height: 1200,
+      });
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
 
   it('阿里云抠图失败时抛出明确错误，并删除已写入的原图', async () => {
     const service = new TestFileService(

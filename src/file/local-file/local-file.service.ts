@@ -20,6 +20,7 @@ import {
   assertPublicImageFileName,
   isStoredImageFileName,
   isPrivateImageFileName,
+  mimetypeForStoredFileName,
 } from '../file-service.interface';
 
 @Injectable()
@@ -94,6 +95,7 @@ export class LocalFileService extends FileService {
     await this.store(storedFileName, source);
     const file = this.fileRepository.create({
       fileName: storedFileName,
+      mimetype: mimetypeForStoredFileName(storedFileName),
       createdOn: new Date().toISOString(),
       createdBy: userId,
     });
@@ -117,17 +119,18 @@ export class LocalFileService extends FileService {
       throw new HttpException('Wrong filetype', HttpStatus.BAD_REQUEST);
     }
 
-    const storedFileName = fileName ?? randomUUID() + '.webp';
     const inputBuffer = await buffer(upload.file);
     const outputBuffer = await processImage(inputBuffer);
-    const storedPath = path.join(this.directory, storedFileName);
+    const stored = await this.processedImageRecord(outputBuffer, fileName);
+    const storedPath = path.join(this.directory, stored.fileName);
     await fs.promises.writeFile(storedPath, outputBuffer);
 
     // repository.create => save pattern used to so that the @BeforeInsert decorated method
     // will fire generating a uuid for the shareableId
     try {
       const file = this.fileRepository.create({
-        fileName: storedFileName,
+        fileName: stored.fileName,
+        mimetype: stored.mimetype,
         createdOn: new Date().toISOString(),
         createdBy: userId,
       });

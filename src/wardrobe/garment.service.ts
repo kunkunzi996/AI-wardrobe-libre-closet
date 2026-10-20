@@ -1,6 +1,7 @@
 import { EntityRepository, FilterQuery } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
 import {
   ForbiddenException,
   ConflictException,
@@ -843,18 +844,26 @@ export class GarmentService {
     // interceptor.
     let photo: File | undefined;
     if (dto.photo) {
-      const photoFileName = `${randomUUID()}.webp`;
+      // 两条流必须同时开始读，否则 multipart 会先把没人读的那条排掉。
+      // 抠图文件名要等阿里云结果的真实格式出来，所以透明底图先收进内存。
+      const nobgReady = dto.nobgPhoto
+        ? buffer(dto.nobgPhoto.file)
+        : Promise.resolve<Buffer | undefined>(undefined);
       const photoPromise = this.fileService.storeImageFromFileUpload(
         dto.photo,
         userId,
-        photoFileName,
       );
-      const nobgPromise = this.streamNobgIfPresent(
-        dto.nobgPhoto,
-        photoFileName,
-      );
-
-      [photo] = await Promise.all([photoPromise, nobgPromise]);
+      const [storedPhoto, nobgBytes] = await Promise.all([
+        photoPromise,
+        nobgReady,
+      ]);
+      photo = storedPhoto;
+      if (nobgBytes) {
+        await this.fileService.storeNobgVariantFromStream(
+          Readable.from(nobgBytes),
+          photo.fileName,
+        );
+      }
     }
 
     const garment = await this.findOne(id, userId);

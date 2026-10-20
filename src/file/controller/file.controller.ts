@@ -20,7 +20,10 @@ import { User } from '../../auth/user.decorator';
 import { User as UserEntity } from '../../dal/entity/user.entity';
 import { FileService } from '../file-service.abstract';
 import { ConditionalAuthGuard } from '../../auth/conditional-auth.guard';
-import { assertPublicImageFileName } from '../file-service.interface';
+import {
+  assertPublicImageFileName,
+  mimetypeForStoredFileName,
+} from '../file-service.interface';
 
 @Controller('file')
 export class FileController {
@@ -63,8 +66,13 @@ export class FileController {
 
   @Get(':fileName')
   @Header('Cache-Control', 'public, max-age=31536000, immutable') // public for CDN, max-age= 1 year for immutable content
-  async getFile(@Param('fileName') fileName: string) {
+  async getFile(
+    @Param('fileName') fileName: string,
+    @Res({ passthrough: true }) reply?: FastifyReply,
+  ) {
     assertPublicImageFileName(fileName);
+    const mimetype = mimetypeForStoredFileName(fileName);
+    if (mimetype) reply?.header('Content-Type', mimetype);
     return this.fileService.get(fileName);
   }
 

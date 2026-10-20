@@ -318,6 +318,10 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     const originalPhoto = Reflect.get(saved, 'originalPhoto');
     expect(originalPhoto).toBeDefined();
     expect(originalPhoto!.id).not.toBe(saved.photo!.id);
+    expect(originalPhoto!.fileName).toMatch(/^private-.*\.png$/);
+    expect(originalPhoto!.mimetype).toBe('image/png');
+    expect(saved.photo!.fileName).toMatch(/\.webp$/);
+    expect(saved.photo!.mimetype).toBe('image/webp');
     const original = await app.inject({
       method: 'GET',
       url: `/api/miniapp/garments/${id}/photos/original?v=${originalPhoto!.id}`,

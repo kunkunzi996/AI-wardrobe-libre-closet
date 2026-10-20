@@ -34,6 +34,20 @@ export const ALIYUN_SEGMENT_MIN_SIDE = 33;
 export const ALIYUN_SEGMENT_MAX_BYTES = 3_000_000;
 const GARMENT_CUTOUT_FAILED_MESSAGE = '抠图失败，请重试';
 
+/** 只认 sharp 读到的格式，用来起文件名，不在这里转码。 */
+const READABLE_IMAGE_FORMATS: Record<
+  string,
+  { extension: string; mimetype: string }
+> = {
+  jpeg: { extension: 'jpg', mimetype: 'image/jpeg' },
+  png: { extension: 'png', mimetype: 'image/png' },
+  webp: { extension: 'webp', mimetype: 'image/webp' },
+  gif: { extension: 'gif', mimetype: 'image/gif' },
+  tiff: { extension: 'tiff', mimetype: 'image/tiff' },
+  heif: { extension: 'heif', mimetype: 'image/heif' },
+  avif: { extension: 'avif', mimetype: 'image/avif' },
+};
+
 @Injectable()
 export abstract class FileService implements FileServiceInterface {
   public logger = new Logger(FileService.name);
@@ -130,24 +144,79 @@ export abstract class FileService implements FileServiceInterface {
     if (!Number.isSafeInteger(userId) || userId <= 0) {
       throw new UnauthorizedException('请登录后保存原图');
     }
-    const formats: Record<string, { extension: string; mimetype: string }> = {
-      jpeg: { extension: 'jpg', mimetype: 'image/jpeg' },
-      png: { extension: 'png', mimetype: 'image/png' },
-      webp: { extension: 'webp', mimetype: 'image/webp' },
-      gif: { extension: 'gif', mimetype: 'image/gif' },
-      tiff: { extension: 'tiff', mimetype: 'image/tiff' },
-      heif: { extension: 'heif', mimetype: 'image/heif' },
-      avif: { extension: 'avif', mimetype: 'image/avif' },
+    const info = await this.readableImageInfo(input);
+    // 只校验格式，不旋转、缩放、转码或重新抠图。
+    return {
+      fileName: `private-${randomUUID()}.${info.extension}`,
+      mimetype: info.mimetype,
     };
+  }
+
+  /** 读宽高和格式。不旋转、不缩放、不重新编码。 */
+  protected async readableImageInfo(input: Buffer): Promise<{
+    extension: string;
+    mimetype: string;
+    width: number;
+    height: number;
+    orientation: number;
+  }> {
     const metadata = await sharp(input)
       .metadata()
       .catch(() => undefined);
-    const format = metadata?.format ? formats[metadata.format] : undefined;
-    if (!format) throw new BadRequestException('图片内容无效或格式不支持');
-    // 只校验格式，不旋转、缩放、转码或重新抠图。
+    return this.imageInfoFromMetadata(metadata);
+  }
+
+  private imageInfoFromMetadata(
+    metadata:
+      | {
+          format?: string;
+          width?: number;
+          height?: number;
+          orientation?: number;
+        }
+      | undefined,
+  ): {
+    extension: string;
+    mimetype: string;
+    width: number;
+    height: number;
+    orientation: number;
+  } {
+    const format = metadata?.format
+      ? READABLE_IMAGE_FORMATS[metadata.format]
+      : undefined;
+    const width = metadata?.width ?? 0;
+    const height = metadata?.height ?? 0;
+    if (!format || width < 1 || height < 1) {
+      throw new BadRequestException('图片内容无效或格式不支持');
+    }
     return {
-      fileName: `private-${randomUUID()}.${format.extension}`,
+      extension: format.extension,
       mimetype: format.mimetype,
+      width,
+      height,
+      orientation: metadata?.orientation ?? 1,
+    };
+  }
+
+  protected imageFileNameForBytes(
+    requestedName: string | undefined,
+    extension: string,
+  ): string {
+    if (!requestedName) return `${randomUUID()}.${extension}`;
+    const dot = requestedName.lastIndexOf('.');
+    const base = dot > 0 ? requestedName.slice(0, dot) : requestedName;
+    return `${base}.${extension}`;
+  }
+
+  protected async processedImageRecord(
+    outputBuffer: Buffer,
+    fileName?: string,
+  ): Promise<{ fileName: string; mimetype: string }> {
+    const info = await this.readableImageInfo(outputBuffer);
+    return {
+      fileName: this.imageFileNameForBytes(fileName, info.extension),
+      mimetype: info.mimetype,
     };
   }
   abstract copyStoredFile(sourceFileName: string, userId: any): Promise<File>;
@@ -203,18 +272,26 @@ export abstract class FileService implements FileServiceInterface {
   private async fitImageForAliyunSegmentation(
     imageBuffer: Buffer,
   ): Promise<Buffer> {
-    const oriented = await sharp(imageBuffer)
-      .autoOrient()
-      .metadata()
-      .catch(() => undefined);
-    const width = oriented?.width ?? 0;
-    const height = oriented?.height ?? 0;
-    if (width < 1 || height < 1) {
+    const info = await this.readableImageInfo(imageBuffer).catch(
+      () => undefined,
+    );
+    if (!info) {
       this.logger.warn('Aliyun segmentation input is not a readable image');
       throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
     }
+    // 已经是正向、且落在阿里云限制内的 JPEG，原样送出，避免再降一次质量。
+    if (
+      info.orientation === 1 &&
+      (await this.isAcceptedAliyunSegmentInput(imageBuffer))
+    ) {
+      return imageBuffer;
+    }
 
-    const fitted = await this.searchAliyunFit(imageBuffer, width, height);
+    const fitted = await this.searchAliyunFit(
+      imageBuffer,
+      info.width,
+      info.height,
+    );
     if (fitted) return fitted;
 
     this.logger.warn(
@@ -356,7 +433,8 @@ export abstract class FileService implements FileServiceInterface {
         );
       }
       const resultBuffer = Buffer.from(await imageResponse.arrayBuffer());
-      return await this.normalizeOriginalPhoto(resultBuffer);
+      await this.assertAliyunCutoutBytes(resultBuffer);
+      return resultBuffer;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.warn(
@@ -420,6 +498,16 @@ export abstract class FileService implements FileServiceInterface {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  /** 确认阿里云结果能当图片读。不缩放，也不改成 WebP。 */
+  private async assertAliyunCutoutBytes(resultBuffer: Buffer): Promise<void> {
+    const info = await this.readableImageInfo(resultBuffer).catch(
+      () => undefined,
+    );
+    if (info) return;
+    this.logger.warn('Aliyun segmentation result is not a readable image');
+    throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
   }
 
   protected async normalizeOriginalPhoto(imageBuffer: Buffer): Promise<Buffer> {

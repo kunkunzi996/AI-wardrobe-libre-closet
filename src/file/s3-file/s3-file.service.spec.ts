@@ -102,6 +102,59 @@ describe('TEST-023 S3 复制私有图片', () => {
   });
 });
 
+describe('展示图保留阿里云抠图字节', () => {
+  it('S3 展示图按抠图结果的格式、MIME 和像素原样上传', async () => {
+    jest.clearAllMocks();
+    const cutout = await sharp({
+      create: {
+        width: 1600,
+        height: 1100,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .png()
+      .toBuffer();
+    const repository = {
+      create: jest.fn((value) => Object.assign(new File(), { id: 8 }, value)),
+    };
+    const em = { persistAndFlush: jest.fn() };
+    const service = new S3FileService(
+      {} as any,
+      { get: () => 'test-private-bucket' } as any,
+      repository as any,
+      em as any,
+    );
+    const prepare = jest
+      .spyOn(service as any, 'prepareGarmentPhotoForStorage')
+      .mockResolvedValue(cutout);
+    try {
+      const stored = await service.storeImageFromFileUpload(
+        {
+          mimetype: 'image/jpeg',
+          file: Readable.from(Buffer.from('camera')),
+        } as any,
+        7,
+      );
+      const params = (Upload as unknown as jest.Mock).mock.calls[0][0].params;
+      expect(stored.fileName).toMatch(/\.png$/);
+      expect(stored.mimetype).toBe('image/png');
+      expect(params).toMatchObject({
+        Key: stored.fileName,
+        Body: cutout,
+        ContentType: 'image/png',
+      });
+      await expect(sharp(params.Body).metadata()).resolves.toMatchObject({
+        format: 'png',
+        width: 1600,
+        height: 1100,
+      });
+    } finally {
+      prepare.mockRestore();
+    }
+  });
+});
+
 describe('TEST-015 S3FileService 私有字节合同', () => {
   const makePrivateStorage = () => {
     jest.clearAllMocks();
