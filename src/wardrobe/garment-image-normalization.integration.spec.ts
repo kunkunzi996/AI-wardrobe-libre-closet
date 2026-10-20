@@ -21,7 +21,12 @@ import { GarmentImageNormalization } from '../dal/entity/garment-image-normaliza
 import { File } from '../dal/entity/file.entity';
 import { Garment } from '../dal/entity/garment.entity';
 import { User } from '../dal/entity/user.entity';
-import { FileService } from '../file/file-service.abstract';
+import {
+  ALIYUN_SEGMENT_MAX_BYTES,
+  ALIYUN_SEGMENT_MAX_SIDE,
+  ALIYUN_SEGMENT_MIN_SIDE,
+  FileService,
+} from '../file/file-service.abstract';
 import { LocalFileService } from '../file/local-file/local-file.service';
 import { TENCENT_WEATHER_FETCH } from '../weather/tencent-weather.service';
 import { WardrobeModule } from './wardrobe.module';
@@ -337,7 +342,20 @@ describe('衣物整理真实 HTTP 边界（按 TEST 编号筛选）', () => {
     });
     expect([400, 401, 403, 404]).toContain(publicOriginal.statusCode);
     expect(matting).toHaveBeenCalledTimes(1);
-    expect(matting).toHaveBeenCalledWith(cameraBytes);
+    const segmentationInput = matting.mock.calls[0][0] as Buffer;
+    expect(Buffer.isBuffer(segmentationInput)).toBe(true);
+    expect(segmentationInput.equals(cameraBytes)).toBe(false);
+    expect(segmentationInput.length).toBeLessThanOrEqual(
+      ALIYUN_SEGMENT_MAX_BYTES,
+    );
+    const fitted = await sharp(segmentationInput).metadata();
+    expect(fitted.format).toBe('jpeg');
+    expect(Math.max(fitted.width ?? 0, fitted.height ?? 0)).toBeLessThanOrEqual(
+      ALIYUN_SEGMENT_MAX_SIDE,
+    );
+    expect(
+      Math.min(fitted.width ?? 0, fitted.height ?? 0),
+    ).toBeGreaterThanOrEqual(ALIYUN_SEGMENT_MIN_SIDE);
     expect(
       storedBytes.get(path.join(storageRoot, saved.photo!.fileName)),
     ).toEqual(cutoutBytes);

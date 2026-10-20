@@ -66,17 +66,20 @@ export class LocalFileService extends FileService {
 
   async storePrivateImageBuffer(input: Buffer, userId: number): Promise<File> {
     const info = await this.privateImageInfo(input, userId);
-    await fs.promises.writeFile(
-      path.join(this.directory, info.fileName),
-      input,
-    );
-    const file = this.fileRepository.create({
-      ...info,
-      createdOn: new Date().toISOString(),
-      createdBy: userId,
-    });
-    await this.em.persistAndFlush(file);
-    return file;
+    const storedPath = path.join(this.directory, info.fileName);
+    await fs.promises.writeFile(storedPath, input);
+    try {
+      const file = this.fileRepository.create({
+        ...info,
+        createdOn: new Date().toISOString(),
+        createdBy: userId,
+      });
+      await this.em.persistAndFlush(file);
+      return file;
+    } catch (error) {
+      await this.removeLocalFile(storedPath);
+      throw error;
+    }
   }
 
   async copyStoredFile(sourceFileName: string, userId: any): Promise<File> {
@@ -117,20 +120,23 @@ export class LocalFileService extends FileService {
     const storedFileName = fileName ?? randomUUID() + '.webp';
     const inputBuffer = await buffer(upload.file);
     const outputBuffer = await processImage(inputBuffer);
-    await fs.promises.writeFile(
-      path.join(this.directory, storedFileName),
-      outputBuffer,
-    );
+    const storedPath = path.join(this.directory, storedFileName);
+    await fs.promises.writeFile(storedPath, outputBuffer);
 
     // repository.create => save pattern used to so that the @BeforeInsert decorated method
     // will fire generating a uuid for the shareableId
-    const file = this.fileRepository.create({
-      fileName: storedFileName,
-      createdOn: new Date().toISOString(),
-      createdBy: userId,
-    });
-    await this.em.persistAndFlush(file);
-    return file;
+    try {
+      const file = this.fileRepository.create({
+        fileName: storedFileName,
+        createdOn: new Date().toISOString(),
+        createdBy: userId,
+      });
+      await this.em.persistAndFlush(file);
+      return file;
+    } catch (error) {
+      await this.removeLocalFile(storedPath);
+      throw error;
+    }
   }
 
   async get(fileName: string): Promise<Readable | undefined> {
@@ -189,5 +195,13 @@ export class LocalFileService extends FileService {
 
   private deleteFile(fileName: string): Promise<void> {
     return fs.promises.unlink(path.join(this.directory, fileName));
+  }
+
+  private async removeLocalFile(storedPath: string): Promise<void> {
+    try {
+      await fs.promises.unlink(storedPath);
+    } catch (error) {
+      this.logger.warn(error);
+    }
   }
 }

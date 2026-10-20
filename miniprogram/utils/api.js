@@ -134,6 +134,24 @@ function request(path, options) {
   });
 }
 
+var GARMENT_CUTOUT_FAILED_MESSAGE = '抠图失败，请重试';
+
+function responseBodyText(data) {
+  if (typeof data === 'string') return data;
+  if (data == null) return '';
+  try {
+    return JSON.stringify(data);
+  } catch (error) {
+    return '';
+  }
+}
+
+function cutoutFailureMessage(data) {
+  return responseBodyText(data).indexOf(GARMENT_CUTOUT_FAILED_MESSAGE) === -1
+    ? ''
+    : GARMENT_CUTOUT_FAILED_MESSAGE;
+}
+
 function uploadGarment(filePath, formData) {
   return loginMiniapp().then(function () {
     return new Promise(function (resolve, reject) {
@@ -154,7 +172,11 @@ function uploadGarment(filePath, formData) {
             return;
           }
           console.warn('uploadGarment bad status', res.statusCode, res.data);
-          reject(new Error('上传失败，请重新选择图片'));
+          reject(
+            new Error(
+              cutoutFailureMessage(res.data) || '上传失败，请重新选择图片',
+            ),
+          );
         },
         fail(error) {
           console.warn('uploadGarment failed', error);

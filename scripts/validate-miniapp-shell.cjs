@@ -556,4 +556,133 @@ if (weatherContractFailures.length > 0) {
   );
 }
 
-console.log('Native mini-program validation passed.');
+function assertMiniappCutoutFailure() {
+  const api = require(path.join(root, 'miniprogram/utils/api.js'));
+  const storage = { miniapp_access_token: 'test-token' };
+  const previousWx = global.wx;
+  const responses = [
+    {
+      statusCode: 400,
+      data: JSON.stringify({
+        statusCode: 400,
+        message: '抠图失败，请重试',
+      }),
+    },
+    {
+      statusCode: 500,
+      data: '<main><p>抠图失败，请重试</p></main>',
+    },
+    {
+      statusCode: 400,
+      data: JSON.stringify({ message: '分类不能为空' }),
+    },
+  ];
+  let responseIndex = 0;
+  global.wx = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    uploadFile(options) {
+      const response = responses[responseIndex];
+      responseIndex += 1;
+      options.success(response);
+    },
+    showToast() {},
+  };
+
+  const originalUpload = api.uploadGarment;
+  return api
+    .uploadGarment('photo.jpg', { category: 'tops' })
+    .then(
+      () => {
+        throw new Error('JSON cutout failure must reject the garment upload');
+      },
+      (error) => {
+        if (!error || error.message !== '抠图失败，请重试') {
+          throw new Error(
+            `uploadGarment must surface 抠图失败，请重试, got ${
+              error && error.message
+            }`,
+          );
+        }
+      },
+    )
+    .then(() => api.uploadGarment('photo.jpg', { category: 'tops' }))
+    .then(
+      () => {
+        throw new Error('HTML cutout failure must reject the garment upload');
+      },
+      (error) => {
+        if (!error || error.message !== '抠图失败，请重试') {
+          throw new Error(
+            `uploadGarment must read 抠图失败，请重试 from an HTML error page, got ${
+              error && error.message
+            }`,
+          );
+        }
+      },
+    )
+    .then(() => api.uploadGarment('photo.jpg', { category: 'tops' }))
+    .then(
+      () => {
+        throw new Error('other upload failures must still reject');
+      },
+      (error) => {
+        if (!error || error.message !== '上传失败，请重新选择图片') {
+          throw new Error(
+            `unrelated upload errors must keep the existing message, got ${
+              error && error.message
+            }`,
+          );
+        }
+      },
+    )
+    .then(() => {
+      api.uploadGarment = function () {
+        return Promise.reject(new Error('抠图失败，请重试'));
+      };
+      const page = {
+        data: {
+          isEdit: false,
+          isBulkImport: false,
+          photoPath: 'photo.jpg',
+          form: { category: 'tops' },
+          duplicateCandidates: [],
+          duplicateWarningAcknowledged: false,
+        },
+        setData(update) {
+          Object.assign(this.data, update);
+        },
+      };
+      garmentFormPage.submitGarment.call(page);
+      return new Promise((resolve) => setImmediate(resolve)).then(() => {
+        if (page.data.error !== '抠图失败，请重试') {
+          throw new Error(
+            `garment form must show 抠图失败，请重试, got ${page.data.error}`,
+          );
+        }
+        if (page.data.submitting !== false) {
+          throw new Error(
+            'garment form must leave the submitting state after failure',
+          );
+        }
+      });
+    })
+    .finally(() => {
+      api.uploadGarment = originalUpload;
+      if (previousWx === undefined) delete global.wx;
+      else global.wx = previousWx;
+    });
+}
+
+assertMiniappCutoutFailure()
+  .then(() => {
+    console.log('Native mini-program validation passed.');
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

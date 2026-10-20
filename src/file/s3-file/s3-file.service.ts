@@ -75,13 +75,18 @@ export class S3FileService extends FileService {
       },
     });
     await upload.done();
-    const file = this.fileRepository.create({
-      ...info,
-      createdOn: new Date().toISOString(),
-      createdBy: userId,
-    });
-    await this.em.persistAndFlush(file);
-    return file;
+    try {
+      const file = this.fileRepository.create({
+        ...info,
+        createdOn: new Date().toISOString(),
+        createdBy: userId,
+      });
+      await this.em.persistAndFlush(file);
+      return file;
+    } catch (error) {
+      await this.removeStoredObject(info.fileName);
+      throw error;
+    }
   }
 
   public async copyStoredFile(
@@ -137,13 +142,18 @@ export class S3FileService extends FileService {
 
     await s3Upload.done();
 
-    const file = this.fileRepository.create({
-      fileName: storedFileName,
-      createdOn: new Date().toISOString(),
-      createdBy: userId,
-    });
-    await this.em.persistAndFlush(file);
-    return file;
+    try {
+      const file = this.fileRepository.create({
+        fileName: storedFileName,
+        createdOn: new Date().toISOString(),
+        createdBy: userId,
+      });
+      await this.em.persistAndFlush(file);
+      return file;
+    } catch (error) {
+      await this.removeStoredObject(storedFileName);
+      throw error;
+    }
   }
 
   public async delete(url: string): Promise<void> {
@@ -200,5 +210,16 @@ export class S3FileService extends FileService {
       },
     });
     await upload.done();
+  }
+
+  private async removeStoredObject(key: string): Promise<void> {
+    try {
+      await this.s3.deleteObject({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+    } catch (error) {
+      this.logger.warn(error);
+    }
   }
 }
