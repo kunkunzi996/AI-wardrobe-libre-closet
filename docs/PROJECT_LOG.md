@@ -6,6 +6,10 @@ This document is intended for the maintaining team to use to document decisions.
 >
 > The team agrees to _BLANK_ project business decision(s)...
 
+## 2026-10-21
+
+PR #21（`4cd435f`，issue #20）新上传衣物保存相机原图，仅超上限才逐级压缩；PR #23（`89d6743`，issue #22）去掉白点兜底抠图，只走阿里云，失败提示用户重试。生产已运行 `ai-wardrobe:main-89d6743`，`rollback-809853f-pre-pr23` 保留为回滚镜像。同日清理服务器：移除 phone9 隔离验收容器及 nginx include（目录已打包到 `/root/backups/`）、11 个停止容器、11 组旧镜像，删除 PR #23 远程分支和本地预览 worktree 目录。
+
 ## 2026-08-26
 
 用户决定：不再对困困子账号剩余未补标衣物跑 AI 补标，也不再对老婆真人衣橱跑补标。沙盒（用户 ID 4）全量补标结果保留。补标功能代码和管理员入口不删除。此后不得把这两项再列为待办或启用门槛。

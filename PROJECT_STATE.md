@@ -20,7 +20,7 @@
 
 当前执行位置：70e2012bacf91705b7ca7aa37539528e0ebebb4f 已推送；功能分支后端 37775139593 与 Playwright 37775145229 均 SUCCESS，PR #19 正常合入为 main@809853f874aaed47da805a43b099922eeb65aa40，合并树与已测分支一致。主线后端 37776207255、Playwright 37776207206 也 SUCCESS；44 套/350 项、本地及 PostgreSQL/MinIO 两组冒烟/负载、Lighthouse 等全部原步骤通过，原测试桶实际创建成功。AUTO_DEPLOY_MAIN 仍 false，部署工作流的 Deploy main 实际 SKIPPED，本轮使用受控人工发布，不绕过测试。
 
-本轮生产：由 main@809853f 的 Git archive 固定快照构建，源包 SHA-256 f0dccbdb2a04f4859daa53e4b15ce8e0a7bcfdc0181c22a8601e0da0aae6a797。服务器旧仓库 /root/AI-wardrobe-libre-closet 的脏文件未动；源码独立在 /root/ai-wardrobe-release-20261008-809853f/source。首次构建达到 1200 秒上限未形成候选，依赖安装及编译子阶段退出 0；旧本机 SSH 传输无最终返回，核对后只停止 PID68116，传输退出 1，远端总退出码未取回，不伪写 124 或构建通过。保留缓存按相同源码/配置受控重试，615.55 秒退出 0；最终候选/当前镜像均为 sha256:41baeb3e8e95ad3246ba6b93694dae069a61ec7e611b012be054272976ab5123，revision 标签匹配809853f。候选 better-sqlite3、sharp、编译后模型/开关及迁移检查通过，在线一致副本单项迁移演练通过，原表行哈希不变。
+本轮生产：main@89d6743（含 PR #21 相机原图保存、PR #23 仅阿里云抠图），镜像 ai-wardrobe:main-89d6743 / candidate-e197ae4（ID 4dcc9f2dc040），证据为正式容器 ai-wardrobe 当前运行镜像。上一版 main@809853f 镜像 sha256:41baeb3e8e95ad3246ba6b93694dae069a61ec7e611b012be054272976ab5123 保留为回滚标签 ai-wardrobe:rollback-809853f-pre-pr23。
 
 更正预检结论：实际 src/app.module.ts 的 onModuleInit 会调用 orm.getMigrator().up()，此前认为启动不迁移是漏查 AppModule。候选检查/副本演练均只运行独立助手，不启动正式应用或接触原库；正式启动在停机全卷与私有配置备份、显式允许的单项迁移之后进行，启动时无待迁移项。
 
@@ -171,10 +171,10 @@ b356919（服务器本地构建 candidate-b356919；PR #8 合入 main）
 ## 已完成能力
 
 - 原生小程序衣橱首页：列表、筛选、详情入口、重新加载
-- 单件衣物上传：图片压缩、AI 识别、表单二次确认、保存
+- 单件衣物上传：保存相机原图（超过上传上限才逐级压缩），识别用单独的压缩副本；AI 识别、表单二次确认、保存
 - 衣物表单折叠选择框：添加/编辑衣物页的 5 组结构化标签和 8 个老字段（分类/颜色/季节/细分/材质/厚薄/风格标签/场景标签）统一为「点开才显示子标签」的折叠选择框；分类/颜色/细分/材质/厚薄单选，季节/风格/场景多选；选项取自后台标签库白名单，AI 库外值追加为可取消项；提交格式与后端保持不变
 - 鞋子/包包/配饰等非衣服图片的 AI 分类识别修复
-- 阿里云图片分割/抠图接入，生产环境依赖 `.env` 中 Aliyun 配置
+- 抠图只走阿里云图片分割，没有本地兜底；失败或未配置时提示「抠图失败，请重试」。生产环境依赖仓库外环境文件中的 Aliyun 配置
 - 围绕核心衣物生成穿搭推荐，并确保结果包含核心衣物
 - 今日穿搭保存
 - 今日穿搭删除：长按今日穿搭卡片，确认后删除该条记录；搭配和照片只在没有其他日历引用时清理
@@ -229,7 +229,7 @@ b356919（服务器本地构建 candidate-b356919；PR #8 合入 main）
 - `src/wardrobe/recommendation/outfit-generator.service.ts`：穿搭推荐生成
 - `src/ai/outfit-ai.service.ts`：AI 搭配提示词与返回结果规范
 - `src/ai/garment-vision.service.ts`：衣物图片识别
-- `src/file/file-service.abstract.ts`：图片标准化、阿里云抠图、`copyStoredFile` 复制已存照片（复制衣橱不走抠图）
+- `src/file/file-service.abstract.ts`：保存上传原字节、阿里云抠图（失败即报错并清理刚存的原图）、`copyStoredFile` 复制已存照片（复制衣橱不走抠图）
 
 ## 生产服务器
 

@@ -25,7 +25,7 @@
 | `src/wardrobe` | 衣物、搭配、日历、统计、小程序衣橱 API；穿搭候选、温度/状态规则、方案去重和整套颜色关系 | AI 模型调用细节、底层文件存储实现 |
 | `src/ai`       | 衣物图片识别、AI 搭配请求、JSON 解析和响应形状清洗 | 衣物入库保存、数据库查询、小程序穿搭确定性规则 |
 | `src/weather`  | 腾讯天气代理、天气归一化、缓存与降级        | 穿搭筛选、位置持久化              |
-| `src/file`     | 图片上传、读取、本地/S3 存储、抠图/白底处理 | 衣物业务字段判断                  |
+| `src/file`     | 图片上传、读取、本地/S3 存储、阿里云抠图（输出透明底） | 衣物业务字段判断                  |
 | `src/dal`      | MikroORM 连接、实体、迁移                   | Controller 或页面逻辑             |
 | `views`        | Web/PWA 服务端页面模板                      | 小程序原生页面逻辑                |
 | `miniprogram`  | 微信小程序原生页面和 API 请求封装           | 后端业务逻辑                      |
@@ -175,7 +175,7 @@ docker exec ai-wardrobe sh -c 'echo "QWEN_VISION_MODEL=$QWEN_VISION_MODEL"'
 ## 18. 项目自定义封装边界
 
 - `FileService` 是文件存储抽象，允许本地/S3 切换。
-- 衣物照片使用 `storeImageFromFileUpload`，会做衣物抠图/白底处理；今日穿搭全身照使用 `storeOriginalImageFromFileUpload`，只做原图方向校正、WebP 转换和尺寸标准化。
+- 衣物照片使用 `storeImageFromFileUpload`，先保存原图，再只用阿里云抠图，失败直接报错、不兜底；今日穿搭全身照使用 `storeOriginalImageFromFileUpload`，只做原图方向校正、WebP 转换和尺寸标准化。
 - `ConditionalAuthGuard` 是本项目的 Web/小程序共用鉴权入口。
 - `GarmentVisionService` 是衣物图片识别边界。
 - `OutfitAiService` 是搭配文本生成边界。
