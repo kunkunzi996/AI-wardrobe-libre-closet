@@ -10,6 +10,18 @@ This document is intended for the maintaining team to use to document decisions.
 
 PR #21（`4cd435f`，issue #20）新上传衣物保存相机原图，仅超上限才逐级压缩；PR #23（`89d6743`，issue #22）去掉白点兜底抠图，只走阿里云，失败提示用户重试。生产已运行 `ai-wardrobe:main-89d6743`，`rollback-809853f-pre-pr23` 保留为回滚镜像。同日清理服务器：移除 phone9 隔离验收容器及 nginx include（目录已打包到 `/root/backups/`）、11 个停止容器、11 组旧镜像，删除 PR #23 远程分支和本地预览 worktree 目录。
 
+## 2026-10-08
+
+> 以下两段于 2026-10-21 从 README.md 与 PROJECT_STATE.md 原文移入（PR #24 已把原位置换成当前现状），内容保持原样。
+
+来自 README.md：
+
+2026-10-08 按独立发布授权，将 main@809853f874aaed47da805a43b099922eeb65aa40 的固定源码快照部署到正式后台 https://aimatchwear.asia，镜像 sha256:41baeb3e8e95ad3246ba6b93694dae069a61ec7e611b012be054272976ab5123，手动整理开关已开启。候选原生模块检查、数据库副本演练、正式停机全卷/私有配置备份、单项 Migration20261006000100 和只读部署冒烟均通过；311 件衣物、386 条文件记录及全部原图片字节保持不变。本轮不执行付费生成，不把部署冒烟代替 P6。旧业务容器 ai-wardrobe-rollback-20261008-809853f 与备份 /root/ai-wardrobe-release-20261008-809853f/backup 保留，隔离验收环境未动，自动部署仍为 false。
+
+来自 PROJECT_STATE.md：
+
+本轮生产：由 main@809853f 的 Git archive 固定快照构建，源包 SHA-256 f0dccbdb2a04f4859daa53e4b15ce8e0a7bcfdc0181c22a8601e0da0aae6a797。服务器旧仓库 /root/AI-wardrobe-libre-closet 的脏文件未动；源码独立在 /root/ai-wardrobe-release-20261008-809853f/source。首次构建达到 1200 秒上限未形成候选，依赖安装及编译子阶段退出 0；旧本机 SSH 传输无最终返回，核对后只停止 PID68116，传输退出 1，远端总退出码未取回，不伪写 124 或构建通过。保留缓存按相同源码/配置受控重试，615.55 秒退出 0；最终候选/当前镜像均为 sha256:41baeb3e8e95ad3246ba6b93694dae069a61ec7e611b012be054272976ab5123，revision 标签匹配809853f。候选 better-sqlite3、sharp、编译后模型/开关及迁移检查通过，在线一致副本单项迁移演练通过，原表行哈希不变。
+
 ## 2026-08-26
 
 用户决定：不再对困困子账号剩余未补标衣物跑 AI 补标，也不再对老婆真人衣橱跑补标。沙盒（用户 ID 4）全量补标结果保留。补标功能代码和管理员入口不删除。此后不得把这两项再列为待办或启用门槛。
