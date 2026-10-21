@@ -123,10 +123,15 @@ describe('TEST-015 FileController 公开绕路保护', () => {
 
   it('TEST-015 旧公开文件仍通过既有读取接口', async () => {
     const { controller, storage } = makePublicReader();
+    const reply = { header: jest.fn().mockReturnThis() };
 
-    await expect(controller.getFile('legacy.webp')).resolves.toBeInstanceOf(
-      Readable,
-    );
+    await expect(
+      controller.getFile('legacy.webp', reply as any),
+    ).resolves.toBeInstanceOf(Readable);
     expect(storage.get).toHaveBeenCalledWith('legacy.webp');
+    expect(reply.header).toHaveBeenCalledWith('Content-Type', 'image/webp');
+
+    await controller.getFile('cutout.jpg', reply as any);
+    expect(reply.header).toHaveBeenCalledWith('Content-Type', 'image/jpeg');
   });
 });

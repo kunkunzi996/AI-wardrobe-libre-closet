@@ -149,21 +149,59 @@ function shrinkUntilItFits(wxApi, sourcePath, analyzePath, stepIndex) {
     });
 }
 
+function fileExtension(filePath) {
+  const dot = String(filePath).lastIndexOf('.');
+  if (dot <= 0) return '.jpg';
+  const extension = String(filePath).slice(dot).toLowerCase();
+  return /^\.[a-z0-9]{1,8}$/.test(extension) ? extension : '.jpg';
+}
+
+// 先复制再压缩。部分机型的 wx.compressImage 会改写 src 指向的临时文件，
+// 保存必须用这份还没被识别压缩碰过的副本。
+function copyUntouched(wxApi, filePath) {
+  const fileSystem = wxApi.getFileSystemManager && wxApi.getFileSystemManager();
+  const root = wxApi.env && wxApi.env.USER_DATA_PATH;
+  if (!fileSystem || !fileSystem.copyFile || !root) {
+    return Promise.resolve(filePath);
+  }
+  const dest =
+    String(root).replace(/\/$/, '') +
+    '/garment-original-' +
+    Date.now() +
+    '-' +
+    Math.floor(Math.random() * 1e9).toString(36) +
+    fileExtension(filePath);
+  return new Promise(function (resolve) {
+    fileSystem.copyFile({
+      srcPath: filePath,
+      destPath: dest,
+      success: function () {
+        resolve(dest);
+      },
+      fail: function () {
+        resolve(filePath);
+      },
+    });
+  });
+}
+
 function prepareGarmentUploadPhoto(wxApi, filePath, knownSize) {
-  return Promise.all([
-    readFileSize(wxApi, filePath, knownSize),
-    compressForAnalyze(wxApi, filePath),
-  ]).then(function (parts) {
-    const byteSize = parts[0];
-    const analyzePath = parts[1];
-    if (!exceedsSaveLimit(byteSize)) {
-      return {
-        savePath: filePath,
-        analyzePath: analyzePath,
-        savePlan: 'original',
-      };
-    }
-    return shrinkUntilItFits(wxApi, filePath, analyzePath, 0);
+  return copyUntouched(wxApi, filePath).then(function (untouchedPath) {
+    return Promise.all([
+      readFileSize(wxApi, untouchedPath, knownSize),
+      compressForAnalyze(wxApi, filePath),
+    ]).then(function (parts) {
+      const byteSize = parts[0];
+      const analyzePath = parts[1];
+      if (!exceedsSaveLimit(byteSize)) {
+        return {
+          savePath: untouchedPath,
+          analyzePath: analyzePath,
+          savePlan: 'original',
+        };
+      }
+      return shrinkUntilItFits(wxApi, untouchedPath, analyzePath, 0);
+    });
   });
 }
 

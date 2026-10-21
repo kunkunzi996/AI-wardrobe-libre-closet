@@ -28,6 +28,28 @@ export function assertPublicImageFileName(fileName: string): void {
   }
 }
 
+const STORED_FILE_MIMETYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  tif: 'image/tiff',
+  tiff: 'image/tiff',
+  avif: 'image/avif',
+  heif: 'image/heif',
+  heic: 'image/heif',
+};
+
+export function mimetypeForStoredFileName(
+  fileName: string,
+): string | undefined {
+  const dot = fileName.lastIndexOf('.');
+  if (dot <= 0 || dot === fileName.length - 1) return undefined;
+  return STORED_FILE_MIMETYPES[fileName.slice(dot + 1).toLowerCase()];
+}
+
 export interface FileServiceInterface {
   storeGarmentPhotosFromFileUpload(
     upload: MultipartFile | undefined,

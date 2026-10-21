@@ -115,6 +115,60 @@ describe('TEST-023 本地复制私有图片', () => {
   });
 });
 
+describe('展示图保留阿里云抠图字节', () => {
+  it('本地展示图按抠图结果的格式和像素原样落盘', async () => {
+    jest.clearAllMocks();
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const cutout = await sharp({
+      create: {
+        width: 1600,
+        height: 1100,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .png()
+      .toBuffer();
+    let written: Buffer | undefined;
+    const repository = {
+      create: jest.fn((value) => Object.assign(new File(), { id: 8 }, value)),
+    };
+    const em = { persistAndFlush: jest.fn() };
+    const service = new LocalFileService(
+      { getOrThrow: () => 'test-memory-storage', get: jest.fn() } as any,
+      repository as any,
+      em as any,
+    );
+    const write = jest
+      .spyOn(fs.promises, 'writeFile')
+      .mockImplementation((_file, data) => {
+        written = Buffer.from(data as Uint8Array);
+        return Promise.resolve();
+      });
+    const prepare = jest
+      .spyOn(service as any, 'prepareGarmentPhotoForStorage')
+      .mockResolvedValue(cutout);
+    try {
+      const stored = await service.storeImageFromFileUpload(
+        {
+          mimetype: 'image/jpeg',
+          file: Readable.from(Buffer.from('camera')),
+        } as any,
+        7,
+      );
+      expect(prepare).toHaveBeenCalledTimes(1);
+      expect(stored.fileName).toMatch(/\.png$/);
+      expect(stored.mimetype).toBe('image/png');
+      expect(written).toEqual(cutout);
+      const meta = await sharp(written ?? Buffer.alloc(0)).metadata();
+      expect(meta).toMatchObject({ format: 'png', width: 1600, height: 1100 });
+    } finally {
+      write.mockRestore();
+      prepare.mockRestore();
+    }
+  });
+});
+
 describe('TEST-015 LocalFileService 私有字节合同', () => {
   const makePrivateStorage = () => {
     jest.clearAllMocks();

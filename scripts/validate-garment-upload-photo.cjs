@@ -158,6 +158,41 @@ async function test(name, run) {
     });
   });
 
+  await test('识别压缩前先复制原图，保存的是这份副本', async function () {
+    const copies = [];
+    const wxApi = installWx({
+      compress: function (options) {
+        assert.equal(options.src, 'camera.jpg');
+        assert.equal(options.quality, 60);
+        options.success({ tempFilePath: 'analyze.jpg' });
+      },
+    });
+    wxApi.env = { USER_DATA_PATH: 'wxfile://usr' };
+    wxApi.getFileSystemManager = function () {
+      return {
+        copyFile: function (options) {
+          copies.push(options);
+          options.success();
+        },
+        getFileInfo: function (options) {
+          options.success({ size: 2048 });
+        },
+      };
+    };
+    const prepared = await uploadPhoto.prepareGarmentUploadPhoto(
+      wxApi,
+      'camera.jpg',
+      2048,
+    );
+    assert.equal(copies.length, 1);
+    assert.equal(copies[0].srcPath, 'camera.jpg');
+    assert.match(copies[0].destPath, /^wxfile:\/\/usr\/garment-original-.*\.jpg$/);
+    assert.equal(prepared.savePlan, 'original');
+    assert.equal(prepared.savePath, copies[0].destPath);
+    assert.equal(prepared.analyzePath, 'analyze.jpg');
+    assert.notEqual(prepared.savePath, prepared.analyzePath);
+  });
+
   await test('不超过 29MiB 的图原样保存，识别另走小图', async function () {
     const wxApi = installWx({
       compress: function (options) {
@@ -291,6 +326,43 @@ async function test(name, run) {
     ctx.submitGarment();
     await flush();
     assert.deepEqual(uploads, ['camera.jpg']);
+  });
+
+  await test('单件保存上传复制出来的原图，不上传识别小图', async function () {
+    analyzed.length = 0;
+    uploads.length = 0;
+    installWx({
+      choose: function (options) {
+        assert.deepEqual(options.sizeType, ['original']);
+        options.success({
+          tempFiles: [{ tempFilePath: 'camera.jpg', size: 2 * 1024 * 1024 }],
+        });
+      },
+      compress: function (options) {
+        assert.equal(options.src, 'camera.jpg');
+        options.success({ tempFilePath: 'analyze.jpg' });
+      },
+    });
+    global.wx.env = { USER_DATA_PATH: 'wxfile://usr' };
+    global.wx.getFileSystemManager = function () {
+      return {
+        copyFile: function (options) {
+          options.success();
+        },
+        getFileInfo: function (options) {
+          options.success({ size: 2 * 1024 * 1024 });
+        },
+      };
+    };
+    const ctx = bindPage(formPage);
+    ctx.choosePhoto();
+    await flush();
+    assert.match(ctx.data.photoPath, /^wxfile:\/\/usr\/garment-original-.*\.jpg$/);
+    assert.notEqual(ctx.data.photoPath, 'analyze.jpg');
+    ctx.submitGarment();
+    await flush();
+    assert.deepEqual(uploads, [ctx.data.photoPath]);
+    assert.deepEqual(analyzed, ['analyze.jpg']);
   });
 
   await test('原图太大时，保存会等兜底图准备好，不会先把超限原图传上去', async function () {

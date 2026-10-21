@@ -19,6 +19,7 @@ import {
   assertPublicImageFileName,
   isStoredImageFileName,
   isPrivateImageFileName,
+  mimetypeForStoredFileName,
 } from '../file-service.interface';
 
 @Injectable()
@@ -75,13 +76,18 @@ export class S3FileService extends FileService {
       },
     });
     await upload.done();
-    const file = this.fileRepository.create({
-      ...info,
-      createdOn: new Date().toISOString(),
-      createdBy: userId,
-    });
-    await this.em.persistAndFlush(file);
-    return file;
+    try {
+      const file = this.fileRepository.create({
+        ...info,
+        createdOn: new Date().toISOString(),
+        createdBy: userId,
+      });
+      await this.em.persistAndFlush(file);
+      return file;
+    } catch (error) {
+      await this.removeStoredObject(info.fileName);
+      throw error;
+    }
   }
 
   public async copyStoredFile(
@@ -94,10 +100,14 @@ export class S3FileService extends FileService {
     }
     if (isPrivateImageFileName(sourceFileName))
       return this.storePrivateImageBuffer(await buffer(source), userId);
-    const storedFileName = randomUUID() + '.webp';
-    await this.store(storedFileName, source);
+    const dot = sourceFileName.lastIndexOf('.');
+    const extension = dot > 0 ? sourceFileName.slice(dot) : '.webp';
+    const storedFileName = randomUUID() + extension;
+    const mimetype = mimetypeForStoredFileName(storedFileName) ?? 'image/webp';
+    await this.store(storedFileName, source, mimetype);
     const file = this.fileRepository.create({
       fileName: storedFileName,
+      mimetype,
       createdOn: new Date().toISOString(),
       createdBy: userId,
     });
@@ -121,29 +131,35 @@ export class S3FileService extends FileService {
       throw new HttpException('Wrong filetype', HttpStatus.BAD_REQUEST);
     }
 
-    const storedFileName = fileName ?? randomUUID() + '.webp';
     const inputBuffer = await buffer(upload.file);
     const outputBuffer = await processImage(inputBuffer);
+    const stored = await this.processedImageRecord(outputBuffer, fileName);
 
     const s3Upload = new Upload({
       client: this.s3,
       params: {
         Bucket: this.bucketName,
-        Key: storedFileName,
+        Key: stored.fileName,
         Body: outputBuffer,
-        ContentType: 'image/webp',
+        ContentType: stored.mimetype,
       },
     });
 
     await s3Upload.done();
 
-    const file = this.fileRepository.create({
-      fileName: storedFileName,
-      createdOn: new Date().toISOString(),
-      createdBy: userId,
-    });
-    await this.em.persistAndFlush(file);
-    return file;
+    try {
+      const file = this.fileRepository.create({
+        fileName: stored.fileName,
+        mimetype: stored.mimetype,
+        createdOn: new Date().toISOString(),
+        createdBy: userId,
+      });
+      await this.em.persistAndFlush(file);
+      return file;
+    } catch (error) {
+      await this.removeStoredObject(stored.fileName);
+      throw error;
+    }
   }
 
   public async delete(url: string): Promise<void> {
@@ -189,16 +205,31 @@ export class S3FileService extends FileService {
     return result.Body as Readable;
   }
 
-  protected async store(fileName: string, stream: Readable): Promise<void> {
+  protected async store(
+    fileName: string,
+    stream: Readable,
+    contentType = 'image/webp',
+  ): Promise<void> {
     const upload = new Upload({
       client: this.s3,
       params: {
         Bucket: this.bucketName,
         Key: fileName,
         Body: stream,
-        ContentType: 'image/webp',
+        ContentType: contentType,
       },
     });
     await upload.done();
+  }
+
+  private async removeStoredObject(key: string): Promise<void> {
+    try {
+      await this.s3.deleteObject({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+    } catch (error) {
+      this.logger.warn(error);
+    }
   }
 }

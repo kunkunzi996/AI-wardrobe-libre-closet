@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -21,6 +22,31 @@ import {
   FileServiceInterface,
   type GarmentPhotos,
 } from './file-service.interface';
+
+/** 通用分割 SegmentCommonImage：最长边小于等于 1999，且宽高都小于 2000。 */
+export const ALIYUN_SEGMENT_MAX_SIDE = 1999;
+/** 分辨率须大于 32×32，短边至少做到 33。 */
+export const ALIYUN_SEGMENT_MIN_SIDE = 33;
+/**
+ * 文档写「图像大小不超过 3 MB」。按十进制 3_000_000 字节封顶，
+ * 避免编码结果超过接口的十进制上限。
+ */
+export const ALIYUN_SEGMENT_MAX_BYTES = 3_000_000;
+const GARMENT_CUTOUT_FAILED_MESSAGE = '抠图失败，请重试';
+
+/** 只认 sharp 读到的格式，用来起文件名，不在这里转码。 */
+const READABLE_IMAGE_FORMATS: Record<
+  string,
+  { extension: string; mimetype: string }
+> = {
+  jpeg: { extension: 'jpg', mimetype: 'image/jpeg' },
+  png: { extension: 'png', mimetype: 'image/png' },
+  webp: { extension: 'webp', mimetype: 'image/webp' },
+  gif: { extension: 'gif', mimetype: 'image/gif' },
+  tiff: { extension: 'tiff', mimetype: 'image/tiff' },
+  heif: { extension: 'heif', mimetype: 'image/heif' },
+  avif: { extension: 'avif', mimetype: 'image/avif' },
+};
 
 @Injectable()
 export abstract class FileService implements FileServiceInterface {
@@ -73,37 +99,124 @@ export abstract class FileService implements FileServiceInterface {
       throw new BadRequestException('请上传图片文件');
     }
     const input = await buffer(upload.file);
-    // 必须先保留原字节；失败时不得继续抠图或报告衣物已保存。
+    // 必须先保留原字节；原图写入失败时不得继续抠图。
+    // 抠图失败则删掉刚写入的原图，调用方不会创建衣物。
     const originalPhoto = await this.storePrivateImageBuffer(input, userId);
-    const photo = await this.storeImageFromFileUpload(
-      { ...upload, file: Readable.from(input) } as MultipartFile,
-      userId,
-    );
-    return { originalPhoto, photo };
+    try {
+      const photo = await this.storeImageFromFileUpload(
+        { ...upload, file: Readable.from(input) } as MultipartFile,
+        userId,
+      );
+      return { originalPhoto, photo };
+    } catch (error) {
+      await this.removeStoredFileAfterFailure(originalPhoto, userId);
+      throw error;
+    }
+  }
+
+  private async removeStoredFileAfterFailure(
+    file: File,
+    userId: number,
+  ): Promise<void> {
+    try {
+      await this.deleteById(file.id, userId);
+      return;
+    } catch (error) {
+      this.logger.warn(
+        `Removing the original photo row after cutout failure failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    if (!file.fileName) return;
+    try {
+      await this.delete(file.fileName);
+    } catch (error) {
+      this.logger.warn(
+        `Removing the original photo bytes after cutout failure failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   protected async privateImageInfo(input: Buffer, userId: number) {
     if (!Number.isSafeInteger(userId) || userId <= 0) {
       throw new UnauthorizedException('请登录后保存原图');
     }
-    const formats: Record<string, { extension: string; mimetype: string }> = {
-      jpeg: { extension: 'jpg', mimetype: 'image/jpeg' },
-      png: { extension: 'png', mimetype: 'image/png' },
-      webp: { extension: 'webp', mimetype: 'image/webp' },
-      gif: { extension: 'gif', mimetype: 'image/gif' },
-      tiff: { extension: 'tiff', mimetype: 'image/tiff' },
-      heif: { extension: 'heif', mimetype: 'image/heif' },
-      avif: { extension: 'avif', mimetype: 'image/avif' },
+    const info = await this.readableImageInfo(input);
+    // 只校验格式，不旋转、缩放、转码或重新抠图。
+    return {
+      fileName: `private-${randomUUID()}.${info.extension}`,
+      mimetype: info.mimetype,
     };
+  }
+
+  /** 读宽高和格式。不旋转、不缩放、不重新编码。 */
+  protected async readableImageInfo(input: Buffer): Promise<{
+    extension: string;
+    mimetype: string;
+    width: number;
+    height: number;
+    orientation: number;
+  }> {
     const metadata = await sharp(input)
       .metadata()
       .catch(() => undefined);
-    const format = metadata?.format ? formats[metadata.format] : undefined;
-    if (!format) throw new BadRequestException('图片内容无效或格式不支持');
-    // 只校验格式，不旋转、缩放、转码或重新抠图。
+    return this.imageInfoFromMetadata(metadata);
+  }
+
+  private imageInfoFromMetadata(
+    metadata:
+      | {
+          format?: string;
+          width?: number;
+          height?: number;
+          orientation?: number;
+        }
+      | undefined,
+  ): {
+    extension: string;
+    mimetype: string;
+    width: number;
+    height: number;
+    orientation: number;
+  } {
+    const format = metadata?.format
+      ? READABLE_IMAGE_FORMATS[metadata.format]
+      : undefined;
+    const width = metadata?.width ?? 0;
+    const height = metadata?.height ?? 0;
+    if (!format || width < 1 || height < 1) {
+      throw new BadRequestException('图片内容无效或格式不支持');
+    }
     return {
-      fileName: `private-${randomUUID()}.${format.extension}`,
+      extension: format.extension,
       mimetype: format.mimetype,
+      width,
+      height,
+      orientation: metadata?.orientation ?? 1,
+    };
+  }
+
+  protected imageFileNameForBytes(
+    requestedName: string | undefined,
+    extension: string,
+  ): string {
+    if (!requestedName) return `${randomUUID()}.${extension}`;
+    const dot = requestedName.lastIndexOf('.');
+    const base = dot > 0 ? requestedName.slice(0, dot) : requestedName;
+    return `${base}.${extension}`;
+  }
+
+  protected async processedImageRecord(
+    outputBuffer: Buffer,
+    fileName?: string,
+  ): Promise<{ fileName: string; mimetype: string }> {
+    const info = await this.readableImageInfo(outputBuffer);
+    return {
+      fileName: this.imageFileNameForBytes(fileName, info.extension),
+      mimetype: info.mimetype,
     };
   }
   abstract copyStoredFile(sourceFileName: string, userId: any): Promise<File>;
@@ -133,25 +246,165 @@ export abstract class FileService implements FileServiceInterface {
   protected async prepareGarmentPhotoForStorage(
     imageBuffer: Buffer,
   ): Promise<Buffer> {
-    const aliyunResult = await this.removeBackgroundWithAliyun(imageBuffer);
-    if (aliyunResult) return aliyunResult;
-
     try {
-      return await this.cutOutGarmentOnWhite(imageBuffer);
+      const segmentationInput =
+        await this.fitImageForAliyunSegmentation(imageBuffer);
+      const cutout = await this.removeBackgroundWithAliyun(segmentationInput);
+      if (!cutout?.length) {
+        throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
+      }
+      return cutout;
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       this.logger.warn(
-        `Garment background cleanup failed, storing normalized original: ${
+        `Garment background cleanup failed: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      return this.normalizeOriginalPhoto(imageBuffer);
+      throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
     }
+  }
+
+  /**
+   * 只处理送去阿里云的副本。入库原图仍是调用方持有的那份字节。
+   * 通用分割接受 JPEG/JPG/PNG/BMP/WEBP，且不接受部分 PNG 位深，因此副本统一转成 JPEG。
+   */
+  private async fitImageForAliyunSegmentation(
+    imageBuffer: Buffer,
+  ): Promise<Buffer> {
+    const info = await this.readableImageInfo(imageBuffer).catch(
+      () => undefined,
+    );
+    if (!info) {
+      this.logger.warn('Aliyun segmentation input is not a readable image');
+      throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
+    }
+    // 已经是正向、且落在阿里云限制内的 JPEG，原样送出，避免再降一次质量。
+    if (
+      info.orientation === 1 &&
+      (await this.isAcceptedAliyunSegmentInput(imageBuffer))
+    ) {
+      return imageBuffer;
+    }
+
+    const fitted = await this.searchAliyunFit(
+      imageBuffer,
+      info.width,
+      info.height,
+    );
+    if (fitted) return fitted;
+
+    this.logger.warn(
+      `Aliyun segmentation input could not be fitted within ${ALIYUN_SEGMENT_MAX_SIDE}px and ${ALIYUN_SEGMENT_MAX_BYTES} bytes`,
+    );
+    throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
+  }
+
+  private async searchAliyunFit(
+    imageBuffer: Buffer,
+    width: number,
+    height: number,
+  ): Promise<Buffer | undefined> {
+    const qualities = [85, 70, 55, 40, 25];
+    let longestSide = Math.min(
+      Math.max(width, height),
+      ALIYUN_SEGMENT_MAX_SIDE,
+    );
+    for (let step = 0; step < 8; step += 1) {
+      const accepted = await this.encodeAcceptedAliyunInput(
+        imageBuffer,
+        width,
+        height,
+        longestSide,
+        qualities,
+      );
+      if (accepted) return accepted;
+      const nextSide = Math.max(
+        ALIYUN_SEGMENT_MIN_SIDE,
+        Math.floor(longestSide * 0.7),
+      );
+      if (nextSide >= longestSide) return undefined;
+      longestSide = nextSide;
+    }
+    return undefined;
+  }
+
+  private async encodeAcceptedAliyunInput(
+    imageBuffer: Buffer,
+    width: number,
+    height: number,
+    longestSide: number,
+    qualities: number[],
+  ): Promise<Buffer | undefined> {
+    const box = this.aliyunResizeBox(width, height, longestSide);
+    for (const quality of qualities) {
+      const output = await sharp(imageBuffer)
+        .autoOrient()
+        .resize({
+          width: box.width,
+          height: box.height,
+          fit: 'inside',
+          withoutEnlargement: box.withoutEnlargement,
+        })
+        .flatten({ background: '#ffffff' })
+        .jpeg({ quality })
+        .toBuffer();
+      if (await this.isAcceptedAliyunSegmentInput(output)) return output;
+    }
+    return undefined;
+  }
+
+  private aliyunResizeBox(
+    width: number,
+    height: number,
+    longestSide: number,
+  ): { width: number; height: number; withoutEnlargement: boolean } {
+    const longest = Math.max(width, height);
+    const shortest = Math.min(width, height);
+    let targetLong = Math.min(
+      longest,
+      ALIYUN_SEGMENT_MAX_SIDE,
+      Math.max(longestSide, 1),
+    );
+    if (shortest < ALIYUN_SEGMENT_MIN_SIDE) {
+      const upscaled = Math.ceil(
+        (longest * ALIYUN_SEGMENT_MIN_SIDE) / shortest,
+      );
+      targetLong = Math.min(
+        ALIYUN_SEGMENT_MAX_SIDE,
+        Math.max(targetLong, upscaled),
+      );
+    }
+    return {
+      width: targetLong,
+      height: targetLong,
+      withoutEnlargement: targetLong <= longest,
+    };
+  }
+
+  private async isAcceptedAliyunSegmentInput(image: Buffer): Promise<boolean> {
+    if (image.length < 1 || image.length > ALIYUN_SEGMENT_MAX_BYTES) {
+      return false;
+    }
+    const metadata = await sharp(image).metadata();
+    const width = metadata.width ?? 0;
+    const height = metadata.height ?? 0;
+    return (
+      metadata.format === 'jpeg' &&
+      width >= ALIYUN_SEGMENT_MIN_SIDE &&
+      height >= ALIYUN_SEGMENT_MIN_SIDE &&
+      width <= ALIYUN_SEGMENT_MAX_SIDE &&
+      height <= ALIYUN_SEGMENT_MAX_SIDE
+    );
   }
 
   protected async removeBackgroundWithAliyun(
     imageBuffer: Buffer,
-  ): Promise<Buffer | null> {
-    if (!this.hasAliyunBackgroundRemovalConfig()) return null;
+  ): Promise<Buffer> {
+    if (!this.hasAliyunBackgroundRemovalConfig()) {
+      this.logger.warn('Aliyun garment background cleanup is not configured');
+      throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
+    }
 
     try {
       const client = this.createAliyunImagesegClient();
@@ -180,14 +433,16 @@ export abstract class FileService implements FileServiceInterface {
         );
       }
       const resultBuffer = Buffer.from(await imageResponse.arrayBuffer());
-      return this.normalizeOriginalPhoto(resultBuffer);
+      await this.assertAliyunCutoutBytes(resultBuffer);
+      return resultBuffer;
     } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       this.logger.warn(
-        `Aliyun garment background cleanup failed, falling back locally: ${
+        `Aliyun garment background cleanup failed: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      return null;
+      throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
     }
   }
 
@@ -245,162 +500,22 @@ export abstract class FileService implements FileServiceInterface {
     }
   }
 
+  /** 确认阿里云结果能当图片读。不缩放，也不改成 WebP。 */
+  private async assertAliyunCutoutBytes(resultBuffer: Buffer): Promise<void> {
+    const info = await this.readableImageInfo(resultBuffer).catch(
+      () => undefined,
+    );
+    if (info) return;
+    this.logger.warn('Aliyun segmentation result is not a readable image');
+    throw new BadRequestException(GARMENT_CUTOUT_FAILED_MESSAGE);
+  }
+
   protected async normalizeOriginalPhoto(imageBuffer: Buffer): Promise<Buffer> {
     return sharp(imageBuffer)
       .autoOrient()
       .webp({ quality: 100 })
       .resize(1080, 1080, { fit: sharp.fit.inside })
       .toBuffer();
-  }
-
-  private async cutOutGarmentOnWhite(imageBuffer: Buffer): Promise<Buffer> {
-    const image = await sharp(imageBuffer)
-      .autoOrient()
-      .resize(1080, 1080, { fit: sharp.fit.inside })
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    const { width, height, channels } = image.info;
-    if (channels !== 4 || width < 4 || height < 4) {
-      return this.normalizeOriginalPhoto(imageBuffer);
-    }
-
-    const pixels = image.data;
-    const bg = this.estimateEdgeBackground(pixels, width, height, channels);
-    const background = this.findConnectedBackground(
-      pixels,
-      width,
-      height,
-      channels,
-      bg,
-    );
-
-    const output = Buffer.from(pixels);
-    for (let index = 0; index < background.length; index += 1) {
-      const pixelOffset = index * channels;
-      if (background[index]) {
-        output[pixelOffset] = 255;
-        output[pixelOffset + 1] = 255;
-        output[pixelOffset + 2] = 255;
-        output[pixelOffset + 3] = 0;
-      }
-    }
-
-    const foreground = await sharp(output, {
-      raw: { width, height, channels },
-    })
-      .png()
-      .toBuffer();
-
-    return sharp({
-      create: {
-        width,
-        height,
-        channels: 4,
-        background: { r: 255, g: 255, b: 255, alpha: 1 },
-      },
-    })
-      .composite([{ input: foreground }])
-      .webp({ quality: 100 })
-      .toBuffer();
-  }
-
-  private estimateEdgeBackground(
-    pixels: Buffer,
-    width: number,
-    height: number,
-    channels: number,
-  ): [number, number, number] {
-    const sampleStep = Math.max(1, Math.floor(Math.min(width, height) / 80));
-    const totals = [0, 0, 0];
-    let count = 0;
-
-    const add = (x: number, y: number) => {
-      const offset = (y * width + x) * channels;
-      if (pixels[offset + 3] < 10) return;
-      totals[0] += pixels[offset];
-      totals[1] += pixels[offset + 1];
-      totals[2] += pixels[offset + 2];
-      count += 1;
-    };
-
-    for (let x = 0; x < width; x += sampleStep) {
-      add(x, 0);
-      add(x, height - 1);
-    }
-    for (let y = 0; y < height; y += sampleStep) {
-      add(0, y);
-      add(width - 1, y);
-    }
-
-    if (count === 0) return [255, 255, 255];
-    return [
-      Math.round(totals[0] / count),
-      Math.round(totals[1] / count),
-      Math.round(totals[2] / count),
-    ];
-  }
-
-  private findConnectedBackground(
-    pixels: Buffer,
-    width: number,
-    height: number,
-    channels: number,
-    bg: [number, number, number],
-  ): Uint8Array {
-    const visited = new Uint8Array(width * height);
-    const queue = new Int32Array(width * height);
-    let head = 0;
-    let tail = 0;
-    const threshold = 62;
-
-    const enqueue = (x: number, y: number) => {
-      const index = y * width + x;
-      if (visited[index]) return;
-      const offset = index * channels;
-      if (
-        pixels[offset + 3] >= 10 &&
-        this.colorDistance(pixels, offset, bg) > threshold
-      ) {
-        return;
-      }
-      visited[index] = 1;
-      queue[tail] = index;
-      tail += 1;
-    };
-
-    for (let x = 0; x < width; x += 1) {
-      enqueue(x, 0);
-      enqueue(x, height - 1);
-    }
-    for (let y = 0; y < height; y += 1) {
-      enqueue(0, y);
-      enqueue(width - 1, y);
-    }
-
-    while (head < tail) {
-      const index = queue[head];
-      head += 1;
-      const x = index % width;
-      const y = Math.floor(index / width);
-      if (x > 0) enqueue(x - 1, y);
-      if (x < width - 1) enqueue(x + 1, y);
-      if (y > 0) enqueue(x, y - 1);
-      if (y < height - 1) enqueue(x, y + 1);
-    }
-
-    return visited;
-  }
-
-  private colorDistance(
-    pixels: Buffer,
-    offset: number,
-    bg: [number, number, number],
-  ): number {
-    const red = pixels[offset] - bg[0];
-    const green = pixels[offset + 1] - bg[1];
-    const blue = pixels[offset + 2] - bg[2];
-    return Math.sqrt(red * red + green * green + blue * blue);
   }
 
   async getWatermark() {
