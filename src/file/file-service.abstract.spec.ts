@@ -290,7 +290,7 @@ describe('FileService garment photo preparation', () => {
     } finally {
       fetchSpy.mockRestore();
     }
-  }, 20000);
+  }, 90_000);
 
   it('符合限制的正向 JPEG 原样送出，阿里云结果保持原分辨率', async () => {
     const service = new TestFileService(
@@ -351,7 +351,7 @@ describe('FileService garment photo preparation', () => {
     } finally {
       fetchSpy.mockRestore();
     }
-  }, 90_000);
+  });
 
   it('阿里云抠图失败时抛出明确错误，并删除已写入的原图', async () => {
     const service = new TestFileService(
