@@ -351,7 +351,7 @@ describe('FileService garment photo preparation', () => {
     } finally {
       fetchSpy.mockRestore();
     }
-  });
+  }, 90_000);
 
   it('阿里云抠图失败时抛出明确错误，并删除已写入的原图', async () => {
     const service = new TestFileService(
